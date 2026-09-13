@@ -10,6 +10,7 @@ import { accountRoutes } from './modules/account/accountRoutes';
 import { registerAuthContext } from './modules/auth/authenticate';
 import { authRoutes, type AuthRateLimits } from './modules/auth/authRoutes';
 import { avatarAuthorizer, fileRoutes } from './modules/files/fileRoutes';
+import { treeRoutes } from './modules/trees/treeRoutes';
 
 export interface BuildAppOptions {
   logger?: boolean;
@@ -97,6 +98,7 @@ export async function buildApp(deps: AppDeps, options: BuildAppOptions = {}): Pr
   const authRateLimit = options.authRateLimit ?? { max: 10, timeWindow: '1 minute' };
   await app.register(authRoutes, { deps, rateLimit: authRateLimit });
   await app.register(accountRoutes, { deps });
+  await app.register(treeRoutes, { deps });
   await app.register(fileRoutes, { deps, authorizers: { 'avatars/': avatarAuthorizer } });
 
   return app;

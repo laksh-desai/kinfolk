@@ -4,16 +4,21 @@ Milestones are defined in `docs/SPEC.md` §10. Update at every checkpoint.
 
 ## In progress
 
-**M2 — Data layer.** Plan below under "Milestone plans → M2".
+**M3 — Layout engine.** Plan below under "Milestone plans → M3".
 
 ## Up next
 
-M3 Layout engine · M4 Kinship calculator · M5 Canvas ·
+M4 Kinship calculator · M5 Canvas ·
 M6 People & relationships · M7 Dashboard & list view · M8 Collaboration ·
 M9 Review workflow · M10 Events, import, export
 
 ## Done
 
+- **M2 — Data layer** (2026-09-13). Full Prisma schema and migration, shared Zod schemas,
+  pure `applyChangeSet` (invariants with plain-language errors, exact inverses), partial
+  dates, 60-person §4.5 seed and 500-person generator, tree CRUD, graph + changes endpoints
+  with per-request roles, planning redaction, audit per op, server-managed link/photo fields,
+  `pnpm db:seed` verified on real Postgres.
 - **M1 — Foundation** (2026-09-13). Monorepo scaffolding, strict TS/ESLint/Vitest/Playwright,
   design tokens with a contrast test, component primitives, cookie-session auth (email +
   password, Google with a dev provider, OTP reset), account page (profile, password, avatar,
@@ -290,7 +295,44 @@ path: person ids along the chosen route (for Compare drawing)
 
 # Milestone plans
 
-## M2 — Data layer (in progress)
+## M3 — Layout engine (in progress)
+
+Pure module in `packages/shared/src/layout/`: no React, DOM, or network (lint-enforced).
+Algorithm as in section C above.
+
+Files:
+- `types.ts`: options and output.
+- `canonical.ts`: sorted input and collapse filtering.
+- `generations.ts`: partner classes, longest path, anchoring pull-down, per-component
+  normalisation.
+- `groups.ts`: member order within a partner group.
+- `forest.ts`: primary and secondary child slots, in-law root attachment.
+- `blocks.ts`: contour packing; whole subtrees shift.
+- `routing.ts`: lanes, orthogonal paths, and gap-jogging for long edges.
+- `computeLayout.ts`: orchestration.
+- `geometry.ts`: overlap and segment-through-card predicates. Shared by tests and by canvas
+  culling.
+
+Tests (`computeLayout.test.ts`): one `describe` per §4.5 case (1–19). Every case asserts:
+- no card intersects another;
+- no edge segment enters a card interior;
+- identical output when the input arrays are shuffled.
+
+Plus case-specific geometry:
+- children centred under the union anchor;
+- half-siblings adjacent;
+- divorced union dashed;
+- in-law root beside its union;
+- components not overlapping;
+- twins adjacent and marked;
+- placeholders routed like anyone else;
+- the 500-person case completes in under 300 ms and passes the same invariants.
+
+The seed tree also passes all invariants.
+
+Done when: the M3 row in table E is demonstrated.
+
+## M2 — Data layer (done 2026-09-13)
 
 Files:
 - `apps/api/prisma/schema.prisma`: the models in section B above, plus `Tree.version`.

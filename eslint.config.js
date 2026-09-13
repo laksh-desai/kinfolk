@@ -49,7 +49,7 @@ export default tseslint.config(
       '@eslint-community/eslint-comments/require-description': ['error', { ignore: [] }],
       '@eslint-community/eslint-comments/disable-enable-pair': 'off',
       'no-console': ['error', { allow: ['warn', 'error'] }],
-      eqeqeq: ['error', 'always'],
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
     },
   },
   {

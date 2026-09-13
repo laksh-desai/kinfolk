@@ -135,6 +135,10 @@ orient. Replace lines rather than stacking them.)*
 - Web: all calls via `lib/api.ts`; forms via `lib/useForm.ts` + shared schema; primitives in
   `components/` (IconButton requires `label`); `test/renderApp` renders the real route table.
 - New migration without Docker: `pnpm --filter api exec tsx scripts/withEmbeddedDb.ts pnpm exec prisma migrate dev --name <x>`.
+- Graph edits: `POST /api/trees/:id/changes` with ChangeOps → `commitChangeSet` (lock, pure
+  `applyChangeSet`, persist, audit per op, returns inverse). Read: `GET /api/trees/:id/graph`.
+- Roles resolved per request by `lib/treeAccess.ts` (`requireTreeRole`); redaction in
+  `lib/graphRows.ts` (`graphForVisibility`). Fixtures: `buildSeedTree({ namespace })`, `buildLargeTree()`.
 
 ## Gotchas
 *(Cap: 20 lines. Non-obvious things that cost time. Each line: the trap, then the fix.)*
@@ -149,6 +153,9 @@ orient. Replace lines rather than stacking them.)*
 - Don't put hidden "(required)" text inside labels: `aria-required` already says it, and exact label queries break.
 - `.claude/settings.json` denies `Read(./.env.*)`, which also blocks the Write tool on `.env.example` → write that one file via shell.
 - `queryClient.ensureQueryData(sessionQuery)` returns a cached `null` after sign-out → any new sign-in path must `setQueryData`/`fetchQuery` the session before navigating, or the guard bounces to /login.
+- Person/union/edge ids are global PKs → the same fixture can't go into two trees in one DB; pass a distinct `namespace` to `buildSeedTree`.
+- Prisma Json columns need `Prisma.DbNull` for null, not `null` → use the helpers in `lib/graphRows.ts`.
+- Long heredocs in the Bash tool break on apostrophes (`unexpected EOF`) → use Write/Edit for file content.
 - Slow machine: web tests preload lazy routes (`renderApp`) and use an 8s `findBy` timeout; run long suites in the background.
 
 ## Deviations from SPEC.md
@@ -158,5 +165,6 @@ deviation is large, open an ADR and link it here instead of explaining it twice.
 - Toolchain pinned to older, known majors (TS 5.9, Vite 6, Vitest 3, Prisma 6, Zod 3) — ADR 002.
 - Root `lint` script is `eslint . && tsc -b --noEmit`; the spec's argument order doesn't run (QUESTIONS Q33).
 - `.env.example` adds `NODE_ENV`, `LOCAL_STORAGE_DIR`, `MAIL_OUTBOX_DIR` for the dev adapters (ADR 007).
-- Extra tables beyond §3: `Session`, `OAuthAccount`, `PasswordReset` (M1); `ReviewAssignment` and `ReminderSubscription` planned (QUESTIONS Q1, Q28).
+- Extra tables beyond §3: `Session`, `OAuthAccount`, `PasswordReset`, `ReviewAssignment`, `ReminderSubscription`; extra columns `Tree.version`, invitation stage timestamps (QUESTIONS Q1, Q22, Q28).
+- `Person.linkedTreeId` is server-managed and `photoUrl` must be under the tree's file prefix; undo restores them via audit tokens (ADR 012).
 - Production: Secure cookies only when `NODE_ENV=production`, so plain-http test clients work.

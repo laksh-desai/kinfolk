@@ -23,25 +23,36 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  sessions       Session[]
-  oauthAccounts  OAuthAccount[]
-  passwordResets PasswordReset[]
+  sessions            Session[]
+  oauthAccounts       OAuthAccount[]
+  passwordResets      PasswordReset[]
+  ownedTrees          Tree[]                 @relation("TreeOwner")
+  accesses            Access[]               @relation("AccessUser")
+  accessInvites       Access[]               @relation("AccessInviter")
+  invitationsSent     Invitation[]           @relation("InvitationSender")
+  invitationsReceived Invitation[]           @relation("InvitationInvitee")
+  linkRequests        LinkRequest[]          @relation("LinkRequester")
+  changeRequests      ChangeRequest[]        @relation("ChangeRequestAuthor")
+  shareLinks          ShareLink[]
+  reviewsCreated      ReviewAssignment[]     @relation("ReviewCreator")
+  reviewsClaimed      ReviewAssignment[]     @relation("ReviewReviewer")
+  reminders           ReminderSubscription[]
 }
 
 /// One row per refresh-token family. The refresh token rotates on every use; presenting a
 /// rotated-out token revokes the row.
 model Session {
-  id               String    @id @db.Uuid
-  userId           String    @db.Uuid
-  refreshTokenHash String    @unique
+  id                String    @id @db.Uuid
+  userId            String    @db.Uuid
+  refreshTokenHash  String    @unique
   /// The hash that was rotated out most recently. Presenting it within the grace window
   /// (two tabs refreshing at once) is tolerated; later it counts as token reuse.
   previousTokenHash String?
   rotatedAt         DateTime?
-  expiresAt        DateTime
-  revokedAt        DateTime?
-  createdAt        DateTime  @default(now())
-  lastUsedAt       DateTime  @default(now())
+  expiresAt         DateTime
+  revokedAt         DateTime?
+  createdAt         DateTime  @default(now())
+  lastUsedAt        DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -74,4 +85,360 @@ model PasswordReset {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Family graph (SPEC §3). Children always hang off a Union.
+// ---------------------------------------------------------------------------
+
+enum Gender {
+  male
+  female
+  other
+  unknown
+}
+
+enum LifeStatus {
+  living
+  deceased
+  unknown
+}
+
+enum TreeStatus {
+  draft
+  in_review
+  approved
+  changes_requested
+}
+
+enum UnionType {
+  marriage
+  partnership
+  unknown
+}
+
+enum UnionStatus {
+  current
+  divorced
+  separated
+  widowed
+  ended
+}
+
+enum ParentChildKind {
+  biological
+  adopted
+  step
+  foster
+  guardian
+}
+
+model Tree {
+  id            String     @id @default(uuid()) @db.Uuid
+  name          String
+  description   String?
+  ownerId       String     @db.Uuid
+  thumbnailUrl  String?
+  /// Validated by the graph layer; no FK so person deletes stay a pure graph operation.
+  focusPersonId String?    @db.Uuid
+  status        TreeStatus @default(draft)
+  /// Incremented by every committed ChangeSet; clients use it to notice remote edits.
+  version       Int        @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  owner            User                   @relation("TreeOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  people           Person[]               @relation("TreePeople")
+  unions           Union[]
+  parentChildren   ParentChild[]
+  accesses         Access[]
+  invitations      Invitation[]
+  linkRequestsFrom LinkRequest[]          @relation("LinkFrom")
+  linkRequestsTo   LinkRequest[]          @relation("LinkTo")
+  changeRequests   ChangeRequest[]
+  shareLinks       ShareLink[]
+  reviews          ReviewAssignment[]
+  reminders        ReminderSubscription[]
+  auditEvents      AuditEvent[]
+  linkedFrom       Person[]               @relation("LinkedTree")
+
+  @@index([ownerId])
+}
+
+model Person {
+  /// Client-generated (ADR 004).
+  id               String     @id @db.Uuid
+  treeId           String     @db.Uuid
+  /// Empty only for placeholders.
+  firstName        String
+  lastName         String?
+  maidenName       String?
+  nickname         String?
+  suffix           String?
+  gender           Gender
+  lifeStatus       LifeStatus
+  birthYear        Int?
+  birthMonth       Int?
+  birthDay         Int?
+  birthApproximate Boolean    @default(false)
+  deathYear        Int?
+  deathMonth       Int?
+  deathDay         Int?
+  deathApproximate Boolean    @default(false)
+  birthPlace       String?
+  maritalStatus    String?
+  email            String?
+  phone            String?
+  address          Json?
+  photoUrl         String?
+  profession       String?
+  notes            String?
+  isPlaceholder    Boolean    @default(false)
+  details          Json?
+  socials          Json?
+  /// Owner and reviewer only; never serialised for editors, viewers, or share links.
+  planning         Json?
+  linkedTreeId     String?    @db.Uuid
+  createdAt        DateTime
+  updatedAt        DateTime   @updatedAt
+
+  tree         Tree          @relation("TreePeople", fields: [treeId], references: [id], onDelete: Cascade)
+  linkedTree   Tree?         @relation("LinkedTree", fields: [linkedTreeId], references: [id], onDelete: SetNull)
+  unionsAsA    Union[]       @relation("PartnerA")
+  unionsAsB    Union[]       @relation("PartnerB")
+  parentLinks  ParentChild[]
+  invitations  Invitation[]
+  linkRequests LinkRequest[]
+
+  @@index([treeId])
+  @@index([treeId, birthMonth, birthDay])
+}
+
+model Union {
+  id               String      @id @db.Uuid
+  treeId           String      @db.Uuid
+  partnerAId       String      @db.Uuid
+  /// Null for a single-parent union.
+  partnerBId       String?     @db.Uuid
+  type             UnionType
+  status           UnionStatus
+  startYear        Int?
+  startMonth       Int?
+  startDay         Int?
+  startApproximate Boolean     @default(false)
+  endYear          Int?
+  endMonth         Int?
+  endDay           Int?
+  endApproximate   Boolean     @default(false)
+  createdAt        DateTime
+  updatedAt        DateTime    @updatedAt
+
+  tree     Tree          @relation(fields: [treeId], references: [id], onDelete: Cascade)
+  partnerA Person        @relation("PartnerA", fields: [partnerAId], references: [id], onDelete: Cascade)
+  partnerB Person?       @relation("PartnerB", fields: [partnerBId], references: [id], onDelete: Cascade)
+  children ParentChild[]
+
+  @@index([treeId])
+  @@index([partnerAId])
+  @@index([partnerBId])
+}
+
+model ParentChild {
+  id        String          @id @db.Uuid
+  treeId    String          @db.Uuid
+  childId   String          @db.Uuid
+  unionId   String          @db.Uuid
+  kind      ParentChildKind
+  createdAt DateTime
+
+  tree  Tree   @relation(fields: [treeId], references: [id], onDelete: Cascade)
+  child Person @relation(fields: [childId], references: [id], onDelete: Cascade)
+  union Union  @relation(fields: [unionId], references: [id], onDelete: Cascade)
+
+  /// SPEC §3: a second parental row is allowed only when the kind differs.
+  @@unique([childId, unionId])
+  @@unique([childId, kind])
+  @@index([treeId])
+  @@index([unionId])
+}
+
+// ---------------------------------------------------------------------------
+// Collaboration, sharing, review
+// ---------------------------------------------------------------------------
+
+enum AccessRole {
+  editor
+  viewer
+}
+
+enum AccessStatus {
+  invited
+  active
+  revoked
+}
+
+enum InvitationStage {
+  sent
+  joined
+  tree_created
+  linked
+}
+
+enum LinkRequestStatus {
+  pending
+  approved
+  rejected
+}
+
+enum ChangeRequestStatus {
+  open
+  resolved
+}
+
+model Access {
+  id          String       @id @default(uuid()) @db.Uuid
+  treeId      String       @db.Uuid
+  userId      String?      @db.Uuid
+  /// Lower-cased; accepting matches the signed-in user email.
+  email       String
+  name        String?
+  role        AccessRole
+  status      AccessStatus @default(invited)
+  invitedById String?      @db.Uuid
+  invitedAt   DateTime     @default(now())
+  acceptedAt  DateTime?
+
+  tree      Tree  @relation(fields: [treeId], references: [id], onDelete: Cascade)
+  user      User? @relation("AccessUser", fields: [userId], references: [id], onDelete: Cascade)
+  invitedBy User? @relation("AccessInviter", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  @@unique([treeId, email])
+  @@index([userId])
+  @@index([email])
+}
+
+model Invitation {
+  id            String          @id @default(uuid()) @db.Uuid
+  treeId        String          @db.Uuid
+  personId      String          @db.Uuid
+  email         String
+  tokenHash     String          @unique
+  stage         InvitationStage @default(sent)
+  invitedById   String?         @db.Uuid
+  inviteeUserId String?         @db.Uuid
+  inviteeTreeId String?         @db.Uuid
+  sentAt        DateTime        @default(now())
+  joinedAt      DateTime?
+  treeCreatedAt DateTime?
+  linkedAt      DateTime?
+  expiresAt     DateTime
+  revokedAt     DateTime?
+
+  tree      Tree   @relation(fields: [treeId], references: [id], onDelete: Cascade)
+  person    Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+  invitedBy User?  @relation("InvitationSender", fields: [invitedById], references: [id], onDelete: SetNull)
+  invitee   User?  @relation("InvitationInvitee", fields: [inviteeUserId], references: [id], onDelete: SetNull)
+
+  @@index([treeId])
+  @@index([email])
+}
+
+model LinkRequest {
+  id            String            @id @default(uuid()) @db.Uuid
+  fromTreeId    String            @db.Uuid
+  toTreeId      String            @db.Uuid
+  personId      String            @db.Uuid
+  requestedById String?           @db.Uuid
+  status        LinkRequestStatus @default(pending)
+  createdAt     DateTime          @default(now())
+  resolvedAt    DateTime?
+  resolvedById  String?           @db.Uuid
+
+  fromTree    Tree   @relation("LinkFrom", fields: [fromTreeId], references: [id], onDelete: Cascade)
+  toTree      Tree   @relation("LinkTo", fields: [toTreeId], references: [id], onDelete: Cascade)
+  person      Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+  requestedBy User?  @relation("LinkRequester", fields: [requestedById], references: [id], onDelete: SetNull)
+
+  @@index([toTreeId, status])
+}
+
+model ChangeRequest {
+  id           String              @id @default(uuid()) @db.Uuid
+  treeId       String              @db.Uuid
+  /// Null if the reviewer later deleted their account; the note is kept for the record.
+  authorId     String?             @db.Uuid
+  body         String
+  status       ChangeRequestStatus @default(open)
+  createdAt    DateTime            @default(now())
+  resolvedAt   DateTime?
+  resolvedById String?             @db.Uuid
+
+  tree   Tree  @relation(fields: [treeId], references: [id], onDelete: Cascade)
+  author User? @relation("ChangeRequestAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([treeId, status])
+}
+
+model ShareLink {
+  id          String    @id @default(uuid()) @db.Uuid
+  treeId      String    @db.Uuid
+  tokenHash   String    @unique
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  createdById String?   @db.Uuid
+  createdAt   DateTime  @default(now())
+
+  tree      Tree  @relation(fields: [treeId], references: [id], onDelete: Cascade)
+  createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([treeId])
+}
+
+/// Not in SPEC §3 — see docs/QUESTIONS.md Q1.
+model ReviewAssignment {
+  id             String    @id @default(uuid()) @db.Uuid
+  treeId         String    @db.Uuid
+  tokenHash      String    @unique
+  reviewerEmail  String
+  reviewerUserId String?   @db.Uuid
+  createdById    String?   @db.Uuid
+  createdAt      DateTime  @default(now())
+  revokedAt      DateTime?
+  decision       String?
+  decidedAt      DateTime?
+
+  tree      Tree  @relation(fields: [treeId], references: [id], onDelete: Cascade)
+  reviewer  User? @relation("ReviewReviewer", fields: [reviewerUserId], references: [id], onDelete: SetNull)
+  createdBy User? @relation("ReviewCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([treeId])
+}
+
+/// Not in SPEC §3 — opt-in key-event emails per tree (QUESTIONS Q28).
+model ReminderSubscription {
+  userId    String   @db.Uuid
+  treeId    String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tree Tree @relation(fields: [treeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, treeId])
+}
+
+model AuditEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  treeId     String?  @db.Uuid
+  actorId    String?  @db.Uuid
+  action     String
+  targetType String
+  targetId   String
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now())
+
+  tree Tree? @relation(fields: [treeId], references: [id], onDelete: Cascade)
+
+  @@index([treeId, createdAt])
+  @@index([targetId])
 }

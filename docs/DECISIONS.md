@@ -218,3 +218,46 @@ port is busy.
 **Consequences.** There's one process to stop, and a busy port gives a clear error instead of
 a stale run. The e2e API runs with `NODE_ENV=development` and every dev adapter, which is
 exactly the no-credentials path.
+
+## 012 — Server-managed person fields, restored on undo through audit-event tokens
+Date: 2026-09-13
+Status: accepted
+
+**Context.** ADR 004 lets clients send person records. The M2 audit found two problems:
+- Any editor could set `linkedTreeId` to an arbitrary tree, or `photoUrl` to any URL.
+- The exact inverse of deleting a person must bring back fields the caller can't see (planning,
+  for editors) or can't set (the tree link).
+
+The alternatives were keeping undo state server-side (an undo stack table), or making the
+inverse carry those fields. Carrying them leaks planning to editors and lets anyone forge
+links.
+
+**Decision.**
+- `linkedTreeId` is server-managed. A client op may not set it; only link approval (M8) and
+  restoration can.
+- `photoUrl` must be null or a file under `/api/files/trees/<this tree>/people/<id>/`.
+- Every inverse `person.create` produced by a delete carries `restoreToken`: the id of the
+  `person.delete` AuditEvent. On replay, the server verifies the event belongs to this tree
+  and person, then restores planning and `linkedTreeId` from its `before` snapshot.
+- Editors receive the inverse without planning.
+
+**Consequences.** Undo stays stateless on the server and uses the audit log it already writes.
+Tokens are not secrets: they only restore what was deleted from the same tree, for someone
+already allowed to edit it. If audit retention is ever shortened, undo of old deletes loses
+those fields, which is acceptable for a 20-step undo history.
+
+## 013 — Non-members get 404, not 403; one ordered list of roles per tree
+Date: 2026-09-13
+Status: accepted
+
+**Context.** Tree ids appear in URLs. Answering 403 to a stranger confirms the tree exists.
+
+**Decision.** `resolveTreeRole` checks, in order: owner, then active Access row, then
+unrevoked ReviewAssignment. Anyone else gets 404 `tree_not_found` with the same wording as a
+deleted tree. A member without the needed permission gets 403 with a plain explanation (e.g.
+"Only the tree owner can rename it."). Rename and delete are owner-only; graph changes are
+owner or editor; planning writes are owner-only.
+
+**Consequences.** Every tree endpoint calls `requireTreeRole` first, and tests cover
+stranger, viewer, editor, and owner on each. A person with both editor access and a review
+assignment is treated as an editor, since Access is checked first.
