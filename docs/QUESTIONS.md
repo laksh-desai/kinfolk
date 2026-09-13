@@ -1,0 +1,234 @@
+# Open questions
+
+Things in `docs/SPEC.md` that are ambiguous, internally inconsistent, or that I think are
+the wrong call. None of these blocked work: each records my reading, the alternatives, and
+what I built. Items marked **Recommend spec change** are places where I implemented what
+the spec says but would do it differently.
+
+Status key: **Decided** (built as described, revisit if you disagree) · **Open** (needs you;
+built around it) · **Recommend spec change**.
+
+---
+
+## Data model (§3) — expensive to reverse
+
+### Q1 — Reviewers have no home in the model · Decided
+§5.7 has reviewers open `/review/:token` and author ChangeRequests (`authorId`), but §3 has
+no review token, no reviewer role in `Access.role`, and no record of who the tree was sent to.
+- Alternatives: (a) reuse `ShareLink` with a `kind` column; (b) add `reviewer` to
+  `Access.role`; (c) a separate `ReviewAssignment` table.
+- Decision: (c). `ReviewAssignment { treeId, tokenHash, reviewerEmail, reviewerUserId?,
+  decision?, decidedAt? }`. The reviewer must be signed in (ChangeRequest needs an author);
+  the first signed-in user to open the link claims it and it is bound to them thereafter.
+  Reusing ShareLink would mix a redacted visitor token with a token that exposes planning
+  answers — one bug away from a data leak.
+
+### Q2 — Twins / multiple births have no field · Decided
+§4.5.15 requires twins to be "ordered sensibly and marked", but Person has no birth order
+or multiple-birth field.
+- Alternatives: add `birthOrder` + `multipleBirthGroup`; derive.
+- Decision: derive. Children of the same Union with identical full birth dates (year,
+  month, day all known) are a multiple birth and get a marker. Order within the set falls
+  back to creation order. Consequence: twins with unknown or partial dates can't be marked.
+  **Recommend spec change:** add an optional `birthOrder` so users can fix the order.
+
+### Q3 — `ParentChild.kind = step` overlaps derived step relationships · Decided
+§4.5.7 says step-children are "a partner's children from a prior union", which the graph
+already expresses (child of my partner's other Union). §3 also allows an explicit `step` edge.
+- Decision: step relationships are **derived** by default, and Add relative → Step-child
+  creates the child under the partner's union. An explicit `step` edge is still allowed
+  and means "raised by this union's partners, no biological tie to either". The kinship
+  calculator treats a `step` edge as a direct step-parent/step-child link that does not
+  extend to grandparents.
+
+### Q4 — Adoption, foster, and guardian: how far does each reach? · Decided
+- Adopted edges count as full lineage for every derived label: an adopted child's parent's
+  mother is their "Grandmother". Only the direct edge is qualified: "Adoptive mother",
+  "Adopted son".
+- Foster and guardian edges are direct only: "Foster mother" / "Foster son",
+  "Guardian" / "Ward". They do not produce grandparents or cousins.
+
+### Q5 — Dates as JSON vs columns · Decided (ADR 005)
+§3 shows `birthDate { year, month?, day?, approximate }`. Stored as flat columns so Key
+Events can filter by month/day in SQL. API and Zod keep the nested shape.
+
+### Q6 — Placeholders and the required `firstName` · Decided
+`firstName` is required, but placeholders are unnamed.
+- Decision: a placeholder stores `firstName = ""`. The schema requires a non-empty first
+  name unless `isPlaceholder` is true. The display label ("Ravi's parent — unnamed") is
+  computed from the graph, not stored, so it stays correct if the graph changes. Naming the
+  person clears `isPlaceholder`.
+
+### Q7 — "A child in more than one ParentChild row only when kinds differ" · Decided
+Enforced as a DB unique constraint on `(childId, kind)` plus `(childId, unionId)`.
+Consequence: nobody can have two biological parental unions. The one realistic case this
+rules out is "two possible biological fathers", which is out of scope for a planning tool.
+
+### Q8 — Link-visitor redaction vs. rendering the relationship · Decided
+§2 says link visitors see "names, relationships, birth years only". Relationship labels
+need gender ("Mother" vs "Parent"). Rendering a deceased person as living would also
+misstate the family.
+- Decision: the redacted DTO includes `gender`, `lifeStatus`, `isPlaceholder`, the name
+  fields, and `birthYear`. It excludes month and day, death date, photo, place, contact,
+  address, notes, profession, details, socials, planning, and union dates.
+
+### Q9 — Planning answers: who sees them? · Decided
+§5.4 says Planning is "owner and reviewer only". Editors and viewers therefore never
+receive planning fields from the API and cannot write them (403). An editor editing a
+person's name does not wipe planning, because updates are patches.
+
+### Q10 — AuditEvent retention vs. deletion · Decided
+"Every mutation writes an AuditEvent", but account deletion must destroy data, and the
+events' `before`/`after` hold PII.
+- Decision: AuditEvent rows cascade with their tree. Deleting a tree or account removes the
+  audit trail with it. **Open:** a regulated advisor may need a retained, PII-free record
+  of the deletion itself. Not built.
+
+### Q11 — Cascade delete when a person has descendants · Decided
+§3: blocked "unless the user explicitly confirms a cascade that names every affected
+relationship. Never orphan a subtree." Those two sentences pull against each other: a
+cascade that removes the only parent would orphan the children.
+- Decision: the confirm dialog lists every affected union and parent-child edge by name
+  and offers two explicit cascades:
+  - "Replace with an unnamed placeholder": relationships kept, descendants stay connected.
+  - "Delete and all N descendants": every name listed.
+
+  A plain delete of someone whose children still have another parent in the same union is
+  also allowed after confirmation, because nothing is orphaned. Every option is undoable.
+
+## Relationships (§4)
+
+### Q12 — "Add parent" when two parents already exist · Decided
+§4.1 says "up to two" but also "never hidden". The action stays visible. If the person
+already has a two-partner biological union, the form says so and offers adoptive, step,
+foster, or guardian parent instead. This is a different `kind`, so it passes the Q7
+constraint.
+
+### Q13 — Half-sibling resolution · Decided
+Add relative → Half-sibling asks which parent is shared, or uses the only known parent.
+The new sibling goes under a new single-parent union of that parent. It is not placed
+under a new union with a placeholder partner, which avoids an extra placeholder. If the
+anchor person has no parent, a placeholder parent is created first.
+
+### Q14 — Step-sibling resolution needs up to three placeholders · Decided
+Anchor's parent (placeholder if missing) → that parent's new partner (placeholder) → a
+single-parent union of that partner → the step-sibling. The summary sentence names every
+placeholder created.
+
+### Q15 — In-law terms for unmarried partners · Decided
+English has no "-in-law" for unmarried partners. `marriage` unions produce
+"Mother-in-law". `partnership` and `unknown` unions produce "Partner's mother". Former
+spouses produce "Former mother-in-law".
+
+### Q16 — Maternal/paternal on cousins · Decided
+Applied to grandparents and above, and to aunts/uncles and above. Not applied to cousins,
+nieces, or nephews, where "maternal first cousin" is unusual and makes the label longer.
+
+### Q17 — Gender-neutral labels · Decided
+`other`/`unknown` genders get neutral terms: Parent, Child, Sibling, Spouse, Grandparent.
+For aunt/uncle and niece/nephew there is no common neutral word ("pibling" and "nibling"
+aren't plain English), so the label is descriptive: "Parent's sibling", "Sibling's child".
+
+### Q18 — Great-aunt vs grand-aunt, great-niece vs grand-niece · Decided
+Using "Great-aunt", "Great-niece", "Great-great-aunt". Consistent with "Great-grandmother".
+
+### Q19 — Generation assignment: "longest path" vs anchoring · Decided
+§5.3 says "longest path from any root" and also "unless a union anchors them". Pure longest
+path leaves a married-in spouse's parents at generation 0 even when the spouse sits at
+generation 3. Implementation: longest path, then a reverse-topological pass that pulls
+childful roots down to directly above their highest child. Each connected component is
+then normalised so its topmost generation is 0.
+
+### Q20 — Where does the in-law branch render? · Decided
+§4.3 asks for "separate root components side by side" and says the blood line vs.
+married-in distinction must be "subtle, toggleable". Layout packs the in-law root's block
+immediately after the block it married into, on the right; the married-in partner sits on
+the right of the couple. The distinction is a thin labelled bracket above each branch with
+no blood relative of the focus person, toggleable from the canvas toolbar. The layout
+itself never depends on the focus person, so changing focus doesn't move cards.
+
+## Product behaviour (§5)
+
+### Q21 — Editing while `in_review` · Decided (§5.7 says pick one)
+- `in_review`: the tree is locked for everyone. The API returns 409 with a plain-language
+  message. The banner says "Sent to <reviewer> for review on <date>. Editing is paused so
+  the reviewer sees a stable record. Withdraw to make changes."
+- `approved`: editing is allowed. The first edit returns the tree to `draft`, and the
+  banner warns about this before it happens.
+- `changes_requested`: editing is allowed.
+
+### Q22 — Access invitations vs. relative Invitations · Decided
+§3 has two concepts. `Access` (§5.6) grants a role on this tree; it has no token, so it is
+accepted by signing in with the invited email and pressing Accept on the dashboard.
+`Invitation` (§5.5) invites a relative to build their own tree, with the four-stage
+tracker. Joining through an Invitation does **not** grant access to the inviting tree.
+
+### Q23 — What approving a LinkRequest grants · Decided
+Approval sets `Person.linkedTreeId` and advances the invitation to `linked`. The inviting
+tree's owner can only open the linked tree if they have access to it. Approval therefore
+also creates an active **viewer** Access for that owner on the invitee's tree; the
+invitee's request is taken as consent. **Open:** you may want the invitee to choose the role.
+
+### Q24 — Share-link and review tokens · Decided
+"Signed expiring share tokens": token = `base64url(id).base64url(HMAC-SHA256(id|exp))`, and
+only its sha256 is stored. The signature is checked before any DB lookup; revocation and
+expiry are checked in the DB. Tokens appear in URL paths (unavoidable for a link), so the
+request logger masks every `/s/`, `/review/`, and `/invite/` path segment.
+
+### Q25 — Sessions and CSRF details · Decided (ADR 006)
+- Access token: stateless HMAC-signed, 15 min, httpOnly cookie on path `/api`.
+- Refresh token: opaque, stored hashed, 30 days, rotated on each use, httpOnly cookie on
+  path `/api/auth`. Replaying an already-rotated refresh token revokes the whole session.
+- CSRF: double-submit token (a readable `kf_csrf` cookie echoed in `X-CSRF-Token`) plus an
+  `Origin` check on every non-GET request.
+- `SESSION_SECRET` rotation invalidates sessions *and* share/review links, because all of
+  them derive keys from it. **Recommend spec change:** a separate `LINK_TOKEN_SECRET` so
+  rotating session keys doesn't break links already sent to advisors.
+
+### Q26 — Forgot-password flow state · Decided
+§6.1 requires every screen to be restorable from its URL, but emails can't go in URLs and
+auth state can't go in `localStorage`. The pending reset is carried in an httpOnly cookie
+set by the API, so `/forgot-password/verify` survives a refresh without the email ever
+appearing in the URL. Verifying the code swaps it for a short-lived reset cookie.
+
+### Q27 — Google OAuth in development · Decided (ADR 007)
+With `GOOGLE_CLIENT_ID` empty and `NODE_ENV !== production`, "Continue with Google" goes to
+an API-served dev consent form. That form calls the same `completeOAuthSignIn` →
+`issueSession` path as the real Google callback. Production boot fails if the Google
+variables are missing. The dev form is not in the web bundle and is not routable in
+production.
+
+### Q28 — Key events: who and which unions · Decided
+- Birthdays: living people and people with `lifeStatus = unknown`, if their birth month and
+  day are known.
+- Anniversaries: `current` unions with a known start month and day.
+- Deceased birthdays and ended marriages are excluded; they would be noise on a reminders
+  list.
+- Year-only dates can't produce an event. The page explains this and links to the
+  "needs detail" list.
+
+### Q29 — "Tree head" · Decided
+The spec never defines "tree head". It is the first person added to the tree, which is
+stored as `focusPersonId` at that moment. The user can change it later.
+
+### Q30 — Lighthouse ≥ 95 and 60 fps at 500 people · Open
+There is no Lighthouse or real GPU profiling in this environment's automated loop. I can
+measure the bundle size, layout computation time, and culled node counts. The 60 fps and
+Lighthouse claims will be marked "not verified" unless I can run them for real.
+
+## Environment
+
+### Q31 — Node version · Decided
+`.nvmrc` says 22 per spec. This machine has Node 23.5; everything is written to Node 22 APIs
+and CI should use 22.
+
+### Q33 — `"lint": "eslint . && tsc --noEmit -b"` does not run · Recommend spec change
+`tsc` rejects `-b` unless it is the first argument ("error TS5023: Unknown compiler option
+'-b'"). The script name is unchanged. The command is `tsc -b --noEmit`. Build mode also
+refuses `--noEmit` when one project references another ("TS6310: Referenced project may
+not disable emit"). So api and web each `include` `packages/shared/src` directly instead
+of using a project reference. Type-checking coverage is the same.
+
+### Q32 — Repository root name · Decided
+§7.1 shows `kinfolk/` as the root. The repo directory is `family_tree_app/`, and the root
+package is named `kinfolk`. Nothing depends on the directory name.

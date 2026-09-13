@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Accounts and sessions
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  /// Always stored lower-cased.
+  email        String   @unique
+  firstName    String
+  lastName     String
+  /// Null for accounts that have only ever signed in with Google.
+  passwordHash String?
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions       Session[]
+  oauthAccounts  OAuthAccount[]
+  passwordResets PasswordReset[]
+}
+
+/// One row per refresh-token family. The refresh token rotates on every use; presenting a
+/// rotated-out token revokes the row.
+model Session {
+  id               String    @id @db.Uuid
+  userId           String    @db.Uuid
+  refreshTokenHash String    @unique
+  /// The hash that was rotated out most recently. Presenting it within the grace window
+  /// (two tabs refreshing at once) is tolerated; later it counts as token reuse.
+  previousTokenHash String?
+  rotatedAt         DateTime?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  lastUsedAt       DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model OAuthAccount {
+  id             String   @id @default(uuid()) @db.Uuid
+  provider       String
+  providerUserId String
+  userId         String   @db.Uuid
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+}
+
+model PasswordReset {
+  id         String    @id @db.Uuid
+  userId     String    @db.Uuid
+  codeHash   String
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  verifiedAt DateTime?
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

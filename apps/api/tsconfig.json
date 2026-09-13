@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "../..",
+    "types": ["node"],
+    "outDir": "./node_modules/.tsbuild/out",
+    "tsBuildInfoFile": "./node_modules/.tsbuild/tsbuildinfo"
+  },
+  "include": ["src", "test", "prisma/seed.ts", "scripts", "../../packages/shared/src"]
+}

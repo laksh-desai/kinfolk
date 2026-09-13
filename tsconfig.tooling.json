@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "outDir": "./node_modules/.tsbuild/tooling",
+    "tsBuildInfoFile": "./node_modules/.tsbuild/tooling.tsbuildinfo"
+  },
+  "include": ["vitest.config.ts", "playwright.config.ts", "eslint.config.js"]
+}

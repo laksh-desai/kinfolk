@@ -12,3 +12,7 @@ test-results/
 .DS_Store
 .vscode/
 .idea/
+
+# local runtime data: dev file outbox, fs object storage, embedded postgres
+apps/api/var/
+.pgdata/

@@ -4,30 +4,32 @@ Each item is a real, observed failure in the product being replaced (`docs/SPEC.
 Mark done only with a test name, a file path, or a one-line design reason that makes the
 defect structurally impossible. "N/A" needs a justification.
 
+Status: ☑ verified · ◐ partly verified (evidence so far + what is still unproven) · ☐ not yet
+
 | # | Defect | Status | Evidence |
 |---|---|---|---|
-| 1 | Route state lost on refresh | ☐ | |
-| 2 | Edit screen mislabeled as add | ☐ | |
-| 3 | First click on edit button is a no-op | ☐ | |
-| 4 | Key Events renders empty | ☐ | |
-| 5 | Dialogs overflow and clip controls | ☐ | |
-| 6 | Silent validation failure on submit | ☐ | |
-| 7 | Buttons with no accessible names | ☐ | |
-| 8 | Hover-only micro-icons | ☐ | |
-| 9 | Only add-child and add-spouse exist | ☐ | |
-| 10 | Two clashing visual languages | ☐ | |
-| 11 | Test page `/new` in production | ☐ | |
-| 12 | Empty tree state is a blank box | ☐ | |
-| 13 | Dashboard never lists trees | ☐ | |
-| 14 | "Coming soon" dead menu items | ☐ | |
-| 15 | Button labeled only by its failure | ☐ | |
-| 16 | Fixed stage, content overflows, no fit-on-load | ☐ | |
-| 17 | Bare integer age, no dates, no death indicator | ☐ | |
-| 18 | No undo, no save state, no optimistic UI | ☐ | |
-| 19 | Auth token in localStorage | ☐ | |
-| 20 | Base64 PNG icons in bundle | ☐ | |
-| 21 | Plain "Loading…" text, one list hangs forever | ☐ | |
-| 22 | Same `<title>` on every route | ☐ | |
-| 23 | One ~1MB bundle, SDKs loaded everywhere | ☐ | |
-| 24 | One-click tree deletion | ☐ | |
-| 25 | No way to correct a wrong relationship | ☐ | |
+| 1 | Route state lost on refresh | ◐ | Every screen so far is a URL route (`apps/web/src/routes/routes.tsx`). The mid-flow password-reset step survives a hard reload because its state lives in an httpOnly cookie: e2e `auth.spec.ts` › "forgot password: … refresh mid-flow". A protected page restores from its URL: `routes.test.tsx` › "restores a protected page directly from its URL". **Unproven:** tree, person, and panel routes (M5–M7). |
+| 2 | Edit screen mislabeled as add | ☐ | Person add/edit is not built yet (M6). |
+| 3 | First click on edit button is a no-op | ☐ | Tree rename is not built yet (M7). |
+| 4 | Key Events renders empty | ☐ | M10. |
+| 5 | Dialogs overflow and clip controls | ◐ | One `Dialog` primitive: width `min(100vw − 2rem, cap)`, vertical-only scroll, `min-w-0` on descendants, full-screen sheet below 640px. e2e `auth.spec.ts` › "the delete-account dialog fits a 768px window…" measures zero horizontally scrolling elements and the dialog inside the viewport. **Unproven:** access-control and link-request dialogs (M8). |
+| 6 | Silent validation failure on submit | ◐ | `lib/useForm.ts` focuses and scrolls to the first invalid field and announces assertively. Tests: `SignInRoute.test.tsx` › "focuses and announces the first invalid field when submitted empty"; `SignUpRoute.test.tsx` › "focuses first name when every field is empty"; e2e sign-up empty submit. **Unproven:** person and tree forms (M6–M7). |
+| 7 | Buttons with no accessible names | ◐ | `IconButton` requires a `label` prop (the type won't compile without one). axe is clean on sign-in, sign-up, app shell, and confirm dialog (RTL), and on sign-in, account, and the delete dialog in Chromium with contrast (e2e `expectAccessible`). **Unproven:** canvas, zoom, and node controls (M5–M6). |
+| 8 | Hover-only micro-icons | ☐ | Canvas cards not built yet (M5). |
+| 9 | Only add-child and add-spouse exist | ☐ | M6. |
+| 10 | Two clashing visual languages | ◐ | One token set (`styles.css`), one `Button`, `Dialog`, and `FieldShell`; serif only via `.page-title`; contrast checked in both themes by `components/tokens.test.ts`. The dev-only Google consent page is API-rendered and outside the app. **Unproven:** later screens reuse these (re-check at M10). |
+| 11 | Test page `/new` in production | ☑ | `routes.test.tsx` › "ships no example, test, or placeholder routes" scans the whole route table; "shows a helpful not-found page…" renders `/new` as not-found. |
+| 12 | Empty tree state is a blank box | ☐ | M7. |
+| 13 | Dashboard never lists trees | ☐ | M7. |
+| 14 | "Coming soon" dead menu items | ☑ | `test/repoGuards.test.ts` › "has no 'coming soon' items" scans all web, api, and shared source. The nav lists only built routes (`AppShell.tsx` `NAV_ITEMS`). |
+| 15 | Button labeled only by its failure | ☐ | Linked-tree affordance is M8. |
+| 16 | Fixed stage, content overflows, no fit-on-load | ☐ | M5. |
+| 17 | Bare integer age, no dates, no death indicator | ☐ | M5 cards; age derivation in M2 `dates/`. |
+| 18 | No undo, no save state, no optimistic UI | ☐ | M6. |
+| 19 | Auth token in localStorage | ☑ | Sessions are httpOnly cookies: `apps/api/test/auth.test.ts` › "marks session cookies HttpOnly and SameSite, and never returns tokens in bodies". e2e asserts `kf_at`/`kf_rt` are httpOnly and that local/session storage hold nothing token-like. Lint bans `localStorage`/`sessionStorage` outside `lib/preferences.ts`, and `repoGuards.test.ts` re-checks. Consistent 401s: "401s consistently without cookies, with a garbage token, and with an expired access token". One refresh-and-retry, shared across concurrent calls: `lib/api.test.ts`. |
+| 20 | Base64 PNG icons in bundle | ☑ | Icons are an inline SVG `<symbol>` sprite (`components/icons.ts`, `IconSprite.tsx`). `repoGuards.test.ts` › "ships no base64 raster images". Vite `assetsInlineLimit: 0` stops assets being inlined as data URIs. |
+| 21 | Plain "Loading…" text, one list hangs forever | ◐ | `repoGuards.test.ts` forbids bare "Loading…" copy. Skeleton, LoadingRegion, and ErrorState primitives exist. Every request times out after 20s with a plain message: `lib/api.test.ts` › "times out instead of hanging forever". **Unproven:** actual lists (dashboard, access, link requests) until M7–M8. |
+| 22 | Same `<title>` on every route | ☑ | `routes.test.tsx` › "gives every page its own title" requires a unique title on every leaf route. `DocumentTitle` sets it. e2e asserts "Sign in · Kinfolk", "Create your account · Kinfolk", "Account · Kinfolk". |
+| 23 | One ~1MB bundle, SDKs loaded everywhere | ◐ | Every page is a `lazy()` route. Production build 2026-09-13: initial JS 136 KB gzip, each page its own chunk. Google sign-in is a server redirect, so no Google SDK ships. **Unproven:** Places is lazy-loaded at point of use (M6), and the budget holds once canvas/export land (re-measure at M10). |
+| 24 | One-click tree deletion | ◐ | `ConfirmDialog` with `typeToConfirm`: `ConfirmDialog.test.tsx` › "refuses to run the action until the exact text is typed". Account deletion uses it, and e2e proves a mismatched email is refused. **Unproven:** tree deletion (M7), person-deletion undo toast (M6). |
+| 25 | No way to correct a wrong relationship | ☐ | M6. |

@@ -124,15 +124,39 @@ anything true for one commit only.
 *(Cap: 12 lines. What exists and works right now, at the level a new session needs to
 orient. Replace lines rather than stacking them.)*
 
-- Nothing built yet. Repo is scaffolding + docs only.
+- pnpm workspace: `apps/web` (React 18, Vite 6, RR 6.30 lazy routes), `apps/api` (Fastify 5,
+  Prisma 6), `packages/shared` (Zod schemas; import by subpath, e.g. `@kinfolk/shared/schemas/auth`).
+- Auth works end to end: email+password, Google (dev provider when no creds), OTP reset, cookie
+  sessions with rotating refresh + CSRF. Account page: profile, password, avatar, export, delete.
+- `pnpm test` = vitest projects shared/api/web. API tests clone a per-file DB from embedded
+  Postgres (`apps/api/test/testApp.ts`: `createTestContext`, `TestClient`, `signUpUser`).
+- `pnpm e2e` boots embedded PG + API + Vite in one process (`apps/api/scripts/e2eStack.ts`,
+  web 5180 / api 4180); mail outbox at `apps/api/var/e2e/mail` (`e2e/support/outbox.ts`).
+- Web: all calls via `lib/api.ts`; forms via `lib/useForm.ts` + shared schema; primitives in
+  `components/` (IconButton requires `label`); `test/renderApp` renders the real route table.
+- New migration without Docker: `pnpm --filter api exec tsx scripts/withEmbeddedDb.ts pnpm exec prisma migrate dev --name <x>`.
 
 ## Gotchas
 *(Cap: 20 lines. Non-obvious things that cost time. Each line: the trap, then the fix.)*
 
-- _none yet_
+- `tsc --noEmit -b` errors (`-b` must come first) → lint runs `tsc -b --noEmit`; api/web `include` shared src (TS6310 forbids references + noEmit).
+- Composite projects emit declarations → exported functions with deep inferred types fail TS2742; annotate the return type.
+- jsdom: floating-ui calls `matches(':popover-open')`, each throw costs seconds → any open Radix tooltip/menu hangs tests. Shim lives in `apps/web/src/test/setup.ts`; keep it.
+- Helmet's default `Referrer-Policy: no-referrer` makes Chrome send `Origin: null` on form posts → CSRF check rejects. Keep `strict-origin-when-cross-origin`.
+- Fastify `maxParamLength` defaults to 100 → signed tokens in paths 414. Set in `app.ts` `routerOptions`.
+- Windows leaves child processes alive when the parent dies → run servers in-process for e2e; if 5180/4180 are busy, kill the stale node.
+- Playwright `getByLabel` substring-matches `aria-label`s (e.g. "Show confirm new password") → use `{ exact: true }`. After a client navigation, wait for the new heading before `fill()`.
+- Don't put hidden "(required)" text inside labels: `aria-required` already says it, and exact label queries break.
+- `.claude/settings.json` denies `Read(./.env.*)`, which also blocks the Write tool on `.env.example` → write that one file via shell.
+- `queryClient.ensureQueryData(sessionQuery)` returns a cached `null` after sign-out → any new sign-in path must `setQueryData`/`fetchQuery` the session before navigating, or the guard bounces to /login.
+- Slow machine: web tests preload lazy routes (`renderApp`) and use an 8s `findBy` timeout; run long suites in the background.
 
 ## Deviations from SPEC.md
 *(Cap: 15 lines. Anywhere the build knowingly differs from the spec, and why. If a
 deviation is large, open an ADR and link it here instead of explaining it twice.)*
 
-- _none yet_
+- Toolchain pinned to older, known majors (TS 5.9, Vite 6, Vitest 3, Prisma 6, Zod 3) — ADR 002.
+- Root `lint` script is `eslint . && tsc -b --noEmit`; the spec's argument order doesn't run (QUESTIONS Q33).
+- `.env.example` adds `NODE_ENV`, `LOCAL_STORAGE_DIR`, `MAIL_OUTBOX_DIR` for the dev adapters (ADR 007).
+- Extra tables beyond §3: `Session`, `OAuthAccount`, `PasswordReset` (M1); `ReviewAssignment` and `ReminderSubscription` planned (QUESTIONS Q1, Q28).
+- Production: Secure cookies only when `NODE_ENV=production`, so plain-http test clients work.

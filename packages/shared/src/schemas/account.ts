@@ -1,0 +1,61 @@
+import { z } from 'zod';
+import { emailSchema, passwordSchema, personNameSchema } from './auth';
+
+export const updateProfileSchema = z.object({
+  firstName: personNameSchema('first name'),
+  lastName: personNameSchema('last name'),
+  email: emailSchema,
+  /** Required only when the email changes on an account that has a password. */
+  currentPassword: z.string().optional(),
+});
+export type UpdateProfileInput = z.input<typeof updateProfileSchema>;
+
+export const changePasswordSchema = z
+  .object({
+    /** Absent for Google-only accounts setting a first password. */
+    currentPassword: z.string().optional(),
+    newPassword: passwordSchema,
+    confirmPassword: z.string().min(1, 'Type the new password again.'),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    path: ['confirmPassword'],
+    message: "The two passwords don't match.",
+  });
+export type ChangePasswordInput = z.input<typeof changePasswordSchema>;
+
+export const deleteAccountSchema = z.object({
+  confirmEmail: z.string().trim().min(1, 'Type your email address to confirm.'),
+});
+export type DeleteAccountInput = z.input<typeof deleteAccountSchema>;
+
+export const deletionSummarySchema = z.object({
+  email: z.string(),
+  ownedTrees: z.array(z.object({ id: z.string(), name: z.string(), peopleCount: z.number() })),
+  sharedTreeCount: z.number(),
+});
+export type DeletionSummaryDto = z.infer<typeof deletionSummarySchema>;
+
+export const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
+export const uploadTargetRequestSchema = z.object({
+  contentType: z.enum(ALLOWED_IMAGE_TYPES, {
+    errorMap: () => ({ message: 'Choose a JPEG, PNG, or WebP image.' }),
+  }),
+  size: z
+    .number()
+    .int()
+    .positive('That file is empty.')
+    .max(MAX_IMAGE_BYTES, 'Choose an image smaller than 8 MB.'),
+});
+export type UploadTargetRequest = z.input<typeof uploadTargetRequestSchema>;
+
+export const uploadTargetSchema = z.object({
+  key: z.string(),
+  url: z.string(),
+  method: z.literal('PUT'),
+  headers: z.record(z.string()),
+});
+export type UploadTargetDto = z.infer<typeof uploadTargetSchema>;
+
+export const completeUploadSchema = z.object({ key: z.string().min(1) });

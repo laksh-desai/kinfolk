@@ -1,0 +1,23 @@
+# Local development database. `docker compose up -d db`, then set
+# DATABASE_URL=postgres://kinfolk:kinfolk@localhost:5432/kinfolk in your .env.
+# No Docker? `pnpm --filter api db:embedded` runs the same Postgres major from npm binaries.
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kinfolk
+      POSTGRES_PASSWORD: kinfolk
+      POSTGRES_DB: kinfolk
+    ports:
+      - "5432:5432"
+    volumes:
+      - kinfolk-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kinfolk -d kinfolk"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  kinfolk-pgdata:
