@@ -139,6 +139,8 @@ orient. Replace lines rather than stacking them.)*
   `applyChangeSet`, persist, audit per op, returns inverse). Read: `GET /api/trees/:id/graph`.
 - Roles resolved per request by `lib/treeAccess.ts` (`requireTreeRole`); redaction in
   `lib/graphRows.ts` (`graphForVisibility`). Fixtures: `buildSeedTree({ namespace })`, `buildLargeTree()`.
+- Layout: `computeLayout(graph, { collapsed })` in `packages/shared/src/layout/` → nodes, unions, edges
+  (orthogonal paths), branches, bounds. Invariant checker lives in `computeLayout.test.ts`.
 
 ## Gotchas
 *(Cap: 20 lines. Non-obvious things that cost time. Each line: the trap, then the fix.)*
@@ -156,6 +158,8 @@ orient. Replace lines rather than stacking them.)*
 - Person/union/edge ids are global PKs → the same fixture can't go into two trees in one DB; pass a distinct `namespace` to `buildSeedTree`.
 - Prisma Json columns need `Prisma.DbNull` for null, not `null` → use the helpers in `lib/graphRows.ts`.
 - Long heredocs in the Bash tool break on apostrophes (`unexpected EOF`) → use Write/Edit for file content.
+- Per-iteration `expect` in O(n²) geometry checks takes minutes at 500 people → collect problems into an array and assert once.
+- To eyeball a layout, render it to SVG→PNG with sharp from a scratch `.mts` script (top-level await needs ESM) and Read the PNG.
 - Slow machine: web tests preload lazy routes (`renderApp`) and use an 8s `findBy` timeout; run long suites in the background.
 
 ## Deviations from SPEC.md

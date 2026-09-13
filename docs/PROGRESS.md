@@ -4,16 +4,21 @@ Milestones are defined in `docs/SPEC.md` §10. Update at every checkpoint.
 
 ## In progress
 
-**M3 — Layout engine.** Plan below under "Milestone plans → M3".
+**M4 — Kinship calculator.** Plan below under "Milestone plans → M4".
 
 ## Up next
 
-M4 Kinship calculator · M5 Canvas ·
+M5 Canvas ·
 M6 People & relationships · M7 Dashboard & list view · M8 Collaboration ·
 M9 Review workflow · M10 Events, import, export
 
 ## Done
 
+- **M3 — Layout engine** (2026-09-13). Pure `computeLayout`: anchored generation rows,
+  partner-group ordering, layout forest with in-law side packing, contour-packed blocks,
+  laned orthogonal routing, collapse, multiple-birth marks. 27 tests: all 19 §4.5 cases, the
+  seed tree, odd data (cycles, cousin marriage, dual parentage). All assert no overlap, no
+  edge through a card, and determinism under shuffle. 500 people lays out in ~35 ms.
 - **M2 — Data layer** (2026-09-13). Full Prisma schema and migration, shared Zod schemas,
   pure `applyChangeSet` (invariants with plain-language errors, exact inverses), partial
   dates, 60-person §4.5 seed and 500-person generator, tree CRUD, graph + changes endpoints
@@ -295,7 +300,32 @@ path: person ids along the chosen route (for Compare drawing)
 
 # Milestone plans
 
-## M3 — Layout engine (in progress)
+## M4 — Kinship calculator (in progress)
+
+Pure module in `packages/shared/src/kinship/` (lint-enforced purity). Algorithm as in
+section D above.
+
+Files:
+- `kinshipIndex.ts`: lineal ancestor maps with depth, the first-step parent, and the union
+  each person was reached through.
+- `labels.ts`: gendered and neutral word builders (ordinals, removal, great- prefixes,
+  maternal/paternal).
+- `resolveKinship.ts`: blood, then direct non-lineal edges, then partner, then step, then
+  in-law, then fallback. Returns `{ label, category, path, steps }`.
+- `resolveKinship.test.ts`: a small purpose-built family per §4.2 label, asserted in both
+  directions. Includes removal and degree (second cousin twice removed), half, step,
+  maternal/paternal, adoptive/foster/guardian, all in-laws, placeholder handling, the
+  fallback, and "No known relationship".
+- `seedKinship.test.ts`:
+  - a curated table of Ravi → every person in the seed tree;
+  - every ordered pair (60 × 59) resolves without throwing, to a non-empty label;
+  - determinism;
+  - performance (Ravi → all under 50 ms);
+  - Compare paths are connected person-to-person and start and end at the right people.
+
+Done when: the M4 row in table E is demonstrated.
+
+## M3 — Layout engine (done 2026-09-13)
 
 Pure module in `packages/shared/src/layout/`: no React, DOM, or network (lint-enforced).
 Algorithm as in section C above.

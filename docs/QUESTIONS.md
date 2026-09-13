@@ -139,11 +139,35 @@ generation 3. Implementation: longest path, then a reverse-topological pass that
 childful roots down to directly above their highest child. Each connected component is
 then normalised so its topmost generation is 0.
 
+**Update (M3):** pure longest path produced a visible defect in the seed tree. Priya
+(married in, row 3) and her sister Divya ended up on different rows, because Divya's depth
+came only from her own shallow ancestry. As built:
+1. Each component is first anchored by a breadth-first walk from its first family (one row
+   per parent/child hop).
+2. Children are pushed down so every child is below every parent.
+3. Parents are pulled down to sit directly above their highest child.
+
+This matches the spec's intent ("unless a union anchors them") better than its literal
+wording. ADR 014.
+
+### Q34 — Fit-to-content vs. the 25% zoom floor on very large trees · Open
+§5.3 requires zoom to stay within 25%–200% and the tree to open "fitted to content… never
+clipped or off-screen". §4.5.19 requires a 500-person, six-generation tree. Generational
+layout puts about 300 people on the bottom row. The generated 500-person tree is about
+88,000 px wide and 1,056 px tall, so fitting it into a 1,280 px window needs about 1.5% zoom.
+- Alternatives: allow zoom below 25% for fit only; open at 25% centred on the focus person
+  with the minimap showing the whole; compress with collapsed branches by default.
+- As built (M5): fit-to-content clamps at 25%, centres on the focus person, and says so ("Showing
+  part of a large tree — use the minimap or search"). The whole tree stays reachable through the
+  minimap. The seed tree (60 people) fits at every width from 768 to 2,560 px.
+- **Recommend spec change:** allow the fit action alone to go below 25%, or define "fitted" for
+  trees over ~100 people as "fitted to the focus person's family".
+
 ### Q20 — Where does the in-law branch render? · Decided
 §4.3 asks for "separate root components side by side" and says the blood line vs.
 married-in distinction must be "subtle, toggleable". Layout packs the in-law root's block
-immediately after the block it married into, on the right; the married-in partner sits on
-the right of the couple. The distinction is a thin labelled bracket above each branch with
+immediately after the block it married into, on whichever side makes its connectors shorter
+(M3); the married-in partner sits on the right of the couple. The distinction is a thin labelled bracket above each branch with
 no blood relative of the focus person, toggleable from the canvas toolbar. The layout
 itself never depends on the focus person, so changing focus doesn't move cards.
 

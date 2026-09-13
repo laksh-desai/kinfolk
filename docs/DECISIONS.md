@@ -259,5 +259,46 @@ deleted tree. A member without the needed permission gets 403 with a plain expla
 owner or editor; planning writes are owner-only.
 
 **Consequences.** Every tree endpoint calls `requireTreeRole` first, and tests cover
-stranger, viewer, editor, and owner on each. A person with both editor access and a review
+stranger, viewer, editor, and owner on each.
+
+## 014 — Layout: anchored generations, contour-packed family blocks, lane routing
+Date: 2026-09-13
+Status: accepted
+
+**Context.** SPEC §5.3 prescribes a Sugiyama-style layered layout, but a textbook Sugiyama
+(barycentre ordering plus Brandes–Köpf coordinates) doesn't guarantee families' actual
+needs: children centred under a union, half-siblings adjacent, whole subtrees moving
+together. A pure tidy-tree (Reingold–Tilford) can't express multiple parents per group. A
+first render of the seed tree also showed that pure longest-path layering puts sisters on
+different rows when one married into a deeper family.
+
+**Decision.**
+- **Rows.** Partner classes (union-find) share a row. Rows come from a BFS anchor per
+  component, then push-down (child below every parent), then pull-down (parents directly
+  above their highest child), then per-component normalisation. Cycle-forming class edges
+  are dropped in a deterministic DFS.
+- **Order within a group.** Hub first: the member with a parental link in the layout
+  forest, otherwise the one with most unions. With one union the partner goes right; with
+  several, the first union goes left and later ones right; further partners go adjacent on
+  the outer side.
+- **Forest.** DFS from root groups in canonical order. A child group's first parent slot
+  is primary; any others are secondary links (in-law parents, adoptive + biological, cousin
+  marriage).
+- **Blocks.** Each group's primary subtree is packed bottom-up with per-row contours
+  (sibling gap within a union, family gap between unions), and the parent row is centred
+  on the union anchors. Roots are packed as they're placed. An in-law root goes on the side
+  minimising its connector length. Different components are separated by bounding box
+  plus a component gap.
+- **Routing.** Axis-aligned polylines only. Union connectors run at card mid-height between
+  adjacent partners, or through a lane below the row for non-adjacent ones. Child edges drop
+  to a per-union bus lane, and long edges jog to the nearest card-free column in each row
+  they cross. Lanes are interval-coloured per gap, and the gap height grows with lane count.
+
+**Consequences.**
+- Card overlap and edge-through-card are impossible by construction, and the tests check
+  both on all 19 cases, the seed tree, the 500-person tree, and odd data.
+- Secondary links (in-law parents) can produce long horizontal buses. They're on their own
+  lanes, so they never cross cards, but can cross other families' lines.
+- Very large trees are wide (QUESTIONS Q34).
+- The layout never depends on the focus person, so changing focus doesn't move cards. A person with both editor access and a review
 assignment is treated as an editor, since Access is checked first.
