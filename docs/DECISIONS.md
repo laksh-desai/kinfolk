@@ -300,5 +300,39 @@ different rows when one married into a deeper family.
 - Secondary links (in-law parents) can produce long horizontal buses. They're on their own
   lanes, so they never cross cards, but can cross other families' lines.
 - Very large trees are wide (QUESTIONS Q34).
-- The layout never depends on the focus person, so changing focus doesn't move cards. A person with both editor access and a review
+- The layout never depends on the focus person, so changing focus doesn't move cards.
+
+## 015 — Kinship: union-aware blood search, plain descriptions where English has no term
+Date: 2026-09-13
+Status: accepted
+
+**Context.** SPEC §4.4 wants canonical labels with half/step/removal/side and in-laws, and a
+"Related — N steps away" fallback "rather than guessing". Some pairs have a precise
+description but no single word: a wife's sister's husband, a father's ex-wife from before
+you were born. The alternatives were to force a canonical term (wrong, e.g. calling that
+ex-wife a "step-mother"), to fall back to a step count (true but unhelpful), or to describe
+the relationship.
+
+**Decision.**
+- **Blood.** Breadth-first search over lineal edges (biological, adopted) records both the
+  people and the *unions* reached.
+  - A common union at (a, b) is a full relationship.
+  - A common person not explained by a common union at the same depths is half.
+  - The lowest a + b wins; ties prefer full, then the smaller max(a, b).
+  - The side comes from which of ego's parents the route runs through; it's omitted when
+    both parents lead to the apex at equal depth.
+- **Priority:** blood, then direct care edge (foster, guardian, explicit step), then partner,
+  then derived step, then in-law, then distance.
+- **Derived step.** Only through current or widowed unions. A parent's former partner is
+  "Father’s former wife"; a former partner's child is "Former wife’s son".
+- **In-laws.** Canonical terms for parent-, grandparent-, sibling-, child-, grandchild-,
+  niece/nephew-in-law and "aunt/uncle by marriage". Otherwise one precise possessive chain
+  for near relatives: "Wife’s niece", "First cousin’s husband", "Wife’s sister’s husband",
+  "Wife’s former husband". Anything further is "Related — N steps away".
+- The Compare path is the person chain along the chosen route.
+
+**Consequences.** Labels never assert a relationship that isn't true. The seed test pins
+Ravi → all 60 people by hand, and every ordered pair yields a non-empty label and a connected
+path. The chain wording is English-only; localisation would need a grammar, not string
+templates. A person with both editor access and a review
 assignment is treated as an editor, since Access is checked first.

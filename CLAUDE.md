@@ -140,7 +140,7 @@ orient. Replace lines rather than stacking them.)*
 - Roles resolved per request by `lib/treeAccess.ts` (`requireTreeRole`); redaction in
   `lib/graphRows.ts` (`graphForVisibility`). Fixtures: `buildSeedTree({ namespace })`, `buildLargeTree()`.
 - Layout: `computeLayout(graph, { collapsed })` in `packages/shared/src/layout/` → nodes, unions, edges
-  (orthogonal paths), branches, bounds. Invariant checker lives in `computeLayout.test.ts`.
+  (orthogonal paths), branches, bounds. Kinship: `createKinshipResolver(graph)(egoId, alterId)` → label/category/path.
 
 ## Gotchas
 *(Cap: 20 lines. Non-obvious things that cost time. Each line: the trap, then the fix.)*

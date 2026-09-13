@@ -4,16 +4,21 @@ Milestones are defined in `docs/SPEC.md` §10. Update at every checkpoint.
 
 ## In progress
 
-**M4 — Kinship calculator.** Plan below under "Milestone plans → M4".
+**M5 — Canvas.** Plan below under "Milestone plans → M5".
 
 ## Up next
 
-M5 Canvas ·
+
 M6 People & relationships · M7 Dashboard & list view · M8 Collaboration ·
 M9 Review workflow · M10 Events, import, export
 
 ## Done
 
+- **M4 — Kinship calculator** (2026-09-13). Pure `createKinshipResolver`: union-aware blood
+  search (degree, removal, half, side), adoptive/foster/guardian/step edges, partners,
+  derived step, in-laws with precise possessive chains, distance fallback, Compare path.
+  24 tests: every §4.2 label both ways, a hand-written Ravi → all-60 table, all 3,600 pairs,
+  connected paths, 500-person performance.
 - **M3 — Layout engine** (2026-09-13). Pure `computeLayout`: anchored generation rows,
   partner-group ordering, layout forest with in-law side packing, contour-packed blocks,
   laned orthogonal routing, collapse, multiple-birth marks. 27 tests: all 19 §4.5 cases, the
@@ -300,7 +305,48 @@ path: person ids along the chosen route (for Compare drawing)
 
 # Milestone plans
 
-## M4 — Kinship calculator (in progress)
+## M5 — Canvas (in progress)
+
+Routes (every state addressable):
+- `/trees/:treeId`: canvas, nothing selected.
+- `/trees/:treeId/people/:personId`: canvas with the docked person panel.
+- Titles: "Ravi Sharma · Sharma family · Kinfolk".
+
+Pure modules first, in `apps/web/src/canvas/`, each with tests:
+- `viewport.ts`: zoom at a point (the cursor stays fixed), clamp to 25–200%, fit to content
+  with padding (QUESTIONS Q34 fallback: 25% centred on focus), reveal a rect, visible world
+  rect.
+- `keyboardNav.ts`: ↑ parent, ↓ child, ←/→ neighbour in the same row; nearest by x; no-op at
+  edges.
+- `culling.ts`: cards intersecting the visible rect plus a margin, applied above 200 people.
+- `roundedPath.ts`: an orthogonal polyline becomes an SVG path with rounded corners.
+
+UI (`canvas/` and `features/tree/`):
+- `treeQueries.ts`: the graph query.
+- `TreeRoute`: loader, header with name, status badge, and role badge, and the canvas.
+- `TreeCanvas`: pointer-drag pan, wheel pan, ctrl/⌘-wheel zoom at the cursor, fit on load,
+  roving tabindex, keyboard shortcuts.
+- `EdgeLayer`: SVG, dashed ended unions, styled non-biological edges.
+- `PersonCard`: monogram or photo, name or placeholder label, lifespan, place,
+  relationship-to-focus, focus marker, deceased styling, twin and gender marks, "+N hidden"
+  expand chip.
+- `CanvasToolbar`: zoom −/%/+, reset 100%, fit, branch-bracket toggle, legend.
+- `Minimap`: above 25 people.
+- `SearchBox`: `/` opens it; a combobox that selects and reveals.
+- `BranchBrackets`: in-law branches, relative to focus.
+- `PersonPanel`: read-only summary, set as focus, collapse/expand, close.
+  Editing is M6.
+- `Legend`.
+
+Tests:
+- RTL + axe: canvas with the seed tree; every card and control named; keyboard nav changes
+  the URL; search selects; collapse hides; minimap appears; zoom % updates; Esc deselects.
+- Playwright: seed tree opens fitted at 768, 1280, and 2560 px; hard refresh restores the
+  selected person; no horizontal page scroll; axe clean.
+
+Done when: the M5 row in table E is demonstrated.
+
+## M4 — Kinship calculator (done 2026-09-13)
 
 Pure module in `packages/shared/src/kinship/` (lint-enforced purity). Algorithm as in
 section D above.
