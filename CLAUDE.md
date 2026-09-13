@@ -124,23 +124,17 @@ anything true for one commit only.
 *(Cap: 12 lines. What exists and works right now, at the level a new session needs to
 orient. Replace lines rather than stacking them.)*
 
-- pnpm workspace: `apps/web` (React 18, Vite 6, RR 6.30 lazy routes), `apps/api` (Fastify 5,
-  Prisma 6), `packages/shared` (Zod schemas; import by subpath, e.g. `@kinfolk/shared/schemas/auth`).
-- Auth works end to end: email+password, Google (dev provider when no creds), OTP reset, cookie
-  sessions with rotating refresh + CSRF. Account page: profile, password, avatar, export, delete.
-- `pnpm test` = vitest projects shared/api/web. API tests clone a per-file DB from embedded
-  Postgres (`apps/api/test/testApp.ts`: `createTestContext`, `TestClient`, `signUpUser`).
-- `pnpm e2e` boots embedded PG + API + Vite in one process (`apps/api/scripts/e2eStack.ts`,
-  web 5180 / api 4180); mail outbox at `apps/api/var/e2e/mail` (`e2e/support/outbox.ts`).
-- Web: all calls via `lib/api.ts`; forms via `lib/useForm.ts` + shared schema; primitives in
-  `components/` (IconButton requires `label`); `test/renderApp` renders the real route table.
+- Workspace: `apps/web` (React 18, RR 6.30 lazy routes), `apps/api` (Fastify 5, Prisma 6), `packages/shared` (import by subpath, e.g. `@kinfolk/shared/layout/computeLayout`).
+- Built: cookie auth (password, dev/real Google, OTP reset), account page, tree API, graph ChangeSets, layout, kinship, canvas + person panel.
+- Graph edits: `POST /api/trees/:id/changes` → `commitChangeSet` (lock, pure `applyChangeSet`, persist, audit per op, returns inverse).
+- Roles per request: `lib/treeAccess.ts` `requireTreeRole`; redaction: `lib/graphRows.ts` `graphForVisibility`.
+- Pure: `computeLayout(graph, { collapsed })`, `createKinshipResolver(graph)(ego, alter)`, `displayName(index, id)`, `lifespanLabel`.
+- Canvas: `apps/web/src/canvas/` (pure `viewport.ts`, `keyboardNav.ts`, `culling.ts`); tree page `features/tree/TreeRoute.tsx` + `useTreeView`.
+- Web conventions: calls via `lib/api.ts`; forms via `lib/useForm.ts`; `test/renderApp` renders the real routes; `test/treeFixtures.ts` mocks a seeded tree.
+- Tests: `pnpm test` (shared/api/web; API clones a per-file embedded-Postgres DB via `test/testApp.ts`). `pnpm e2e`: one-process stack `apps/api/scripts/e2eStack.ts` (web 5180/api 4180).
+- E2E helpers: `e2e/support/seedTree.ts` (`signUp`, `createSeededTree`), `outbox.ts` (read mail), `a11y.ts` (axe with contrast).
+- Fixtures: `buildSeedTree({ namespace })` (60 people, §4.5), `buildLargeTree()` (500). `pnpm db:seed` writes both for seed@kinfolk.test.
 - New migration without Docker: `pnpm --filter api exec tsx scripts/withEmbeddedDb.ts pnpm exec prisma migrate dev --name <x>`.
-- Graph edits: `POST /api/trees/:id/changes` with ChangeOps → `commitChangeSet` (lock, pure
-  `applyChangeSet`, persist, audit per op, returns inverse). Read: `GET /api/trees/:id/graph`.
-- Roles resolved per request by `lib/treeAccess.ts` (`requireTreeRole`); redaction in
-  `lib/graphRows.ts` (`graphForVisibility`). Fixtures: `buildSeedTree({ namespace })`, `buildLargeTree()`.
-- Layout: `computeLayout(graph, { collapsed })` in `packages/shared/src/layout/` → nodes, unions, edges
-  (orthogonal paths), branches, bounds. Kinship: `createKinshipResolver(graph)(egoId, alterId)` → label/category/path.
 
 ## Gotchas
 *(Cap: 20 lines. Non-obvious things that cost time. Each line: the trap, then the fix.)*
@@ -160,6 +154,8 @@ orient. Replace lines rather than stacking them.)*
 - Long heredocs in the Bash tool break on apostrophes (`unexpected EOF`) → use Write/Edit for file content.
 - Per-iteration `expect` in O(n²) geometry checks takes minutes at 500 people → collect problems into an array and assert once.
 - To eyeball a layout, render it to SVG→PNG with sharp from a scratch `.mts` script (top-level await needs ESM) and Read the PNG.
+- Memoised `PersonCard`s re-render on every pan if any prop is a fresh inline callback → keep canvas callbacks in `useCallback`.
+- jsdom lacks `PointerEvent` (fireEvent drops `button`/`clientX`) → polyfilled in `test/setup.ts`.
 - Slow machine: web tests preload lazy routes (`renderApp`) and use an 8s `findBy` timeout; run long suites in the background.
 
 ## Deviations from SPEC.md
@@ -172,3 +168,5 @@ deviation is large, open an ADR and link it here instead of explaining it twice.
 - Extra tables beyond §3: `Session`, `OAuthAccount`, `PasswordReset`, `ReviewAssignment`, `ReminderSubscription`; extra columns `Tree.version`, invitation stage timestamps (QUESTIONS Q1, Q22, Q28).
 - `Person.linkedTreeId` is server-managed and `photoUrl` must be under the tree's file prefix; undo restores them via audit tokens (ADR 012).
 - Production: Secure cookies only when `NODE_ENV=production`, so plain-http test clients work.
+- Fit-to-content may zoom below 25% (down to 5%) so trees open whole; manual zoom stays 25–200% (QUESTIONS Q34, ADR 016).
+- Generations: BFS-anchored then push/pull-down, not pure longest path, so married-in siblings share a row (Q19, ADR 014).

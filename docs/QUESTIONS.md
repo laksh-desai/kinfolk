@@ -157,11 +157,18 @@ layout puts about 300 people on the bottom row. The generated 500-person tree is
 88,000 px wide and 1,056 px tall, so fitting it into a 1,280 px window needs about 1.5% zoom.
 - Alternatives: allow zoom below 25% for fit only; open at 25% centred on the focus person
   with the minimap showing the whole; compress with collapsed branches by default.
-- As built (M5): fit-to-content clamps at 25%, centres on the focus person, and says so ("Showing
-  part of a large tree — use the minimap or search"). The whole tree stays reachable through the
-  minimap. The seed tree (60 people) fits at every width from 768 to 2,560 px.
-- **Recommend spec change:** allow the fit action alone to go below 25%, or define "fitted" for
-  trees over ~100 people as "fitted to the focus person's family".
+- M5 found it's not only huge trees. The 60-person seed tree is 7,270 px wide and needs
+  about 9% zoom to fit a 768 px window, so §12 "opens fitted at every width from 768 to 2560"
+  and §5.3 "25%–200%" can't both hold for ordinary families.
+- As built (M5):
+  - **Fit** (on load and via the Fit button) may go as low as 5%, so a tree opens whole.
+  - Manual zoom (buttons, wheel, keys) stays within 25–200%, except that it never pushes
+    you further out than a fit level below 25%.
+  - When a tree can't fit even at 5% (the 500-person tree needs ~1.5%), fit centres on the
+    focus person at 25% and says so; the minimap shows the whole.
+  - This is a deliberate deviation from "25%–200%", listed in CLAUDE.md.
+- **Recommend spec change:** state the zoom range as "25%–200% for manual zoom; fit may
+  go lower".
 
 ### Q20 — Where does the in-law branch render? · Decided
 §4.3 asks for "separate root components side by side" and says the blood line vs.

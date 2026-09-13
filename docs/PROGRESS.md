@@ -4,7 +4,7 @@ Milestones are defined in `docs/SPEC.md` §10. Update at every checkpoint.
 
 ## In progress
 
-**M5 — Canvas.** Plan below under "Milestone plans → M5".
+**M6 — People & relationships.** Plan below under "Milestone plans → M6".
 
 ## Up next
 
@@ -14,6 +14,13 @@ M9 Review workflow · M10 Events, import, export
 
 ## Done
 
+- **M5 — Canvas** (2026-09-13). Tree route and docked person panel, both URL-addressable.
+  Canvas: HTML cards over an SVG edge layer in one transformed layer; drag and wheel pan,
+  ctrl/⌘ zoom anchored to the cursor; fit on load (down to 5%, Q34); roving-tabindex
+  keyboard navigation along relationships; search combobox; collapse with hidden counts;
+  minimap above 25 people; virtualisation above 200; married-in branch brackets; legend;
+  navigation progress bar. 36 RTL + math tests, 5 Playwright tests (fit at 768/1280/2560,
+  refresh restore, keyboard-only, cursor zoom, 500-person pan: median 16.7 ms, p95 33.4 ms).
 - **M4 — Kinship calculator** (2026-09-13). Pure `createKinshipResolver`: union-aware blood
   search (degree, removal, half, side), adoptive/foster/guardian/step edges, partners,
   derived step, in-laws with precise possessive chains, distance fallback, Compare path.
@@ -305,7 +312,71 @@ path: person ids along the chosen route (for Compare drawing)
 
 # Milestone plans
 
-## M5 — Canvas (in progress)
+## M6 — People & relationships (in progress)
+
+Pure planners first (`packages/shared/src/relatives/`), each validated by running its ops
+through `applyChangeSet` in tests:
+
+- `planAddRelative.ts`: every §4.2 relation from any anchor. Resolution rules:
+  - Reuse existing intermediates where the caller picks them (`via` options).
+  - Otherwise create placeholders, following QUESTIONS Q12–Q14.
+  - Return `{ ops, placeholders, summary }`, where `summary` is the one-sentence explanation,
+    e.g. "Added Maya as Ravi’s cousin. To connect her we also added an unnamed parent for
+    Ravi and an unnamed sibling for that parent — you can name them anytime."
+  - `relativeChoices()` lists the existing intermediates the UI can offer ("Whose child is
+    Maya?").
+- `planDeletePerson.ts`:
+  - The impact report names every affected relationship and descendant.
+  - Three modes: remove (only when nothing is orphaned), replace with a placeholder, and
+    delete with all descendants.
+- `planMerge.ts`: field-by-field resolution; re-points unions, edges, and focus; drops
+  duplicate links.
+- `planRelationshipEdits.ts`: detach parent link, end or remove a partnership, re-parent to
+  another union, change kind, update union type/status/dates.
+
+Web:
+- **Editing core.**
+  - `editing/useGraphEditor.ts`: optimistic apply with the shared `applyChangeSet`, a
+    sequential save queue, retry with backoff on network/5xx/offline, and rollback with a
+    toast on 4xx.
+  - `editing/saveStatusStore.ts` + `SaveIndicator`: "Saving…" / "Saved 2s ago" /
+    "Couldn't save — retrying" / "Offline — changes will save when you reconnect", in a
+    polite live region.
+  - `editing/undoStore.ts`: per-tree undo/redo (≥ 100 steps) with ⌘Z / ⌘⇧Z and named toolbar
+    buttons ("Undo: Added Maya").
+- **Routes.**
+  - `/trees/:t/add`: quick add of a detached or first person.
+  - `/trees/:t/people/:p/add`: relation picker.
+  - `/trees/:t/people/:p/add/:relation`: quick-add form with "add another" and "more
+    details".
+  - `/trees/:t/people/:p/edit`: full form (Identity, Contact with address free-text fallback
+    and lazy Places, Relationships, Personal, Planning for owners only), with an
+    unsaved-changes guard.
+  - `/trees/:t/people/:p/relationships`: readable list with type/status/date/kind edits,
+    re-parent, detach.
+  - `/trees/:t/people/:p/merge/:other`: field conflict resolution.
+  - `/trees/:t/compare?a=&b=`: both directions plus the path highlighted on the canvas.
+- **Panel actions:** the four primitives as always-visible buttons, More relatives, Edit,
+  Relationships, Set as focus, Compare, Merge, Hide/Show descendants, Delete.
+- **Card context menu:** right-click, or the Menu key / Shift+F10.
+- **Person delete:** dialog listing the impact, then an undo toast.
+- **Person photo upload:** tree-scoped upload endpoints, applied as an undoable
+  `person.update`.
+- **Viewers:** no edit affordances rendered.
+
+Tests:
+- Planners: every relation from a topmost node, a married-in node, and a placeholder.
+- UI: undo/redo store, save queue (retry, rollback, offline), quick add (Enter, add another),
+  person form (empty submit focuses first invalid; edit copy says "Edit"), add-relative flow
+  with placeholder summary and Undo, delete dialog, relationship editor, merge, compare; axe.
+- Playwright: from the canvas alone, add a grandparent, great-grandparent, aunt, uncle,
+  first and second cousin, niece, nephew, half-sibling, step-child, parent-in-law, and
+  sibling-in-law. Then correct a wrong relationship, undo/redo, and refresh to confirm it
+  persisted.
+
+Done when: the M6 row in table E is demonstrated.
+
+## M5 — Canvas (done 2026-09-13)
 
 Routes (every state addressable):
 - `/trees/:treeId`: canvas, nothing selected.

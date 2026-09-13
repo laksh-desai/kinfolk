@@ -55,5 +55,19 @@ Element.prototype.matches = function matches(this: Element, selectors: string): 
   return nativeMatches.call(this, selectors);
 };
 
+// jsdom has no PointerEvent, so fireEvent.pointerDown would drop button/clientX/pointerId.
+if (typeof window.PointerEvent === 'undefined') {
+  class PointerEventPolyfill extends MouseEvent {
+    readonly pointerId: number;
+    readonly pointerType: string;
+    constructor(type: string, init: PointerEventInit = {}) {
+      super(type, init);
+      this.pointerId = init.pointerId ?? 1;
+      this.pointerType = init.pointerType ?? 'mouse';
+    }
+  }
+  window.PointerEvent = PointerEventPolyfill as unknown as typeof PointerEvent;
+}
+
 // React Router's <ScrollRestoration> calls window.scrollTo, which jsdom only logs as unimplemented.
 window.scrollTo = (() => undefined) as typeof window.scrollTo;

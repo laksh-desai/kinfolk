@@ -9,6 +9,7 @@ import { onUnauthorized } from '../lib/api';
 import { queryClient } from '../lib/queryClient';
 import { toast } from '../lib/toast';
 import { DocumentTitle } from './DocumentTitle';
+import { NavigationProgress } from './NavigationProgress';
 
 export function RootLayout() {
   const navigate = useNavigate();
@@ -38,6 +39,7 @@ export function RootLayout() {
     <Tooltip.Provider delayDuration={400}>
       <IconSprite />
       <DocumentTitle />
+      <NavigationProgress />
       <Outlet />
       <LiveRegions />
       <Toaster />

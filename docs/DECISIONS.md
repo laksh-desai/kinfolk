@@ -334,5 +334,41 @@ the relationship.
 **Consequences.** Labels never assert a relationship that isn't true. The seed test pins
 Ravi → all 60 people by hand, and every ordered pair yields a non-empty label and a connected
 path. The chain wording is English-only; localisation would need a grammar, not string
-templates. A person with both editor access and a review
+templates.
+
+## 016 — Canvas: one transformed layer, roving tabindex, URL-held selection
+Date: 2026-09-13
+Status: accepted
+
+**Context.** SPEC §5.3 needs pan/zoom anchored to the cursor, fit on load, keyboard operation,
+virtualisation above ~200 people, and a docked panel that never loses canvas position.
+- Rendering options: SVG-only (poor text and accessibility), canvas 2D (no DOM semantics),
+  or HTML cards over an SVG edge layer (the spec's suggestion).
+- Keyboard options: every card tabbable (500 tab stops), or a composite widget.
+
+**Decision.**
+- **Rendering.** Cards are real `<button>`s positioned inside one CSS-transformed layer; all
+  connectors are one SVG beneath them.
+- **Viewport.** Pure functions (`viewport.ts`) own zoom-at-point, fit, reveal, and clamping.
+- **Keyboard.** Roving tabindex: the selected card, else the focus person, is the single tab
+  stop. Arrows follow relationships (`keyboardNav.ts`).
+- **Selection.** The selected person lives in the URL (`/trees/:treeId/people/:personId`);
+  the panel is that child route, beside the canvas at md+ and full-screen below.
+- **Virtualisation.** Above 200 people, only cards near the visible rect render. The rect is
+  snapped to a 300 px grid so panning re-renders only at boundaries. The selected and focus
+  cards always stay mounted.
+- **Fit.** May go below 25% (to 5%), per QUESTIONS Q34.
+- **View state.** Collapse state and the branch toggle live in Zustand (view state, not
+  saved).
+- **Married-in brackets.** Only branches in the focus person's own component; a separate,
+  unlinked family is not "married in".
+
+**Consequences.**
+- Screen readers get a named button per person, with dates, place, and relationship as the
+  description.
+- Panning updates one `transform`; memoised cards must receive stable props. A per-render
+  inline callback re-rendered every card and pushed p95 frame time from 33 to 50 ms at 500
+  people.
+- Measured in headless Chromium without a GPU: median frame 16.7 ms, p95 33.4 ms. 60 fps is
+  met at the median, not at p95. A person with both editor access and a review
 assignment is treated as an editor, since Access is checked first.
