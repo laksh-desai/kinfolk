@@ -1,7 +1,8 @@
 import { fullName } from '@kinfolk/shared/graph/displayName';
 import { RELATIONS } from '@kinfolk/shared/relatives/planAddRelative';
 import type { RouteObject, UIMatch } from 'react-router-dom';
-import type { TreeGraphResponse } from '../features/tree/treeQueries';
+import { treeGraphQuery, type TreeGraphResponse } from '../features/tree/treeQueries';
+import { queryClient } from '../lib/queryClient';
 import { AppShell } from './AppShell';
 import { redirectIfSignedInLoader, requireUserLoader, rootLoader } from './guards';
 import { NotFoundRoute } from './NotFoundRoute';
@@ -16,12 +17,22 @@ function treeData(data: unknown): TreeGraphResponse | null {
   return data && typeof data === 'object' && 'tree' in data && 'graph' in data ? (data as TreeGraphResponse) : null;
 }
 
+/**
+ * The tree as it is now: the query cache (updated by edits and renames) before the loader's
+ * snapshot, so titles follow a rename or a person's new name without a reload.
+ */
+function currentTree(matches: Match[]): TreeGraphResponse | null {
+  const loaded = treeData(matches.find((candidate) => treeData(candidate.data))?.data);
+  if (!loaded) return null;
+  return treeData(queryClient.getQueryData(treeGraphQuery(loaded.tree.id).queryKey)) ?? loaded;
+}
+
 type Match = UIMatch<unknown, unknown>;
 
 /** Titles for screens about one person: "Edit Ravi’s details · Sharma family". */
 function personTitle(build: (name: string, match: Match, data: TreeGraphResponse | null) => string): RouteHandle {
   return handle((match, matches) => {
-    const data = treeData(matches.find((candidate) => treeData(candidate.data))?.data);
+    const data = currentTree(matches);
     const nameFor = (id: string | undefined) => {
       const person = data?.graph.people.find((candidate) => candidate.id === id);
       return person ? fullName(person) || 'Unnamed person' : 'Person';
@@ -33,7 +44,7 @@ function personTitle(build: (name: string, match: Match, data: TreeGraphResponse
 
 function treeTitle(title: string): RouteHandle {
   return handle((_match, matches) => {
-    const data = treeData(matches.find((candidate) => treeData(candidate.data))?.data);
+    const data = currentTree(matches);
     return data ? `${title} · ${data.tree.name}` : title;
   });
 }
@@ -93,7 +104,7 @@ export const routes: RouteObject[] = [
           },
           {
             path: 'trees/:treeId',
-            handle: handle((match) => treeData(match.data)?.tree.name ?? 'Family tree'),
+            handle: handle((match, matches) => currentTree(matches)?.tree.name ?? treeData(match.data)?.tree.name ?? 'Family tree'),
             errorElement: <RouteErrorBoundary />,
             lazy: () => import('../features/tree/TreeRoute'),
             children: [
