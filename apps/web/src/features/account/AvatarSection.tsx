@@ -3,7 +3,6 @@ import { useRef, useState } from 'react';
 import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/Button';
 import { FormAlert } from '../../components/FormAlert';
-import { announce } from '../../lib/announcer';
 import { describeError } from '../../lib/api';
 import { queryClient } from '../../lib/queryClient';
 import { toast } from '../../lib/toast';
@@ -21,7 +20,7 @@ export function AvatarSection() {
 
   const fail = (message: string) => {
     setError(message);
-    announce(message, 'assertive');
+    // Focusing the alert reads it out; a live-region announcement as well would say it twice.
     requestAnimationFrame(() => alertRef.current?.focus());
   };
 

@@ -65,14 +65,15 @@ export function useForm<S extends ZodTypeAny>(options: UseFormOptions<S>) {
     (fieldErrors: Record<string, string>) => {
       const invalid = [...elements.current.entries()]
         .filter(([name]) => fieldErrors[name])
-        .map(([, element]) => element)
-        .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
-      const first = invalid[0];
+        .sort(([, a], [, b]) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+      const first = invalid[0]?.[1];
       if (first) {
         first.focus();
         first.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
       }
-      const names = Object.keys(fieldErrors).filter((name) => name !== '_form');
+      // Announce in the order the fields appear on screen, not the order the schema found them.
+      const onScreen = invalid.map(([name]) => name);
+      const names = [...onScreen, ...Object.keys(fieldErrors).filter((name) => name !== '_form' && !onScreen.includes(name))];
       const summary = names.map((name) => `${labels[name] ?? name}: ${fieldErrors[name]}`).join(' ');
       const count = names.length;
       if (count > 0) {
