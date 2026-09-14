@@ -28,6 +28,7 @@ describe('change queue', () => {
     const api = mockApi({
       [`POST /api/trees/${TREE_ID}/changes`]: () => ({ body: { version: 2, treeStatus: 'draft', inverse: [{ op: 'person.delete', id: 'abababab-0000-4000-8000-000000000001' }] } }),
     });
+    queryClient.setQueryData(['trees'], []);
     const saved = commitChange(TREE_ID, [newPerson(1)], 'Added New 1');
     expect(graph().people.some((person) => person.firstName === 'New 1')).toBe(true);
     expect(getTreeEditingState(TREE_ID).status).toBe('saving');
@@ -35,6 +36,8 @@ describe('change queue', () => {
     expect(getTreeEditingState(TREE_ID)).toMatchObject({ status: 'saved', pending: 0 });
     expect(getTreeEditingState(TREE_ID).undo).toEqual([{ label: 'Added New 1', ops: [{ op: 'person.delete', id: 'abababab-0000-4000-8000-000000000001' }] }]);
     expect(queryClient.getQueryData<TreeGraphResponse>(key)?.tree.version).toBe(2);
+    // The dashboard's people count and "edited" time are refreshed next time they're shown.
+    expect(queryClient.getQueryState(['trees'])?.isInvalidated).toBe(true);
     expect(api.calls.find((call) => call.method === 'POST')?.body).toMatchObject({ description: 'Added New 1' });
   });
 

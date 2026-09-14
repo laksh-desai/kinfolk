@@ -50,3 +50,18 @@ export function watchSystemTheme(): () => void {
   query.addEventListener('change', listener);
   return () => query.removeEventListener('change', listener);
 }
+
+export type TreeViewPreference = 'canvas' | 'list';
+
+const TREE_VIEW_KEY = 'kinfolk.treeView';
+
+/** Tree or list. Without a saved choice, narrow screens start in the list view (SPEC §5.3). */
+export function getTreeViewPreference(): TreeViewPreference {
+  const value = read(TREE_VIEW_KEY);
+  if (value === 'canvas' || value === 'list') return value;
+  return typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 639px)').matches ? 'list' : 'canvas';
+}
+
+export function setTreeViewPreference(preference: TreeViewPreference): void {
+  write(TREE_VIEW_KEY, preference);
+}

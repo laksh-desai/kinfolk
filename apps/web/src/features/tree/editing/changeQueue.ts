@@ -85,6 +85,8 @@ async function drain(treeId: string): Promise<void> {
               tree: { ...cached.tree, version: result.version, status: result.treeStatus as TreeStatus },
             });
           }
+          // The dashboard's summary (people count, last edited) is now out of date.
+          void queryClient.invalidateQueries({ queryKey: ['trees'], refetchType: 'none' });
           store.update(treeId, (state) => {
             const entry = { label: change.label, ops: result.inverse };
             const history =

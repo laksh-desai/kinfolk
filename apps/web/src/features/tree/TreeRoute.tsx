@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { planSetFocus } from '@kinfolk/shared/relatives/planRelationshipEdits';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Outlet, useLoaderData, useMatch, useNavigate, useSearchParams, type LoaderFunctionArgs } from 'react-router-dom';
 import { buttonClasses } from '../../components/Button';
 import { EmptyState } from '../../components/EmptyState';
 import { Icon } from '../../components/Icon';
 import { StatusBadge } from '../../components/StatusBadge';
+import { getTreeViewPreference, setTreeViewPreference, type TreeViewPreference } from '../../lib/preferences';
 import { queryClient } from '../../lib/queryClient';
 import type { CardMenuItem } from '../../canvas/CardMenu';
 import { TreeCanvas } from '../../canvas/TreeCanvas';
@@ -13,6 +14,11 @@ import { useCanvasStore, useCollapsed } from '../../canvas/useCanvasStore';
 import { commitWithUndo } from './editing/changeQueue';
 import { SaveIndicator } from './editing/SaveIndicator';
 import { UndoRedoButtons } from './editing/UndoRedoButtons';
+import { DeleteTreeDialog } from './header/DeleteTreeDialog';
+import { TreeSettingsMenu } from './header/TreeSettingsMenu';
+import { TreeTitle } from './header/TreeTitle';
+import { ViewSwitch } from './header/ViewSwitch';
+import { TreeOutline } from './list/TreeOutline';
 import { DeletePersonDialog } from './people/DeletePersonDialog';
 import { PRIMITIVES } from './people/PersonActions';
 import { usePersonDialogs } from './people/personDialogStore';
@@ -43,6 +49,19 @@ export function Component() {
   const deletingId = usePersonDialogs((state) => state.deletingId);
   const openDelete = usePersonDialogs((state) => state.openDelete);
   const closeDelete = usePersonDialogs((state) => state.close);
+  const [renaming, setRenaming] = useState(false);
+  const [deletingTree, setDeletingTree] = useState(false);
+  // The view named in the URL wins and is remembered; otherwise the remembered choice applies.
+  const viewParam = searchParams.get('view');
+  const requestedView: TreeViewPreference | null = viewParam === 'list' || viewParam === 'canvas' ? viewParam : null;
+  const [savedView, setSavedView] = useState(getTreeViewPreference);
+  const viewMode = requestedView ?? savedView;
+  useEffect(() => {
+    if (!requestedView) return;
+    setTreeViewPreference(requestedView);
+    // Later screens (a person's panel, say) drop the query string; keep the chosen view for them.
+    setSavedView(requestedView);
+  }, [requestedView]);
 
   const onSelect = useCallback(
     (personId: string | null, options?: { openPanel?: boolean }) => {
@@ -113,7 +132,8 @@ export function Component() {
   return (
     <main id="main" tabIndex={-1} className="flex min-h-0 flex-1 flex-col outline-none">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-surface px-4 py-2 sm:px-6">
-        <h1 className="min-w-0 truncate font-serif text-2xl font-semibold">{tree.name}</h1>
+        <TreeTitle tree={tree} editing={renaming} onEditingChange={setRenaming} />
+        {tree.role === 'owner' && !renaming ? <TreeSettingsMenu treeName={tree.name} onRename={() => setRenaming(true)} onDelete={() => setDeletingTree(true)} /> : null}
         <StatusBadge status={tree.status} />
         {roleLabel ? (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-0.5 text-sm font-semibold text-ink-muted">
@@ -125,6 +145,7 @@ export function Component() {
           {count} {count === 1 ? 'person' : 'people'}
         </span>
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          {count > 0 ? <ViewSwitch view={viewMode} /> : null}
           {editable ? <SaveIndicator treeId={treeId} /> : null}
           {editable ? <UndoRedoButtons treeId={treeId} /> : null}
           {count > 0 ? (
@@ -167,12 +188,15 @@ export function Component() {
                 ? 'Start with one person — usually yourself or the person whose planning this is for. From them you can add parents, partners, children, and siblings, and grow the tree in any direction.'
                 : 'The owner hasn’t added anyone yet. People will appear here as soon as they do.'}
             </EmptyState>
+          ) : viewMode === 'list' ? (
+            <TreeOutline tree={tree} view={view} selectedId={selectedId} />
           ) : (
             <TreeCanvas treeId={treeId} view={view} selectedId={selectedId} onSelect={onSelect} highlightPath={highlightPath} cardMenuItems={cardMenuItems} />
           )}
         </div>
         <Outlet context={{ view, tree, onSelect }} />
       </div>
+      {tree.role === 'owner' ? <DeleteTreeDialog tree={tree} peopleCount={count} open={deletingTree} onOpenChange={setDeletingTree} /> : null}
       {deletingId && editable ? <DeletePersonDialog tree={tree} view={view} personId={deletingId} onClose={closeDelete} /> : null}
     </main>
   );

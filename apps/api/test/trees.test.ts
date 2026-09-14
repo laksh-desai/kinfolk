@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestContext, signUpUser, type TestClient, type TestContext } from './testApp';
 
@@ -35,6 +36,22 @@ describe('trees', () => {
     const stranger = ctx.client();
     await signUpUser(stranger);
     expect((await stranger.get('/api/trees')).json().trees).toEqual([]);
+  });
+
+  it('counts people and moves "last edited" forward on every change, newest first in the list', async () => {
+    const owner = ctx.client();
+    await signUpUser(owner);
+    const older = await createTree(owner, 'Older');
+    const newer = await createTree(owner, 'Newer');
+    const before = (await owner.get('/api/trees')).json().trees as Array<{ id: string; updatedAt: string; peopleCount: number }>;
+    expect(before.map((tree) => tree.id)).toEqual([newer.id, older.id]);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const person = { id: randomUUID(), firstName: 'Ravi', gender: 'male', lifeStatus: 'living' };
+    expect((await owner.post(`/api/trees/${older.id}/changes`, { ops: [{ op: 'person.create', person }] })).statusCode).toBe(200);
+    const after = (await owner.get('/api/trees')).json().trees as Array<{ id: string; updatedAt: string; peopleCount: number }>;
+    expect(after.map((tree) => tree.id)).toEqual([older.id, newer.id]);
+    expect(after[0]?.peopleCount).toBe(1);
+    expect(Date.parse(after[0]?.updatedAt ?? '')).toBeGreaterThan(Date.parse(before[1]?.updatedAt ?? ''));
   });
 
   it('answers 404 — not 403 — to someone with no access, so tree ids reveal nothing', async () => {
