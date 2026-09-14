@@ -247,6 +247,51 @@ There is no Lighthouse or real GPU profiling in this environment's automated loo
 measure the bundle size, layout computation time, and culled node counts. The 60 fps and
 Lighthouse claims will be marked "not verified" unless I can run them for real.
 
+## Editing people and relationships (§4.6, §5.3, §5.4) — M6
+
+### Q35 — Re-parent "via the detail panel or drag onto a couple's connector" · Decided
+§4.6 offers two ways to re-parent, joined by "or".
+- Alternatives: build both; build the panel path only.
+- Decision: the panel path only. The Relationships screen has "Move to different parents",
+  a list of every family in the tree. Drag-and-drop onto a connector has no keyboard
+  equivalent of its own, and the panel path already satisfies the requirement for
+  everyone.
+- **Recommend spec change** if drag is wanted: make it additive and keep the panel as the
+  accessible path.
+
+### Q36 — How precise are union dates in the relationship editor? · Decided
+§4.6 says "change a union's type or status and its dates".
+- Decision: the Relationships screen edits start and end **years**. A known month and day
+  are kept when the year is unchanged. Unions keep full partial dates in the model, so a
+  finer editor can come later. Anniversaries need a month and day (Q28), so until then
+  those come from data entered elsewhere, such as import.
+
+### Q37 — Does a photo change wait for the form's Save? · Decided
+- Alternatives: stage the upload and attach on Save; attach immediately.
+- Decision: attach immediately as its own undoable change, with a toast and Undo. Uploads
+  are slow and a staged file is easy to lose to navigation. The copy under the control
+  says photo changes save straight away.
+
+### Q38 — Keyboard access to the card menu · Decided
+§5.3 wants a right-click menu that is keyboard reachable.
+- Decision: the Menu key and Shift+F10 open it on the focused card; the canvas help text
+  says so. Every menu action is also in the always-visible panel, which is the only
+  keyboard path on keyboards without a Menu key.
+
+### Q39 — Undo history across a refresh · Decided
+§5.3 asks for "undo/redo with at least 20 steps" and doesn't say whether history survives
+a reload.
+- Decision: history lives in memory per tree (100 steps) and is lost on refresh. Every
+  change is already saved and audited, so nothing is lost but the shortcut. Persisting it
+  would mean storing inverse ops, which can include planning text the viewer may not see
+  (ADR 012), in browser storage, which CLAUDE.md forbids for anything sensitive.
+
+### Q40 — Google Places path can't be verified here · Open
+There is no Places key in this environment, so the autocomplete path (ADR 020) is built
+but has never run against Google. Free text is the default and is tested. Verify with a
+real key before enabling it in production: load on focus, suggestion fills the parts, CSP
+allows the script.
+
 ## Environment
 
 ### Q31 — Node version · Decided

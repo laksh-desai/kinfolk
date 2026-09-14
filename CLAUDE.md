@@ -125,15 +125,15 @@ anything true for one commit only.
 orient. Replace lines rather than stacking them.)*
 
 - Workspace: `apps/web` (React 18, RR 6.30 lazy routes), `apps/api` (Fastify 5, Prisma 6), `packages/shared` (import by subpath, e.g. `@kinfolk/shared/layout/computeLayout`).
-- Built: cookie auth (password, dev/real Google, OTP reset), account page, tree API, graph ChangeSets, layout, kinship, canvas + person panel.
+- Built: cookie auth (password, dev/real Google, OTP reset), account page, tree API, graph ChangeSets, layout, kinship, canvas, person editing (M6).
 - Graph edits: `POST /api/trees/:id/changes` → `commitChangeSet` (lock, pure `applyChangeSet`, persist, audit per op, returns inverse).
 - Roles per request: `lib/treeAccess.ts` `requireTreeRole`; redaction: `lib/graphRows.ts` `graphForVisibility`.
 - Pure: `computeLayout(graph, { collapsed })`, `createKinshipResolver(graph)(ego, alter)`, `displayName(index, id)`, `lifespanLabel`.
-- Canvas: `apps/web/src/canvas/` (pure `viewport.ts`, `keyboardNav.ts`, `culling.ts`); tree page `features/tree/TreeRoute.tsx` + `useTreeView`.
-- Web conventions: calls via `lib/api.ts`; forms via `lib/useForm.ts`; `test/renderApp` renders the real routes; `test/treeFixtures.ts` mocks a seeded tree.
+- Canvas: `apps/web/src/canvas/` (pure `viewport.ts`, `keyboardNav.ts`, `culling.ts`, one `CardMenu`); tree page `features/tree/TreeRoute.tsx` + `useTreeView`.
+- Editing: build ops only with planners in `packages/shared/src/relatives/`; send via `features/tree/editing/changeQueue.ts` `commitWithUndo` (optimistic, queued, undoable). Person screens are panel routes in `features/tree/people/` wrapped in `PanelShell`.
+- Web conventions: calls via `lib/api.ts`; forms via `lib/useForm.ts`; `test/renderApp` renders the real routes; `test/treeServer.ts` `mockTreeServer()` fakes the tree API with real `applyChangeSet` (+ `findToast`).
 - Tests: `pnpm test` (shared/api/web; API clones a per-file embedded-Postgres DB via `test/testApp.ts`). `pnpm e2e`: one-process stack `apps/api/scripts/e2eStack.ts` (web 5180/api 4180).
-- E2E helpers: `e2e/support/seedTree.ts` (`signUp`, `createSeededTree`), `outbox.ts` (read mail), `a11y.ts` (axe with contrast).
-- Fixtures: `buildSeedTree({ namespace })` (60 people, §4.5), `buildLargeTree()` (500). `pnpm db:seed` writes both for seed@kinfolk.test.
+- E2E helpers: `e2e/support/seedTree.ts` (`signUp`, `createSeededTree`, `createEmptyTree`), `outbox.ts`, `a11y.ts` (axe with contrast). Fixtures: `buildSeedTree({ namespace })` (60, §4.5), `buildLargeTree()` (500); `pnpm db:seed` writes both.
 - New migration without Docker: `pnpm --filter api exec tsx scripts/withEmbeddedDb.ts pnpm exec prisma migrate dev --name <x>`.
 
 ## Gotchas
@@ -146,17 +146,19 @@ orient. Replace lines rather than stacking them.)*
 - Fastify `maxParamLength` defaults to 100 → signed tokens in paths 414. Set in `app.ts` `routerOptions`.
 - Windows leaves child processes alive when the parent dies → run servers in-process for e2e; if 5180/4180 are busy, kill the stale node.
 - Playwright `getByLabel` substring-matches `aria-label`s (e.g. "Show confirm new password") → use `{ exact: true }`. After a client navigation, wait for the new heading before `fill()`.
-- Don't put hidden "(required)" text inside labels: `aria-required` already says it, and exact label queries break.
+- Hidden "(required)" in labels double-announces and breaks exact label queries; so does announcing an alert you also focus → rely on `aria-required` / focus only.
 - `.claude/settings.json` denies `Read(./.env.*)`, which also blocks the Write tool on `.env.example` → write that one file via shell.
 - `queryClient.ensureQueryData(sessionQuery)` returns a cached `null` after sign-out → any new sign-in path must `setQueryData`/`fetchQuery` the session before navigating, or the guard bounces to /login.
 - Person/union/edge ids are global PKs → the same fixture can't go into two trees in one DB; pass a distinct `namespace` to `buildSeedTree`.
 - Prisma Json columns need `Prisma.DbNull` for null, not `null` → use the helpers in `lib/graphRows.ts`.
-- Long heredocs in the Bash tool break on apostrophes (`unexpected EOF`) → use Write/Edit for file content.
-- Per-iteration `expect` in O(n²) geometry checks takes minutes at 500 people → collect problems into an array and assert once.
+- Bash tool: unquoted heredocs break on apostrophes and `/tmp` isn't `C:	mp` for node → use Write/Edit, or `cygpath -w`. O(n²) per-iteration `expect` at 500 people takes minutes → collect, assert once.
 - To eyeball a layout, render it to SVG→PNG with sharp from a scratch `.mts` script (top-level await needs ESM) and Read the PNG.
 - Memoised `PersonCard`s re-render on every pan if any prop is a fresh inline callback → keep canvas callbacks in `useCallback`.
 - jsdom lacks `PointerEvent` (fireEvent drops `button`/`clientX`) → polyfilled in `test/setup.ts`.
 - Slow machine: web tests preload lazy routes (`renderApp`) and use an 8s `findBy` timeout; run long suites in the background.
+- Never run vitest (or other heavy jobs) while Playwright runs → the browser stalls (2-min `evaluate` hangs, saves stuck retrying). Run e2e alone.
+- Radix Toast items have no `role="status"` → query `listitem`s in the "Notifications" region (`findToast`). Radix `DropdownMenu.Content` names itself after its trigger and has no `onOpenAutoFocus` → set `aria-labelledby`, focus items in an effect.
+- `refetchQueries` is a no-op for a query put in the cache with `setQueryData` (no queryFn) → `fetchQuery` it first in tests.
 
 ## Deviations from SPEC.md
 *(Cap: 15 lines. Anywhere the build knowingly differs from the spec, and why. If a
@@ -170,3 +172,4 @@ deviation is large, open an ADR and link it here instead of explaining it twice.
 - Production: Secure cookies only when `NODE_ENV=production`, so plain-http test clients work.
 - Fit-to-content may zoom below 25% (down to 5%) so trees open whole; manual zoom stays 25–200% (QUESTIONS Q34, ADR 016).
 - Generations: BFS-anchored then push/pull-down, not pure longest path, so married-in siblings share a row (Q19, ADR 014).
+- Re-parenting is on the Relationships screen only, no drag onto connectors (Q35); union dates are edited at year precision there (Q36).

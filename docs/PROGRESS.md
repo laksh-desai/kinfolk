@@ -4,16 +4,30 @@ Milestones are defined in `docs/SPEC.md` §10. Update at every checkpoint.
 
 ## In progress
 
-**M6 — People & relationships.** Plan below under "Milestone plans → M6".
+**M7 — Dashboard, tree management, list view.** Plan below under "Milestone plans → M7".
 
 ## Up next
 
-
-M6 People & relationships · M7 Dashboard & list view · M8 Collaboration ·
-M9 Review workflow · M10 Events, import, export
+M8 Collaboration · M9 Review workflow · M10 Events, import, export
 
 ## Done
 
+- **M6 — People & relationships** (2026-09-14). Pure planners in `packages/shared/src/relatives/`:
+  add relative (every §4.2 relation, placeholders with a summary sentence, `NEW_PERSON`),
+  delete impact and modes, merge, relationship edits, direct relatives. The editing core
+  applies changes optimistically through a sequential save queue with retry, offline
+  waiting, rollback on 4xx, and rebasing unsaved edits over a refetch; undo/redo come from
+  server inverses. Panel routes: relation picker, add relative (pre-answered connection
+  questions, placeholder preview, add another), add person, full edit form (photo upload,
+  free-text address with lazy Places, unsaved-changes guard), relationships editor, merge,
+  compare (path highlighted), needs detail. Also: card menu (right-click, Menu key,
+  Shift+F10), delete dialog with an Undo toast, save indicator, and Undo/Redo in the header.
+  Tests: 111 shared planner/schema, 9 queue, 37 web RTL + axe, and API photo, CSP, and journey-replay tests; Playwright
+  `relatives.spec.ts` adds all 12 §12 relatives from the canvas, corrects a marriage,
+  undoes and redoes, and refreshes. Gate: lint clean, 471 unit/integration tests.
+  Unexplained: one e2e run saw a save stuck on "Couldn’t save — retrying" while other test
+  jobs were hogging the CPU; it passed on each of the 3 later runs, and the API replay of the same
+  change sets passes.
 - **M5 — Canvas** (2026-09-13). Tree route and docked person panel, both URL-addressable.
   Canvas: HTML cards over an SVG edge layer in one transformed layer; drag and wheel pan,
   ctrl/⌘ zoom anchored to the cursor; fit on load (down to 5%, Q34); roving-tabindex
@@ -312,7 +326,47 @@ path: person ids along the chosen route (for Compare drawing)
 
 # Milestone plans
 
-## M6 — People & relationships (in progress)
+## M7 — Dashboard, tree management, list view (in progress)
+
+API (`GET /api/trees` already returns owned and shared trees with role and `peopleCount`):
+- Add `lastEditedAt` (the latest audit event) to `TreeSummaryDto` so "last edited" means an
+  edit, not a rename.
+- Tree PATCH (rename, description) and type-to-confirm DELETE exist. Add tests for
+  editor/viewer refusal where missing.
+
+Web:
+- `DashboardRoute`: tree cards (monogram, name, people count, status badge, "Edited
+  2 hours ago", role badge when not owner, open link); skeleton while loading; error with
+  retry; offline message; true empty state explaining what a tree is, with one "New family
+  tree" action.
+- The actionable list (invitations, link requests, change requests) appears only when
+  those features land (M8, M9). No placeholder section.
+- `NewTreeDialog`: name (required) and description, the shared Zod schema, then go to the
+  new tree, where "Add the first person" waits.
+- Tree header: the name is an edit button that opens an inline rename form on the first
+  click (§6.3) with Enter/Escape, plus a "Tree settings" menu. Delete tree (owner only)
+  uses a type-to-confirm dialog that states what is destroyed, then returns to the
+  dashboard.
+- List/outline view `/trees/:treeId/list`:
+  - People grouped by generation (from `computeLayout` rows), then family unit ("Vikram
+    Sharma & Nisha Sharma — children: …").
+  - Each person row has the same actions as the canvas: open details (the same panel
+    routes), add relative, edit, delete.
+  - Canvas/List toggle in the header. Keyboard and screen-reader parity; the small-screen
+    path.
+- Pure `outlineTree(graph, layout)` in `features/tree/list/` with unit tests.
+
+Tests:
+- RTL + axe: dashboard lists owned and shared trees with role badges; empty state;
+  create-tree flow; load error with retry; rename opens on the first click and saves
+  undoably; delete requires the typed name; the list view groups the seed tree by
+  generation and its actions navigate.
+- Playwright: dashboard → create tree → add first person → list view → rename → delete
+  tree with typed name; axe with contrast on dashboard and list view.
+
+Done when: the M7 row in table E is demonstrated.
+
+## M6 — People & relationships (done 2026-09-14)
 
 Pure planners first (`packages/shared/src/relatives/`), each validated by running its ops
 through `applyChangeSet` in tests:

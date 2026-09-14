@@ -372,3 +372,121 @@ virtualisation above ~200 people, and a docked panel that never loses canvas pos
 - Measured in headless Chromium without a GPU: median frame 16.7 ms, p95 33.4 ms. 60 fps is
   met at the median, not at p95. A person with both editor access and a review
 assignment is treated as an editor, since Access is checked first.
+
+## 017 — Editing: optimistic change sets, one save queue per tree, undo from server inverses
+Date: 2026-09-14
+Status: accepted
+
+**Context.** SPEC §5.3 and §6.18 need optimistic UI with rollback, an honest save
+indicator, and undo/redo of at least 20 steps. ADR 004 already gives every change set an
+exact inverse from the server.
+- Options for applying edits: wait for the server (slow, not optimistic); patch the query
+  cache by hand per edit type (a second implementation of the graph rules); or run the
+  shared `applyChangeSet` on the cached graph.
+- Options for undo: compute inverses on the client, or keep the server's.
+- Options for concurrency: send in parallel, or strictly in order.
+
+**Decision.**
+- `editing/changeQueue.ts` `commitChange` applies ops to the cached graph with the shared
+  `applyChangeSet`. A locally invalid change throws `ChangeRejectedError` synchronously, so
+  forms show the message and nothing is sent.
+- One sequential queue per tree. Network, timeout, and 5xx failures retry with backoff
+  (1, 2, 4, 8, 15, 30 s); offline waits for `online`. A 4xx drops the rest of the queue,
+  refetches the graph (`refetchQueries`, so it works with no screen observing), toasts, and
+  announces.
+- Undo/redo stacks (Zustand, per tree, capped at 100, in memory) hold the server's inverse
+  ops. Undo and redo are ordinary change sets. The toast's Undo targets its own change by
+  identity (`undoChange`), even if later edits exist.
+- Pure planners in `packages/shared/src/relatives/` turn intent into ops: add relative,
+  delete, merge, and relationship edits. UI screens never build ops by hand.
+
+**Consequences.**
+- The client and server enforce the same invariants with the same code. A server refusal
+  can only come from state the client hadn't seen, such as another editor's change or the
+  tree going into review.
+- History is lost on refresh (QUESTIONS Q39). Undo becomes available only once a change
+  has saved, because the inverse comes from the server.
+- An undo that later edits made impossible shows a toast with the reason and is dropped
+  from history.
+
+## 018 — Person screens are panel routes; one canvas menu; deletion is a dialog
+Date: 2026-09-14
+Status: accepted
+
+**Context.** SPEC §5.3 wants actions in a docked panel and a context menu, never a
+full-page navigation that loses canvas position. §6.1 wants every screen restorable from
+its URL.
+- Options for add/edit/relationships/merge/compare: modal dialogs over the canvas, full
+  pages, or sub-routes rendered in the docked panel.
+- Options for the context menu: Radix ContextMenu on every card (one menu instance per
+  card, and no keyboard trigger), or one controlled menu for the whole canvas.
+
+**Decision.**
+- Every person screen is a lazy child route of the tree route, rendered in `PanelShell`
+  beside the canvas and full-screen below md. The routes are `add`, `compare`,
+  `needs-detail`, `people/:id/{add,add/:relation,edit,relationships,merge,merge/:other}`.
+  Each has its own title. Editing URLs opened without edit rights explain why
+  (`ReadOnlyPanel`).
+- One `CardMenu` per canvas: a controlled Radix dropdown anchored at the pointer, or at
+  the card for the Menu key and Shift+F10. It focuses the first item and returns focus to
+  the card unless the chosen action moves focus itself.
+- Person deletion is a confirm dialog (state in a small Zustand store). It names every
+  affected relationship and offers only non-orphaning modes, followed by an Undo toast.
+  Destructive confirmations aren't bookmarkable.
+- The four primitives are always-visible links in the panel and in the menu.
+
+**Consequences.** The canvas never unmounts while editing, and back/forward walks panel
+screens. Two menus can't be open at once. macOS keyboards have no Menu key, but every menu
+action is also in the panel.
+
+## 019 — Add relative: pre-answered connection questions, explicit "not in the tree yet", dry-run preview
+Date: 2026-09-14
+Status: accepted
+
+**Context.** SPEC §4.2 asks for "pick the relationship and the app resolves it", with
+placeholders and a one-sentence explanation. The planner can reuse existing intermediates
+or create placeholders. The UI must decide what to ask.
+- Options: always ask every question (slow); never ask and always pick the first candidate
+  (silently wrong on remarriage or multiple aunts); or ask only where real choices exist,
+  pre-answered.
+
+**Decision.**
+- `connectionSteps` lists only questions with existing candidates. `resolveConnection`
+  fills unanswered ones with the first option and re-asks follow-ups when an earlier
+  answer changes.
+- Where a new connector is allowed, a "Someone not in the tree yet" option maps to the
+  planner's `NEW_PERSON`. For a child, a "`<name>` on their own" option maps to
+  `SOLO_UNION`.
+- Before the user types, the screen dry-runs the planner with a blank person. It shows
+  which unnamed people will be added, and switches to asking the parent kind when birth
+  parents are full (Q12).
+- "Add partner" asks spouse / partner / former spouse. Quick add inherits the anchor's
+  last name for children, siblings, fathers, and grandchildren. An "add another" checkbox
+  keeps the form open.
+
+**Consequences.** Common cases are one field plus Enter. Unusual ones are visible radios,
+not hidden defaults. The summary shown after adding is the same sentence the preview was
+built from.
+
+## 020 — Address entry: free text by default, Places only with a key and only on focus
+Date: 2026-09-14
+Status: accepted
+
+**Context.** SPEC §5.4 wants Places autocomplete with a free-text fallback. §6.23 forbids
+loading third-party SDKs except at point of use. The task brief makes free text the
+default path, and no key exists here.
+- Options: `@googlemaps/js-api-loader` at app start; a lazy script tag on first focus of
+  the address field; or no Places at all.
+
+**Decision.**
+- `placesLoader.ts` injects the Maps JS script only when `VITE_GOOGLE_PLACES_KEY` is set,
+  and only on first focus of the Address field. A chosen place fills the street, city,
+  region, postal code, and country fields.
+- The API widens its CSP (`maps.googleapis.com`, `maps.gstatic.com`, Google Fonts) only
+  when the key is configured. Without it the CSP stays `script-src 'self'`
+  (`securityHeaders.test.ts`).
+- No typings package; a minimal local interface covers the one widget used.
+
+**Consequences.** Without a key nothing third-party loads and every address field is
+plain text; this is the tested path. The Places path is unverified here (QUESTIONS Q40).
+The form doesn't carry `lat`/`lng`, so saving an address clears any stored coordinates.
