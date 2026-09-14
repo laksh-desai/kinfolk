@@ -40,3 +40,11 @@ function remapIds<T>(value: T, ns: number): T {
   const prefix = ns.toString(16).padStart(8, '0');
   return JSON.parse(JSON.stringify(value).replace(/0001a26e-0000-4000-8000-/g, `${prefix}-0000-4000-8000-`)) as T;
 }
+
+export async function createEmptyTree(page: Page, name: string) {
+  const token = await csrf(page);
+  const created = await page.request.post('/api/trees', { headers: { 'x-csrf-token': token }, data: { name } });
+  if (!created.ok()) throw new Error(`tree creation failed: ${created.status()} ${await created.text()}`);
+  const { tree } = (await created.json()) as { tree: { id: string } };
+  return { treeId: tree.id };
+}

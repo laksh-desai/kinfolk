@@ -1,8 +1,9 @@
 import type { LayoutBranch } from '@kinfolk/shared/layout/layoutTypes';
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
 import type { TreeView } from '../features/tree/useTreeView';
 import { announce } from '../lib/announcer';
 import { BranchBrackets } from './BranchBrackets';
+import { CardMenu, type CardMenuItem } from './CardMenu';
 import { CanvasToolbar } from './CanvasToolbar';
 import { visibleNodes } from './culling';
 import { EdgeLayer } from './EdgeLayer';
@@ -33,6 +34,10 @@ interface TreeCanvasProps {
   selectedId: string | null;
   /** Select a person (null clears). `openPanel` moves focus into the details panel. */
   onSelect: (personId: string | null, options?: { openPanel?: boolean }) => void;
+  /** People along a Compare path, in order: their connectors are drawn in the accent colour and the rest dims. */
+  highlightPath?: readonly string[] | null;
+  /** Actions for a card's menu (right-click, Menu key, Shift+F10). */
+  cardMenuItems?: (personId: string) => CardMenuItem[];
 }
 
 const FALLBACK_SIZE: Size = { width: 1024, height: 700 };
@@ -47,13 +52,14 @@ function isEditableTarget(target: EventTarget | null): boolean {
  * CSS-transformed pan/zoom layer. There is no fixed stage; the canvas fills its container
  * and opens fitted to the tree.
  */
-export function TreeCanvas({ treeId, view, selectedId, onSelect }: TreeCanvasProps) {
+export function TreeCanvas({ treeId, view, selectedId, onSelect, highlightPath = null, cardMenuItems }: TreeCanvasProps) {
   const { layout, graph, names, relationToFocus, marriedInBranches } = view;
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<Size | null>(null);
   const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, scale: 1 });
   const [fitNotice, setFitNotice] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [menu, setMenu] = useState<{ personId: string; x: number; y: number } | null>(null);
   const fittedFor = useRef<string | null>(null);
   const drag = useRef<{ pointerId: number; x: number; y: number; moved: boolean } | null>(null);
   const helpId = useId();
@@ -66,6 +72,18 @@ export function TreeCanvas({ treeId, view, selectedId, onSelect }: TreeCanvasPro
   const people = useMemo(() => new Map(graph.people.map((person) => [person.id, person])), [graph]);
   const nodeById = useMemo(() => new Map(layout.nodes.map((node) => [node.personId, node])), [layout]);
   const focusId = graph.focusPersonId;
+  const pathKey = highlightPath && highlightPath.length > 1 ? highlightPath.join('>') : null;
+  const onPath = useMemo(() => (pathKey ? new Set(pathKey.split('>')) : null), [pathKey]);
+  const highlightPairs = useMemo(() => {
+    if (!pathKey) return undefined;
+    const ids = pathKey.split('>');
+    const pairs = new Set<string>();
+    for (let step = 1; step < ids.length; step += 1) {
+      pairs.add(`${ids[step - 1]}|${ids[step]}`);
+      pairs.add(`${ids[step]}|${ids[step - 1]}`);
+    }
+    return pairs;
+  }, [pathKey]);
   const effectiveSize = size ?? FALLBACK_SIZE;
 
   // Track the container size; the canvas has no fixed dimensions of its own.
@@ -108,6 +126,20 @@ export function TreeCanvas({ treeId, view, selectedId, onSelect }: TreeCanvasPro
       containerRef.current?.querySelector<HTMLButtonElement>(`button[data-person-id="${personId}"]`)?.focus({ preventScroll: true });
     });
   }, []);
+
+  // Frame the whole Compare path when it changes.
+  useEffect(() => {
+    if (!pathKey) return;
+    const nodes = pathKey.split('>').flatMap((id) => nodeById.get(id) ?? []);
+    if (nodes.length === 0) return;
+    const minX = Math.min(...nodes.map((node) => node.x));
+    const minY = Math.min(...nodes.map((node) => node.y));
+    const maxX = Math.max(...nodes.map((node) => node.x + node.width));
+    const maxY = Math.max(...nodes.map((node) => node.y + node.height));
+    const result = fitToContent({ x: minX, y: minY, width: maxX - minX, height: maxY - minY }, effectiveSize, { fallbackFocus: nodes[0] });
+    setViewport({ ...result.viewport, scale: Math.max(result.viewport.scale, MIN_SCALE) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- frame only when the path itself changes
+  }, [pathKey]);
 
   // Keep the selected card on screen when selection changes (keyboard, search, URL).
   useEffect(() => {
@@ -182,8 +214,47 @@ export function TreeCanvas({ treeId, view, selectedId, onSelect }: TreeCanvasPro
     announce(`Found ${names.get(personId) ?? 'person'}`);
   };
 
+  const openMenuFor = (personId: string, x: number, y: number) => {
+    if (!cardMenuItems) return;
+    setMenu({ personId, x, y });
+  };
+
+  const menuRef = useRef(menu);
+  menuRef.current = menu;
+  const closeMenu = useCallback(
+    (restoreFocus: boolean) => {
+      const current = menuRef.current;
+      setMenu(null);
+      if (current && restoreFocus) focusCard(current.personId);
+    },
+    [focusCard],
+  );
+
+  const onContextMenu = (event: MouseEvent<HTMLDivElement>) => {
+    const card = (event.target as HTMLElement).closest<HTMLElement>('[data-person-id]');
+    const personId = card?.dataset.personId;
+    if (!personId || !cardMenuItems || !containerRef.current) return;
+    event.preventDefault();
+    const rect = containerRef.current.getBoundingClientRect();
+    // Keyboard-initiated context menus report (0, 0): open at the card instead.
+    if (event.clientX === 0 && event.clientY === 0 && card) {
+      const cardRect = card.getBoundingClientRect();
+      openMenuFor(personId, cardRect.left - rect.left + 12, cardRect.bottom - rect.top);
+    } else {
+      openMenuFor(personId, event.clientX - rect.left, event.clientY - rect.top);
+    }
+  };
+
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (isEditableTarget(event.target) || event.altKey) return;
+    const cardId = (event.target as HTMLElement).dataset.personId;
+    if (cardId && cardMenuItems && (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) && containerRef.current) {
+      event.preventDefault();
+      const rect = containerRef.current.getBoundingClientRect();
+      const cardRect = (event.target as HTMLElement).getBoundingClientRect();
+      openMenuFor(cardId, cardRect.left - rect.left + 12, cardRect.bottom - rect.top);
+      return;
+    }
     const withModifier = event.ctrlKey || event.metaKey;
     if (NAV_KEYS.has(event.key) && !withModifier) {
       event.preventDefault();
@@ -282,6 +353,7 @@ export function TreeCanvas({ treeId, view, selectedId, onSelect }: TreeCanvasPro
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={() => (drag.current = null)}
+      onContextMenu={onContextMenu}
       className="relative h-full w-full touch-none select-none overflow-hidden bg-canvas"
       style={{
         // A fixed dot pattern: moving it with the viewport repainted the whole canvas every frame.
@@ -292,14 +364,15 @@ export function TreeCanvas({ treeId, view, selectedId, onSelect }: TreeCanvasPro
     >
       <p id={helpId} className="sr-only">
         Use the arrow keys to move between relatives: up to a parent, down to a child, left and right along a generation. Press Enter to open
-        details, slash to search, plus and minus to zoom, F to fit the whole tree, Escape to clear the selection.
+        details, Shift+F10 or the Menu key for a person’s actions, slash to search, plus and minus to zoom, F to fit the whole tree, Escape to clear
+        the selection.
       </p>
 
       <div
         className="absolute left-0 top-0 origin-top-left will-change-transform"
         style={{ transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})` }}
       >
-        <EdgeLayer layout={layout} />
+        <EdgeLayer layout={layout} highlightPairs={highlightPairs} />
         {showBranches ? <BranchBrackets branches={layout.branches} marriedIn={marriedInBranches} labelFor={branchLabel} /> : null}
         {rendered.map((node) => {
           const person = people.get(node.personId);
@@ -314,7 +387,9 @@ export function TreeCanvas({ treeId, view, selectedId, onSelect }: TreeCanvasPro
               isFocus={person.id === focusId}
               isSelected={person.id === selectedId}
               isTabStop={person.id === tabStop}
-              dimmed={Boolean(query.trim()) && !matchesQuery({ name: names.get(person.id) ?? '', detail: relationToFocus.get(person.id)?.label ?? null }, query)}
+              dimmed={
+                onPath ? !onPath.has(person.id) : Boolean(query.trim()) && !matchesQuery({ name: names.get(person.id) ?? '', detail: relationToFocus.get(person.id)?.label ?? null }, query)
+              }
               onSelect={select}
               onToggleCollapsed={onToggleCollapsed}
             />
@@ -358,6 +433,10 @@ export function TreeCanvas({ treeId, view, selectedId, onSelect }: TreeCanvasPro
         <p role="status" data-canvas-overlay className="pointer-events-auto absolute bottom-3 left-3 max-w-md rounded-card border border-line bg-surface/95 px-4 py-2 text-sm text-ink shadow-card">
           {fitNotice}
         </p>
+      ) : null}
+
+      {menu && cardMenuItems ? (
+        <CardMenu anchor={menu} label={`Actions for ${names.get(menu.personId) ?? 'this person'}`} items={cardMenuItems(menu.personId)} onClose={closeMenu} />
       ) : null}
 
       {graph.people.length > MINIMAP_ABOVE ? (

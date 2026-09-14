@@ -1,12 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
-import { useCallback } from 'react';
-import { Outlet, useLoaderData, useMatch, useNavigate, type LoaderFunctionArgs } from 'react-router-dom';
+import { planSetFocus } from '@kinfolk/shared/relatives/planRelationshipEdits';
+import { useCallback, useMemo } from 'react';
+import { Link, Outlet, useLoaderData, useMatch, useNavigate, useSearchParams, type LoaderFunctionArgs } from 'react-router-dom';
+import { buttonClasses } from '../../components/Button';
 import { EmptyState } from '../../components/EmptyState';
 import { Icon } from '../../components/Icon';
 import { StatusBadge } from '../../components/StatusBadge';
 import { queryClient } from '../../lib/queryClient';
+import type { CardMenuItem } from '../../canvas/CardMenu';
 import { TreeCanvas } from '../../canvas/TreeCanvas';
-import { useCollapsed } from '../../canvas/useCanvasStore';
+import { useCanvasStore, useCollapsed } from '../../canvas/useCanvasStore';
+import { commitWithUndo } from './editing/changeQueue';
+import { SaveIndicator } from './editing/SaveIndicator';
+import { UndoRedoButtons } from './editing/UndoRedoButtons';
+import { DeletePersonDialog } from './people/DeletePersonDialog';
+import { PRIMITIVES } from './people/PersonActions';
+import { usePersonDialogs } from './people/personDialogStore';
+import { canEditTree } from './treePermissions';
 import { treeGraphQuery, type TreeGraphResponse } from './treeQueries';
 import { useTreeView } from './useTreeView';
 
@@ -21,11 +31,18 @@ export function Component() {
   const treeId = initial.tree.id;
   const { data } = useQuery({ ...treeGraphQuery(treeId), initialData: initial });
   const collapsed = useCollapsed(treeId);
+  const toggleCollapsed = useCanvasStore((state) => state.toggleCollapsed);
   const view = useTreeView(data.graph, collapsed);
   const navigate = useNavigate();
   const personMatch = useMatch('/trees/:treeId/people/:personId/*');
+  const compareMatch = useMatch('/trees/:treeId/compare');
+  const [searchParams] = useSearchParams();
   const selectedId = personMatch?.params.personId ?? null;
   const { tree } = data;
+  const editable = canEditTree(tree);
+  const deletingId = usePersonDialogs((state) => state.deletingId);
+  const openDelete = usePersonDialogs((state) => state.openDelete);
+  const closeDelete = usePersonDialogs((state) => state.close);
 
   const onSelect = useCallback(
     (personId: string | null, options?: { openPanel?: boolean }) => {
@@ -38,11 +55,64 @@ export function Component() {
     [navigate, treeId],
   );
 
+  const compareA = compareMatch ? searchParams.get('a') : null;
+  const compareB = compareMatch ? searchParams.get('b') : null;
+  const highlightPath = useMemo(() => {
+    if (!compareA || !compareB || compareA === compareB || !view.index.person(compareA) || !view.index.person(compareB)) return null;
+    return view.resolve(compareA, compareB).path;
+  }, [compareA, compareB, view]);
+
+  const cardMenuItems = useCallback(
+    (personId: string): CardMenuItem[] => {
+      const name = view.names.get(personId) ?? 'this person';
+      const base = `/trees/${treeId}/people/${personId}`;
+      const focusId = view.graph.focusPersonId;
+      const node = view.layout.nodes.find((candidate) => candidate.personId === personId);
+      const isCollapsed = collapsed.includes(personId);
+      const items: CardMenuItem[] = [{ label: 'Open details', icon: 'user', movesFocus: true, onSelect: () => navigate(base, { state: { focusPanel: true } }) }];
+      if (editable) {
+        items.push({ separator: true, key: 'add' });
+        for (const primitive of PRIMITIVES) {
+          items.push({ label: primitive.label, icon: 'user-plus', movesFocus: true, onSelect: () => navigate(`${base}/add/${primitive.relation}`) });
+        }
+        items.push({ label: 'More relatives…', icon: 'users', movesFocus: true, onSelect: () => navigate(`${base}/add`) });
+        items.push({ separator: true, key: 'edit' });
+        items.push({ label: 'Edit details', icon: 'pencil', movesFocus: true, onSelect: () => navigate(`${base}/edit`) });
+        items.push({ label: 'Relationships', icon: 'link', movesFocus: true, onSelect: () => navigate(`${base}/relationships`) });
+        if (focusId !== personId) {
+          items.push({
+            label: 'Set as focus',
+            icon: 'target',
+            onSelect: () => void commitWithUndo(treeId, planSetFocus(personId), `Made ${name} the focus person`, `Relationships are now shown relative to ${name}.`).catch(() => undefined),
+          });
+        }
+      }
+      items.push({ separator: true, key: 'view' });
+      items.push({
+        label: 'Compare…',
+        icon: 'compare',
+        movesFocus: true,
+        onSelect: () => navigate(`/trees/${treeId}/compare?a=${personId}${focusId && focusId !== personId ? `&b=${focusId}` : ''}`),
+      });
+      if (node?.hasDescendants || isCollapsed) {
+        items.push({ label: isCollapsed ? 'Show descendants' : 'Hide descendants', icon: isCollapsed ? 'expand' : 'collapse', onSelect: () => toggleCollapsed(treeId, personId) });
+      }
+      if (editable) {
+        items.push({ label: 'Merge with…', icon: 'merge', movesFocus: true, onSelect: () => navigate(`${base}/merge`) });
+        items.push({ label: 'Delete…', icon: 'trash', tone: 'danger', movesFocus: true, onSelect: () => openDelete(personId) });
+      }
+      return items;
+    },
+    [view, treeId, collapsed, editable, navigate, toggleCollapsed, openDelete],
+  );
+
   const roleLabel = ROLE_LABEL[tree.role];
+  const needsDetail = data.graph.people.filter((person) => person.isPlaceholder || !person.birthDate).length;
+  const count = data.graph.people.length;
 
   return (
     <main id="main" tabIndex={-1} className="flex min-h-0 flex-1 flex-col outline-none">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-surface px-4 py-3 sm:px-6">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-surface px-4 py-2 sm:px-6">
         <h1 className="min-w-0 truncate font-serif text-2xl font-semibold">{tree.name}</h1>
         <StatusBadge status={tree.status} />
         {roleLabel ? (
@@ -52,22 +122,58 @@ export function Component() {
           </span>
         ) : null}
         <span className="text-base text-ink-muted">
-          {data.graph.people.length} {data.graph.people.length === 1 ? 'person' : 'people'}
+          {count} {count === 1 ? 'person' : 'people'}
         </span>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {editable ? <SaveIndicator treeId={treeId} /> : null}
+          {editable ? <UndoRedoButtons treeId={treeId} /> : null}
+          {count > 0 ? (
+            <>
+              <Link to={`/trees/${treeId}/needs-detail`} className={buttonClasses('ghost', 'px-3')}>
+                <Icon name="list" />
+                Needs detail{needsDetail > 0 ? ` (${needsDetail})` : ''}
+              </Link>
+              <Link to={`/trees/${treeId}/compare${selectedId ? `?a=${selectedId}` : ''}`} className={buttonClasses('ghost', 'px-3')}>
+                <Icon name="compare" />
+                Compare
+              </Link>
+            </>
+          ) : null}
+          {editable && count > 0 ? (
+            <Link to={`/trees/${treeId}/add`} className={buttonClasses('secondary', 'px-3')}>
+              <Icon name="user-plus" />
+              Add person
+            </Link>
+          ) : null}
+        </div>
       </div>
       <div className="flex min-h-0 flex-1">
         <div className="relative min-h-[28rem] min-w-0 flex-1" style={{ height: 'calc(100vh - 8.5rem)' }}>
-          {data.graph.people.length === 0 ? (
-            <EmptyState icon="tree" title="No one in this family tree yet" className="py-16">
-              Start with one person — usually yourself or the person whose planning this is for. From them you can add parents, partners,
-              children, and siblings, and grow the tree in any direction.
+          {count === 0 ? (
+            <EmptyState
+              icon="tree"
+              title="No one in this family tree yet"
+              className="py-16"
+              action={
+                editable ? (
+                  <Link to={`/trees/${treeId}/add`} className={buttonClasses('primary')}>
+                    <Icon name="user-plus" />
+                    Add the first person
+                  </Link>
+                ) : null
+              }
+            >
+              {editable
+                ? 'Start with one person — usually yourself or the person whose planning this is for. From them you can add parents, partners, children, and siblings, and grow the tree in any direction.'
+                : 'The owner hasn’t added anyone yet. People will appear here as soon as they do.'}
             </EmptyState>
           ) : (
-            <TreeCanvas treeId={treeId} view={view} selectedId={selectedId} onSelect={onSelect} />
+            <TreeCanvas treeId={treeId} view={view} selectedId={selectedId} onSelect={onSelect} highlightPath={highlightPath} cardMenuItems={cardMenuItems} />
           )}
         </div>
         <Outlet context={{ view, tree, onSelect }} />
       </div>
+      {deletingId && editable ? <DeletePersonDialog tree={tree} view={view} personId={deletingId} onClose={closeDelete} /> : null}
     </main>
   );
 }

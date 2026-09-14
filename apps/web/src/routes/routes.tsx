@@ -1,5 +1,6 @@
 import { fullName } from '@kinfolk/shared/graph/displayName';
-import type { RouteObject } from 'react-router-dom';
+import { RELATIONS } from '@kinfolk/shared/relatives/planAddRelative';
+import type { RouteObject, UIMatch } from 'react-router-dom';
 import type { TreeGraphResponse } from '../features/tree/treeQueries';
 import { AppShell } from './AppShell';
 import { redirectIfSignedInLoader, requireUserLoader, rootLoader } from './guards';
@@ -13,6 +14,28 @@ const handle = (title: RouteHandle['title']): RouteHandle => ({ title });
 
 function treeData(data: unknown): TreeGraphResponse | null {
   return data && typeof data === 'object' && 'tree' in data && 'graph' in data ? (data as TreeGraphResponse) : null;
+}
+
+type Match = UIMatch<unknown, unknown>;
+
+/** Titles for screens about one person: "Edit Ravi’s details · Sharma family". */
+function personTitle(build: (name: string, match: Match, data: TreeGraphResponse | null) => string): RouteHandle {
+  return handle((match, matches) => {
+    const data = treeData(matches.find((candidate) => treeData(candidate.data))?.data);
+    const nameFor = (id: string | undefined) => {
+      const person = data?.graph.people.find((candidate) => candidate.id === id);
+      return person ? fullName(person) || 'Unnamed person' : 'Person';
+    };
+    const title = build(nameFor(match.params.personId), match, data);
+    return data ? `${title} · ${data.tree.name}` : title;
+  });
+}
+
+function treeTitle(title: string): RouteHandle {
+  return handle((_match, matches) => {
+    const data = treeData(matches.find((candidate) => treeData(candidate.data))?.data);
+    return data ? `${title} · ${data.tree.name}` : title;
+  });
 }
 
 /**
@@ -74,16 +97,56 @@ export const routes: RouteObject[] = [
             errorElement: <RouteErrorBoundary />,
             lazy: () => import('../features/tree/TreeRoute'),
             children: [
+              { path: 'add', handle: treeTitle('Add a person'), errorElement: <RouteErrorBoundary />, lazy: () => import('../features/tree/people/AddPersonRoute') },
+              { path: 'compare', handle: treeTitle('Compare two people'), errorElement: <RouteErrorBoundary />, lazy: () => import('../features/tree/compare/CompareRoute') },
+              { path: 'needs-detail', handle: treeTitle('Needs detail'), errorElement: <RouteErrorBoundary />, lazy: () => import('../features/tree/people/NeedsDetailRoute') },
               {
                 path: 'people/:personId',
-                handle: handle((match, matches) => {
-                  const data = treeData(matches.find((candidate) => treeData(candidate.data))?.data);
-                  const person = data?.graph.people.find((candidate) => candidate.id === match.params.personId);
-                  const name = person ? fullName(person) || 'Unnamed person' : 'Person';
-                  return data ? `${name} · ${data.tree.name}` : name;
-                }),
+                handle: personTitle((name) => name),
                 errorElement: <RouteErrorBoundary />,
                 lazy: () => import('../features/tree/PersonPanelRoute'),
+              },
+              {
+                path: 'people/:personId/add',
+                handle: personTitle((name) => `Add a relative of ${name}`),
+                errorElement: <RouteErrorBoundary />,
+                lazy: () => import('../features/tree/people/RelationPickerRoute'),
+              },
+              {
+                path: 'people/:personId/add/:relation',
+                handle: personTitle((name, match) => {
+                  const relation = RELATIONS.find((entry) => entry.key === match.params.relation);
+                  return relation ? `Add ${relation.label.toLowerCase()} · ${name}` : `Add a relative of ${name}`;
+                }),
+                errorElement: <RouteErrorBoundary />,
+                lazy: () => import('../features/tree/people/AddRelativeRoute'),
+              },
+              {
+                path: 'people/:personId/edit',
+                handle: personTitle((name) => `Edit ${name}’s details`),
+                errorElement: <RouteErrorBoundary />,
+                lazy: () => import('../features/tree/people/EditPersonRoute'),
+              },
+              {
+                path: 'people/:personId/relationships',
+                handle: personTitle((name) => `${name}’s relationships`),
+                errorElement: <RouteErrorBoundary />,
+                lazy: () => import('../features/tree/people/RelationshipsRoute'),
+              },
+              {
+                path: 'people/:personId/merge',
+                handle: personTitle((name) => `Merge ${name} with someone`),
+                errorElement: <RouteErrorBoundary />,
+                lazy: () => import('../features/tree/people/MergePickerRoute'),
+              },
+              {
+                path: 'people/:personId/merge/:otherId',
+                handle: personTitle((name, match, data) => {
+                  const other = data?.graph.people.find((candidate) => candidate.id === match.params.otherId);
+                  return `Merge ${name} and ${other ? fullName(other) || 'Unnamed person' : 'someone'}`;
+                }),
+                errorElement: <RouteErrorBoundary />,
+                lazy: () => import('../features/tree/people/MergeRoute'),
               },
             ],
           },
