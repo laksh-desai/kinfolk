@@ -10,6 +10,7 @@ import { accountRoutes } from './modules/account/accountRoutes';
 import { registerAuthContext } from './modules/auth/authenticate';
 import { authRoutes, type AuthRateLimits } from './modules/auth/authRoutes';
 import { avatarAuthorizer, fileRoutes } from './modules/files/fileRoutes';
+import { photoRoutes, treeFileAuthorizer } from './modules/trees/photoRoutes';
 import { treeRoutes } from './modules/trees/treeRoutes';
 
 export interface BuildAppOptions {
@@ -35,15 +36,18 @@ export async function buildApp(deps: AppDeps, options: BuildAppOptions = {}): Pr
   });
 
   await app.register(cookie);
+  // Google Places is the only third party, and only when a key is configured (SPEC §6.23).
+  const places = deps.env.VITE_GOOGLE_PLACES_KEY ? ['https://maps.googleapis.com'] : [];
+  const placesAssets = deps.env.VITE_GOOGLE_PLACES_KEY ? ['https://maps.gstatic.com', 'https://maps.googleapis.com'] : [];
   await app.register(helmet, {
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        imgSrc: ["'self'", 'data:', 'blob:'],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'"],
-        connectSrc: ["'self'"],
-        fontSrc: ["'self'"],
+        imgSrc: ["'self'", 'data:', 'blob:', ...placesAssets],
+        styleSrc: ["'self'", "'unsafe-inline'", ...(places.length ? ['https://fonts.googleapis.com'] : [])],
+        scriptSrc: ["'self'", ...places],
+        connectSrc: ["'self'", ...places],
+        fontSrc: ["'self'", ...(places.length ? ['https://fonts.gstatic.com'] : [])],
         objectSrc: ["'none'"],
         frameAncestors: ["'none'"],
         formAction: ["'self'"],
@@ -99,7 +103,8 @@ export async function buildApp(deps: AppDeps, options: BuildAppOptions = {}): Pr
   await app.register(authRoutes, { deps, rateLimit: authRateLimit });
   await app.register(accountRoutes, { deps });
   await app.register(treeRoutes, { deps });
-  await app.register(fileRoutes, { deps, authorizers: { 'avatars/': avatarAuthorizer } });
+  await app.register(photoRoutes, { deps });
+  await app.register(fileRoutes, { deps, authorizers: { 'avatars/': avatarAuthorizer, 'trees/': treeFileAuthorizer(deps) } });
 
   return app;
 }
