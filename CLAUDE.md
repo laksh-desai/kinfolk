@@ -125,7 +125,7 @@ anything true for one commit only.
 orient. Replace lines rather than stacking them.)*
 
 - Workspace: `apps/web` (React 18, RR 6.30 lazy routes), `apps/api` (Fastify 5, Prisma 6), `packages/shared` (import by subpath, e.g. `@kinfolk/shared/layout/computeLayout`).
-- Built: cookie auth (password, dev/real Google, OTP reset), account page, tree API, graph ChangeSets, layout, kinship, canvas, person editing (M6).
+- Built: cookie auth (password, dev/real Google, OTP reset), account page, tree API, graph ChangeSets, layout, kinship, canvas, person editing, dashboard, tree rename/delete, list view (`?view=list`).
 - Graph edits: `POST /api/trees/:id/changes` → `commitChangeSet` (lock, pure `applyChangeSet`, persist, audit per op, returns inverse).
 - Roles per request: `lib/treeAccess.ts` `requireTreeRole`; redaction: `lib/graphRows.ts` `graphForVisibility`.
 - Pure: `computeLayout(graph, { collapsed })`, `createKinshipResolver(graph)(ego, alter)`, `displayName(index, id)`, `lifespanLabel`.
@@ -149,8 +149,8 @@ orient. Replace lines rather than stacking them.)*
 - Hidden "(required)" in labels double-announces and breaks exact label queries; so does announcing an alert you also focus → rely on `aria-required` / focus only.
 - `.claude/settings.json` denies `Read(./.env.*)`, which also blocks the Write tool on `.env.example` → write that one file via shell.
 - `queryClient.ensureQueryData(sessionQuery)` returns a cached `null` after sign-out → any new sign-in path must `setQueryData`/`fetchQuery` the session before navigating, or the guard bounces to /login.
-- Person/union/edge ids are global PKs → the same fixture can't go into two trees in one DB; pass a distinct `namespace` to `buildSeedTree`.
-- Prisma Json columns need `Prisma.DbNull` for null, not `null` → use the helpers in `lib/graphRows.ts`.
+- Person/union/edge ids are global PKs → pass a distinct `namespace` to `buildSeedTree` per tree. Route titles read the query cache (`routes.tsx` `currentTree`), not stale loader data.
+- Prisma Json columns need `Prisma.DbNull` for null → helpers in `lib/graphRows.ts`. Embedded-Postgres temp dirs can stay locked on Windows after tests → teardown retries, then warns; harmless.
 - Bash tool: unquoted heredocs break on apostrophes and `/tmp` isn't `C:	mp` for node → use Write/Edit, or `cygpath -w`. O(n²) per-iteration `expect` at 500 people takes minutes → collect, assert once.
 - To eyeball a layout, render it to SVG→PNG with sharp from a scratch `.mts` script (top-level await needs ESM) and Read the PNG.
 - Memoised `PersonCard`s re-render on every pan if any prop is a fresh inline callback → keep canvas callbacks in `useCallback`.

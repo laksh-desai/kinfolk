@@ -490,3 +490,50 @@ default path, and no key exists here.
 **Consequences.** Without a key nothing third-party loads and every address field is
 plain text; this is the tested path. The Places path is unverified here (QUESTIONS Q40).
 The form doesn't carry `lat`/`lng`, so saving an address clears any stored coordinates.
+
+
+## 021 — List view shares the tree's routes; the chosen view is in the URL and remembered
+Date: 2026-09-14
+Status: accepted
+
+**Context.** SPEC §5.3 wants a list/outline view with the same add/edit actions. It is the
+screen-reader and small-screen path. Every screen must restore from its URL (§6.1).
+- Options:
+  - A separate route tree under `/trees/:id/list/...`, duplicating every person route.
+  - A view mode held only in UI state (lost on refresh).
+  - A `?view=` parameter plus a remembered preference.
+
+**Decision.**
+- The tree route renders either the canvas or `TreeOutline` in the same slot. Every
+  person screen (panel routes, dialogs) works identically over both.
+- `?view=list|canvas` selects the view, and is saved as a display preference in
+  `lib/preferences.ts`, the only storage module.
+- Screens that drop the query string, such as a person's panel, keep the last chosen
+  view. Without a saved choice, windows narrower than 640 px start in List.
+- The outline is built from `computeLayout`'s rows by the pure `outlineTree`. Its
+  generations and order match the canvas, and collapsed branches are left out of both.
+
+**Consequences.** No duplicated routes. A pasted `?view=list` link opens the list, and a
+refresh anywhere restores the last view on that device. The view isn't shared between
+devices; it is a preference, not data.
+
+## 022 — Page titles read the live query cache, not the loader snapshot
+Date: 2026-09-14
+Status: accepted
+
+**Context.** Route titles were computed from loader data. Loader data is a snapshot, so
+after an in-place rename or a person rename the title stayed stale until navigation. The
+M7 rename test caught it.
+- Options:
+  - Revalidate the router after every edit (an extra fetch per change).
+  - Set `document.title` imperatively from each screen.
+  - Read titles from the query cache.
+
+**Decision.**
+- Title functions look up the tree in the TanStack Query cache by the loader's tree id,
+  falling back to the loader snapshot.
+- `DocumentTitle` re-reads titles when the query cache changes, via
+  `useSyncExternalStore`.
+
+**Consequences.** Titles follow optimistic edits immediately with no extra requests. Title
+functions depend on the query client, a module singleton already used by loaders.

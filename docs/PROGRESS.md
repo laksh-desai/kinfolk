@@ -4,14 +4,29 @@ Milestones are defined in `docs/SPEC.md` §10. Update at every checkpoint.
 
 ## In progress
 
-**M7 — Dashboard, tree management, list view.** Plan below under "Milestone plans → M7".
+**M8 — Collaboration.** Plan below under "Milestone plans → M8".
 
 ## Up next
 
-M8 Collaboration · M9 Review workflow · M10 Events, import, export
+M9 Review workflow · M10 Events, import, export
 
 ## Done
 
+- **M7 — Dashboard, tree management, list view** (2026-09-14).
+  - Dashboard: owned and shared trees as cards (people count, status, "Edited 2 hours ago",
+    role and owner for shared trees). Skeleton loading, error with retry, an empty state
+    that explains trees, and a New family tree dialog.
+  - Tree header: rename in place (opens on the first click, Enter/Escape, undo toast) and a
+    settings menu with type-to-confirm tree deletion that lists what is destroyed.
+  - List/outline view: generations → families → people, with the canvas's actions.
+    Tree/List switch held in the URL and remembered; narrow screens default to List.
+  - Page titles now follow renames through the query cache. Edits invalidate the dashboard
+    summary.
+  - Planned `lastEditedAt` dropped: `updatedAt` already moves on every change set (new API
+    test).
+  - Tests: 16 new web (dashboard, header, list, outline, relative time), 1 API. Playwright
+    `dashboard.spec.ts`: create → first person → list → reload → rename → delete by typed
+    name, with axe. Gate: lint clean, 487 unit/integration tests, 12/12 e2e.
 - **M6 — People & relationships** (2026-09-14). Pure planners in `packages/shared/src/relatives/`:
   add relative (every §4.2 relation, placeholders with a summary sentence, `NEW_PERSON`),
   delete impact and modes, merge, relationship edits, direct relatives. The editing core
@@ -326,7 +341,56 @@ path: person ids along the chosen route (for Compare drawing)
 
 # Milestone plans
 
-## M7 — Dashboard, tree management, list view (in progress)
+## M8 — Collaboration (in progress)
+
+Models already exist: `Access`, `Invitation`, `LinkRequest`, `ShareLink`. The API adds
+modules `access/`, `invitations/`, `sharing/`, and `links/`. Each route checks the role
+server-side and writes audit events.
+
+- **Access (§5.6, Q22).**
+  - Owner lists, adds (name, email, role), changes role inline, and revokes (with
+    confirmation).
+  - Adding a registered email creates an `invited` Access and emails the invitee, who
+    accepts from the dashboard's actionable list.
+  - Editors and viewers see who else has access but can't change it.
+  - Rate limit on adding.
+- **Share links (§5.6, Q24).**
+  - Create with optional expiry, copy, and revoke.
+  - Signed tokens; only the hash is stored.
+  - `GET /api/share/:token/graph` returns the redacted graph via `graphForVisibility(…,
+    'redacted')`. Names, relationships, and birth years only.
+  - A public read-only route `/s/:token` shows the canvas and list without the app shell.
+    Invalid, expired, and revoked links each get a plain explanation.
+- **Invitations (§5.5).**
+  - Invite a relative by email from their card.
+  - Stages: `sent → joined` (invitee signs up or in through `/invite/:token`) →
+    `tree_created` (already hooked in `POST /api/trees`) → `linked` (link request
+    approved), each with a real timestamp. Resend (new token and email) and revoke.
+  - A four-stage indicator in the person panel.
+- **Linked trees (§5.5, Q23).**
+  - The invitee requests to link their tree to their node in the inviting tree.
+  - The owner approves or rejects on a Link requests screen. Approval sets
+    `Person.linkedTreeId` through the server-managed path (ADR 012), advances the
+    invitation, and grants the approver viewer access.
+  - Linked people show "Open linked tree", with a breadcrumb back. When the link isn't
+    available, explain why (§6.15).
+- **Dashboard actionable list.** Pending access invites (accept or decline), link requests
+  (review), and invitations waiting on others. Shown only when non-empty.
+
+Tests:
+- API: role checks for every endpoint. The share graph test asserts phone, email,
+  address, notes, planning, full dates, and photos are absent. Invitation stages advance
+  from real events (signup, tree creation, approval). A link request approval sets
+  `linkedTreeId`. Expired and revoked tokens are refused.
+- RTL + axe: access dialog (search, sort, inline role change, revoke confirm); share
+  dialog (copy, expiry, revoke); invitation tracker; link requests screen.
+- Playwright: dialogs at 768 px have no horizontal overflow and no clipped selects (§6.5);
+  a share link in a signed-out browser shows only redacted fields; owner invites a member
+  who accepts.
+
+Done when: the M8 row in table E is demonstrated.
+
+## M7 — Dashboard, tree management, list view (done 2026-09-14)
 
 API (`GET /api/trees` already returns owned and shared trees with role and `peopleCount`):
 - Add `lastEditedAt` (the latest audit event) to `TreeSummaryDto` so "last edited" means an
