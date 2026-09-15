@@ -72,6 +72,7 @@ export async function createTestContext(
   };
   const app = await buildApp(deps, {
     authRateLimit: options.authRateLimit ?? { max: 10_000, timeWindow: '1 minute' },
+    inviteRateLimit: options.inviteRateLimit ?? { max: 10_000, timeWindow: '1 minute' },
   });
   await app.ready();
   return {

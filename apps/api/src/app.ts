@@ -10,12 +10,17 @@ import { accountRoutes } from './modules/account/accountRoutes';
 import { registerAuthContext } from './modules/auth/authenticate';
 import { authRoutes, type AuthRateLimits } from './modules/auth/authRoutes';
 import { avatarAuthorizer, fileRoutes } from './modules/files/fileRoutes';
+import { accessRoutes, type InviteRateLimits } from './modules/access/accessRoutes';
+import { invitationRoutes } from './modules/invitations/invitationRoutes';
+import { shareRoutes } from './modules/sharing/shareRoutes';
 import { photoRoutes, treeFileAuthorizer } from './modules/trees/photoRoutes';
 import { treeRoutes } from './modules/trees/treeRoutes';
 
 export interface BuildAppOptions {
   logger?: boolean;
   authRateLimit?: AuthRateLimits;
+  /** Sharing and invitation emails: a few per hour is plenty for a person, and stops mail abuse. */
+  inviteRateLimit?: InviteRateLimits;
 }
 
 export async function buildApp(deps: AppDeps, options: BuildAppOptions = {}): Promise<FastifyInstance> {
@@ -104,6 +109,10 @@ export async function buildApp(deps: AppDeps, options: BuildAppOptions = {}): Pr
   await app.register(accountRoutes, { deps });
   await app.register(treeRoutes, { deps });
   await app.register(photoRoutes, { deps });
+  const inviteRateLimit = options.inviteRateLimit ?? { max: 30, timeWindow: '1 hour' };
+  await app.register(accessRoutes, { deps, rateLimit: inviteRateLimit });
+  await app.register(shareRoutes, { deps });
+  await app.register(invitationRoutes, { deps, rateLimit: inviteRateLimit });
   await app.register(fileRoutes, { deps, authorizers: { 'avatars/': avatarAuthorizer, 'trees/': treeFileAuthorizer(deps) } });
 
   return app;
