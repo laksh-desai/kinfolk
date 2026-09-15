@@ -126,8 +126,7 @@ orient. Replace lines rather than stacking them.)*
 
 - Workspace: `apps/web` (React 18, RR 6.30 lazy routes), `apps/api` (Fastify 5, Prisma 6), `packages/shared` (import by subpath, e.g. `@kinfolk/shared/layout/computeLayout`).
 - Built: cookie auth (password, dev/real Google, OTP reset), account page, tree API, graph ChangeSets, layout, kinship, canvas, person editing, dashboard, list view, access + share links + invitations + linked trees, review workflow.
-- Graph edits: `POST /api/trees/:id/changes` → `commitChangeSet` (lock, pure `applyChangeSet`, persist, audit per op, returns inverse).
-- Roles per request: `lib/treeAccess.ts` `requireTreeRole`; redaction: `lib/graphRows.ts` `graphForVisibility`.
+- Graph edits: `POST /api/trees/:id/changes` → `commitChangeSet` (lock, pure `applyChangeSet`, persist, audit per op, returns inverse). Roles per request: `lib/treeAccess.ts` `requireTreeRole`; redaction: `lib/graphRows.ts` `graphForVisibility`.
 - Pure: `computeLayout(graph, { collapsed })`, `createKinshipResolver(graph)(ego, alter)`, `displayName(index, id)`, `lifespanLabel`.
 - Canvas: `apps/web/src/canvas/` (pure `viewport.ts`, `keyboardNav.ts`, `culling.ts`, one `CardMenu`); tree page `features/tree/TreeRoute.tsx` + `useTreeView`.
 - Review: `features/review/` (owner banner + submit dialog; reviewer screen at `/review/:token`). Editing while `in_review` is refused by `commitChangeSet` and hidden by `canEditTree`.
