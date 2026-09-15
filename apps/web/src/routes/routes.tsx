@@ -109,6 +109,7 @@ export const routes: RouteObject[] = [
             lazy: () => import('../features/tree/TreeRoute'),
             children: [
               { path: 'access', handle: treeTitle('Sharing'), errorElement: <RouteErrorBoundary />, lazy: () => import('../features/collaboration/AccessDialogRoute') },
+              { path: 'review', handle: treeTitle('Send for review'), errorElement: <RouteErrorBoundary />, lazy: () => import('../features/review/SubmitReviewDialogRoute') },
               { path: 'link-requests', handle: treeTitle('Link requests'), errorElement: <RouteErrorBoundary />, lazy: () => import('../features/collaboration/LinkRequestsDialogRoute') },
               {
                 path: 'people/:personId/invite',
@@ -179,6 +180,15 @@ export const routes: RouteObject[] = [
         }),
         errorElement: <RouteErrorBoundary />,
         lazy: () => import('../features/sharing/SharedTreeRoute'),
+      },
+      {
+        path: 'review/:token',
+        handle: handle((match) => {
+          const review = queryClient.getQueryData<{ tree: { name: string } }>(['review', match.params.token]);
+          return review ? `Review ${review.tree.name}` : 'Review a family tree';
+        }),
+        errorElement: <RouteErrorBoundary />,
+        lazy: () => import('../features/review/ReviewRoute'),
       },
       { path: 'invite/:token', handle: handle('Your invitation'), errorElement: <RouteErrorBoundary />, lazy: () => import('../features/collaboration/InviteAcceptRoute') },
       { path: '*', handle: handle('Page not found'), element: <NotFoundRoute /> },

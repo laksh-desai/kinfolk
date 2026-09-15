@@ -583,3 +583,34 @@ falls back to the name, or "Someone with access", when there is no address to sh
 an address — inviting, changing a role, revoking — are owner-only anyway. Tested in
 `collaboration.test.ts` › "keeps other people's email addresses from members who don't
 manage access".
+
+
+## 025 — Review: one claimable link, a hard lock, and the same assignment through resubmission
+Date: 2026-09-15
+Status: accepted
+
+**Context.** SPEC §5.7 wants the owner to submit for review, the reviewer to work from
+`/review/:token`, and change requests to flow back. §5.7 says to pick one behaviour for
+editing during review and be consistent (QUESTIONS Q21 chose: locked).
+
+**Decision.**
+- **Claim on first open.** A review link is a bearer token, but the first signed-in person
+  to open it is recorded as the reviewer; anyone else gets a plain refusal and is told to
+  ask for their own link. A decision needs an author, so signing in is required (Q1).
+- **One open assignment per tree.** Submitting while a review is open is refused; sending
+  to someone else means withdrawing first. Withdrawing revokes the token and returns the
+  tree to draft.
+- **Resubmitting reuses the same assignment**, clearing its decision, so the reviewer's
+  link keeps working and the history stays on one row. Change requests are separate rows
+  with their own author, time, and resolved state.
+- **The lock lives in one place.** `commitChangeSet` already refuses writes while
+  `in_review` (409), and `canEditTree` hides edit affordances. The banner explains the
+  pause rather than showing disabled controls.
+- **Reviewers read through their own endpoint.** `GET /api/review/:token` returns the full
+  graph with planning answers; claiming also grants the `reviewer` role on the tree itself,
+  which is read-only everywhere else.
+
+**Consequences.** A forwarded review link is useless to a second person, which is the point.
+The owner can always withdraw, so nobody is stuck waiting on a reviewer who never opens it.
+An approved tree returns to draft on the next edit (Q21), and the banner says so before the
+first edit.

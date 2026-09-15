@@ -24,8 +24,9 @@ export function Inbox({ onCreateTree }: { onCreateTree: () => void }) {
   if (inbox.isError) {
     return <ErrorState error={inbox.error} title="Invitations and requests didn’t load" onRetry={() => void inbox.refetch()} retrying={inbox.isRefetching} className="py-4" />;
   }
-  const { accessInvites, linkRequests, invitations } = inbox.data;
-  if (accessInvites.length + linkRequests.length + invitations.length === 0) return null;
+  // Defaults keep an older API response from breaking the dashboard.
+  const { accessInvites = [], linkRequests = [], invitations = [], changeRequests = [] } = inbox.data;
+  if (accessInvites.length + linkRequests.length + invitations.length + changeRequests.length === 0) return null;
   const ownTrees = trees.data?.filter((tree) => tree.role === 'owner') ?? [];
 
   const answerAccess = async (id: string, treeName: string, decision: 'accept' | 'decline') => {
@@ -63,6 +64,19 @@ export function Inbox({ onCreateTree }: { onCreateTree: () => void }) {
                 Decline
               </Button>
             </div>
+          </li>
+        ))}
+        {changeRequests.map((request) => (
+          <li key={request.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+            <div className="min-w-0 flex-1 basis-64">
+              <p className="text-base">
+                <span className="font-semibold">{request.author ?? 'Your reviewer'}</span> asked for changes to <span className="font-semibold">“{request.tree.name}”</span>.
+              </p>
+              <p className="whitespace-pre-line text-sm text-ink-muted">{request.body}</p>
+            </div>
+            <Link to={`/trees/${request.tree.id}`} className={buttonClasses('secondary')}>
+              Open tree
+            </Link>
           </li>
         ))}
         {linkRequests.map((request) => (

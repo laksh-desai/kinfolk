@@ -400,6 +400,8 @@ model ReviewAssignment {
   treeId         String    @db.Uuid
   tokenHash      String    @unique
   reviewerEmail  String
+  /// The owner's note to the reviewer when they sent it.
+  note           String?
   reviewerUserId String?   @db.Uuid
   createdById    String?   @db.Uuid
   createdAt      DateTime  @default(now())

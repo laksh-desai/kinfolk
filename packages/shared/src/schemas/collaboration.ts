@@ -123,6 +123,8 @@ export interface InboxDto {
     stage: InvitationStage;
     pendingLinkRequest: boolean;
   }>;
+  /** Open notes from a reviewer on trees you own (SPEC §5.7). */
+  changeRequests: Array<{ id: string; tree: { id: string; name: string }; body: string; author: string | null; createdAt: string }>;
 }
 
 export interface LinkRequestDto {

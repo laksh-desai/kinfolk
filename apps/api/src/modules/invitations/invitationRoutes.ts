@@ -269,7 +269,7 @@ export async function invitationRoutes(app: FastifyInstance, opts: { deps: AppDe
   /** Everything waiting on the signed-in person, for the dashboard (SPEC §5.2). */
   app.get('/api/me/inbox', async (request): Promise<InboxDto> => {
     const { user } = requireAuth(request);
-    const [accessInvites, linkRequests, invitations] = await Promise.all([
+    const [accessInvites, linkRequests, invitations, changeRequests] = await Promise.all([
       deps.prisma.access.findMany({
         where: { email: user.email.toLowerCase(), status: 'invited' },
         include: { tree: true, invitedBy: { select: { firstName: true, lastName: true } } },
@@ -284,6 +284,11 @@ export async function invitationRoutes(app: FastifyInstance, opts: { deps: AppDe
         where: { inviteeUserId: user.id, revokedAt: null, stage: { in: ['joined', 'tree_created'] } },
         include: { tree: true, person: true, invitedBy: { select: { firstName: true, lastName: true } } },
         orderBy: { sentAt: 'desc' },
+      }),
+      deps.prisma.changeRequest.findMany({
+        where: { status: 'open', tree: { ownerId: user.id } },
+        include: { tree: true, author: { select: { firstName: true, lastName: true } } },
+        orderBy: { createdAt: 'desc' },
       }),
     ]);
     const pending = await deps.prisma.linkRequest.findMany({
@@ -313,6 +318,13 @@ export async function invitationRoutes(app: FastifyInstance, opts: { deps: AppDe
         invitedBy: userDisplayName(invitation.invitedBy),
         stage: invitation.stage,
         pendingLinkRequest: pending.some((entry) => entry.toTreeId === invitation.treeId && entry.personId === invitation.personId),
+      })),
+      changeRequests: changeRequests.map((entry) => ({
+        id: entry.id,
+        tree: { id: entry.tree.id, name: entry.tree.name },
+        body: entry.body,
+        author: userDisplayName(entry.author),
+        createdAt: entry.createdAt.toISOString(),
       })),
     };
   });

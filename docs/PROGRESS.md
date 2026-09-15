@@ -4,14 +4,24 @@ Milestones are defined in `docs/SPEC.md` §10. Update at every checkpoint.
 
 ## In progress
 
-**M9 — Review workflow.** Plan below under "Milestone plans → M9".
+**M10 — Key events, import, export.** Plan below under "Milestone plans → M10".
 
 ## Up next
 
-M10 Events, import, export
+_(M10 is the last milestone.)_
 
 ## Done
 
+- **M9 — Review workflow** (2026-09-15). Owner sends a tree to a reviewer by email with a
+  note; the tree locks (`in_review`) for everyone and the banner says who has it, since when,
+  and that editing is paused, with Withdraw beside it. The reviewer opens `/review/:token`,
+  signs in (their decision needs an author), and sees the whole tree — canvas or list, planning
+  answers included, placeholders counted — then approves or writes a change request. Notes come
+  back as a banner and on the owner's dashboard, with Mark resolved and Resubmit. Approved trees
+  return to draft on the next edit, and the banner says so first. The first person to open a
+  review link claims it; anyone else is told to ask for their own.
+  Tests: 3 API (full cycle with audit trail, claim and withdrawal, refusals), 8 web RTL + axe,
+  and the §12 Playwright journey across two browsers. Gate: lint clean, 529 tests, 15/15 e2e.
 - **M8 — Collaboration** (2026-09-15).
   - Access: owner invites by name, email, and role; members accept or decline from the
     dashboard; roles change inline; access is revoked with confirmation. Everyone sees who
@@ -358,7 +368,48 @@ path: person ids along the chosen route (for Compare drawing)
 
 # Milestone plans
 
-## M9 — Review workflow (in progress)
+## M10 — Key events, GEDCOM/CSV import, exports (in progress)
+
+Pure modules first, each with tests, then the screens.
+
+- **Key events (§5.8, QUESTIONS Q28).** `packages/shared/src/events/keyEvents.ts`:
+  birthdays for living people with a known month and day, anniversaries from `current`
+  unions with a known month and day, days until, and the next occurrence across a year
+  boundary. API `GET /api/events` aggregates the caller's trees. Screen `/events`:
+  sortable, searchable, filterable by month, with a true empty state that explains why a
+  year-only date can't make an event and links to "Needs detail".
+- **GEDCOM import and export (§5.3).** `packages/shared/src/gedcom/`: a 5.5.1 reader
+  (INDI, FAM, NAME, SEX, BIRT/DEAT with partial dates, HUSB/WIFE/CHIL, ADOP) producing
+  change-set ops, and a writer producing the same records back. Round-trip test over the
+  seed tree.
+- **CSV import with mapping and preview (§5.3).** `packages/shared/src/import/csv.ts`:
+  parse, guess column mapping, then a preview diff — people added, people matched to
+  existing ones, and rows that can't be used, each with the reason. Nothing is written
+  until the person confirms; the whole import lands as one undoable change set.
+- **PNG and PDF export.** Render the layout to SVG in a pure module
+  (`packages/shared/src/export/treeSvg.ts`, reusing `computeLayout`), then rasterise to PNG
+  in the browser via canvas, and lay the same SVG into a PDF. Both download the file
+  directly from the client, with no server round trip.
+- **Import/export screens.** `/trees/:treeId/import` (file picker, mapping table, preview
+  diff, confirm) and an Export menu on the tree header (PNG, PDF, GEDCOM, CSV).
+- **Production serving.** The API serves the built web app in production, with the SPA
+  fallback and long-cache headers for hashed assets, so `pnpm build && pnpm start` runs the
+  whole product from one process.
+- **Final pass.** Re-measure the production bundle (§9: initial route under 200 KB gzip),
+  re-run the §12 checklist end to end, and finish `docs/DEFECTS-VERIFIED.md`.
+
+Tests:
+- Pure: key events (day boundaries, leap days, missing months), GEDCOM round trip, CSV
+  mapping and diff, SVG geometry.
+- API: `/api/events` across several trees with roles; import endpoint authorisation.
+- RTL + axe: events table (sort, search, month filter, empty state), import mapping and
+  preview, export menu.
+- Playwright: the full §12 journey, plus GEDCOM export → re-import → same people.
+
+Done when: the M10 row in table E is demonstrated, and every §6 defect is verified or
+explained.
+
+## M9 — Review workflow (done 2026-09-15)
 
 Model and decisions already in place: `ReviewAssignment` (QUESTIONS Q1), `ChangeRequest`,
 tree statuses, and the rule that `in_review` locks editing for everyone (Q21, already

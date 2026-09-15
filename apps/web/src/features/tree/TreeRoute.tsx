@@ -12,6 +12,7 @@ import type { CardMenuItem } from '../../canvas/CardMenu';
 import { TreeCanvas } from '../../canvas/TreeCanvas';
 import { useCanvasStore, useCollapsed } from '../../canvas/useCanvasStore';
 import { LinkedTreeBreadcrumb } from '../collaboration/LinkedTreeBreadcrumb';
+import { ReviewBanner } from '../review/ReviewBanner';
 import { commitWithUndo } from './editing/changeQueue';
 import { SaveIndicator } from './editing/SaveIndicator';
 import { UndoRedoButtons } from './editing/UndoRedoButtons';
@@ -172,6 +173,12 @@ export function Component() {
               </Link>
             </>
           ) : null}
+          {tree.role === 'owner' && (tree.status === 'draft' || tree.status === 'approved') && count > 0 ? (
+            <Link to={`/trees/${treeId}/review`} className={buttonClasses('secondary', 'px-3')}>
+              <Icon name="shield" />
+              Send for review
+            </Link>
+          ) : null}
           <Link to={`/trees/${treeId}/access`} className={buttonClasses('secondary', 'px-3')}>
             <Icon name="share" />
             {tree.role === 'owner' ? 'Share' : 'People with access'}
@@ -185,6 +192,7 @@ export function Component() {
         </div>
       </div>
       {fromTreeId ? <LinkedTreeBreadcrumb fromTreeId={fromTreeId} personId={searchParams.get('person')} /> : null}
+      <ReviewBanner tree={tree} />
       <div className="flex min-h-0 flex-1">
         <div className="relative min-h-[28rem] min-w-0 flex-1" style={{ height: 'calc(100vh - 8.5rem)' }}>
           {count === 0 ? (

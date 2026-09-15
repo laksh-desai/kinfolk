@@ -1,7 +1,7 @@
 import { deriveKey, sha256, signToken, verifyToken } from './crypto';
 
-/** Share links and relative invitations travel as bearer tokens in URLs (QUESTIONS Q24). */
-export type LinkPurpose = 'share-link' | 'invitation';
+/** Share links, relative invitations, and review links travel as bearer tokens in URLs (QUESTIONS Q24). */
+export type LinkPurpose = 'share-link' | 'invitation' | 'review';
 
 interface LinkPayload {
   /** The database row this token belongs to. */

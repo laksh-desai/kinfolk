@@ -11,7 +11,7 @@ import { TREE_ID, treeDto } from '../../test/treeFixtures';
 const OTHER_TREE = '22222222-2222-4222-8222-222222222222';
 const summary = (overrides: Partial<TreeSummaryDto> = {}): TreeSummaryDto => ({ ...treeDto(), peopleCount: 3, ...overrides });
 
-const emptyInbox: InboxDto = { accessInvites: [], linkRequests: [], invitations: [] };
+const emptyInbox: InboxDto = { accessInvites: [], linkRequests: [], invitations: [], changeRequests: [] };
 
 function dashboard(inbox: Partial<InboxDto>, trees: TreeSummaryDto[] = []) {
   return mockApi({

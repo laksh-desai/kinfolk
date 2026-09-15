@@ -28,7 +28,7 @@ describe('opening an invitation link (SPEC §5.5)', () => {
     mockApi({
       'GET /api/auth/me': () => ({ body: { user: testUser } }),
       'GET /api/trees': () => ({ body: { trees: [] } }),
-      'GET /api/me/inbox': () => ({ body: { accessInvites: [], linkRequests: [], invitations: [] } }),
+      'GET /api/me/inbox': () => ({ body: { accessInvites: [], linkRequests: [], invitations: [], changeRequests: [] } }),
       'GET /api/invitations/tok123': () => ({ body: preview }),
       'POST /api/invitations/tok123/accept': () => {
         accepted = true;

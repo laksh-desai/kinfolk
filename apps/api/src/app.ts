@@ -12,6 +12,7 @@ import { authRoutes, type AuthRateLimits } from './modules/auth/authRoutes';
 import { avatarAuthorizer, fileRoutes } from './modules/files/fileRoutes';
 import { accessRoutes, type InviteRateLimits } from './modules/access/accessRoutes';
 import { invitationRoutes } from './modules/invitations/invitationRoutes';
+import { reviewRoutes } from './modules/review/reviewRoutes';
 import { shareRoutes } from './modules/sharing/shareRoutes';
 import { photoRoutes, treeFileAuthorizer } from './modules/trees/photoRoutes';
 import { treeRoutes } from './modules/trees/treeRoutes';
@@ -113,6 +114,7 @@ export async function buildApp(deps: AppDeps, options: BuildAppOptions = {}): Pr
   await app.register(accessRoutes, { deps, rateLimit: inviteRateLimit });
   await app.register(shareRoutes, { deps });
   await app.register(invitationRoutes, { deps, rateLimit: inviteRateLimit });
+  await app.register(reviewRoutes, { deps, rateLimit: inviteRateLimit });
   await app.register(fileRoutes, { deps, authorizers: { 'avatars/': avatarAuthorizer, 'trees/': treeFileAuthorizer(deps) } });
 
   return app;
