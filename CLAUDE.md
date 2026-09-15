@@ -125,11 +125,12 @@ anything true for one commit only.
 orient. Replace lines rather than stacking them.)*
 
 - Workspace: `apps/web` (React 18, RR 6.30 lazy routes), `apps/api` (Fastify 5, Prisma 6), `packages/shared` (import by subpath, e.g. `@kinfolk/shared/layout/computeLayout`).
-- Built: cookie auth (password, dev/real Google, OTP reset), account page, tree API, graph ChangeSets, layout, kinship, canvas, person editing, dashboard, tree rename/delete, list view (`?view=list`).
+- Built: cookie auth (password, dev/real Google, OTP reset), account page, tree API, graph ChangeSets, layout, kinship, canvas, person editing, dashboard, list view, access + share links + relative invitations + linked trees.
 - Graph edits: `POST /api/trees/:id/changes` → `commitChangeSet` (lock, pure `applyChangeSet`, persist, audit per op, returns inverse).
 - Roles per request: `lib/treeAccess.ts` `requireTreeRole`; redaction: `lib/graphRows.ts` `graphForVisibility`.
 - Pure: `computeLayout(graph, { collapsed })`, `createKinshipResolver(graph)(ego, alter)`, `displayName(index, id)`, `lifespanLabel`.
 - Canvas: `apps/web/src/canvas/` (pure `viewport.ts`, `keyboardNav.ts`, `culling.ts`, one `CardMenu`); tree page `features/tree/TreeRoute.tsx` + `useTreeView`.
+- Collaboration: `features/collaboration/` (access and link-request dialogs are routes); public pages `/s/:token` (redacted, `toViewGraph`) and `/invite/:token` live outside the app shell.
 - Editing: build ops only with planners in `packages/shared/src/relatives/`; send via `features/tree/editing/changeQueue.ts` `commitWithUndo` (optimistic, queued, undoable). Person screens are panel routes in `features/tree/people/` wrapped in `PanelShell`.
 - Web conventions: calls via `lib/api.ts`; forms via `lib/useForm.ts`; `test/renderApp` renders the real routes; `test/treeServer.ts` `mockTreeServer()` fakes the tree API with real `applyChangeSet` (+ `findToast`).
 - Tests: `pnpm test` (shared/api/web; API clones a per-file embedded-Postgres DB via `test/testApp.ts`). `pnpm e2e`: one-process stack `apps/api/scripts/e2eStack.ts` (web 5180/api 4180).
@@ -141,7 +142,7 @@ orient. Replace lines rather than stacking them.)*
 
 - `tsc --noEmit -b` errors (`-b` must come first) → lint runs `tsc -b --noEmit`; api/web `include` shared src (TS6310 forbids references + noEmit).
 - Composite projects emit declarations → exported functions with deep inferred types fail TS2742; annotate the return type.
-- jsdom: floating-ui calls `matches(':popover-open')`, each throw costs seconds → any open Radix tooltip/menu hangs tests. Shim lives in `apps/web/src/test/setup.ts`; keep it.
+- jsdom shims in `apps/web/src/test/setup.ts` (keep them): floating-ui probes `:popover-open`/`:modal` and each throw costs seconds, hanging any test with an open Radix tooltip or menu; `PointerEvent` is missing, so fireEvent drops `button`/`clientX`.
 - Helmet's default `Referrer-Policy: no-referrer` makes Chrome send `Origin: null` on form posts → CSRF check rejects. Keep `strict-origin-when-cross-origin`.
 - Fastify `maxParamLength` defaults to 100 → signed tokens in paths 414. Set in `app.ts` `routerOptions`.
 - Windows leaves child processes alive when the parent dies → run servers in-process for e2e; if 5180/4180 are busy, kill the stale node.
@@ -154,8 +155,8 @@ orient. Replace lines rather than stacking them.)*
 - Bash tool: unquoted heredocs break on apostrophes and `/tmp` isn't `C:	mp` for node → use Write/Edit, or `cygpath -w`. O(n²) per-iteration `expect` at 500 people takes minutes → collect, assert once.
 - To eyeball a layout, render it to SVG→PNG with sharp from a scratch `.mts` script (top-level await needs ESM) and Read the PNG.
 - Memoised `PersonCard`s re-render on every pan if any prop is a fresh inline callback → keep canvas callbacks in `useCallback`.
-- jsdom lacks `PointerEvent` (fireEvent drops `button`/`clientX`) → polyfilled in `test/setup.ts`.
 - Slow machine: web tests preload lazy routes (`renderApp`) and use an 8s `findBy` timeout; run long suites in the background.
+- Two `renderApp` calls in one test leave both apps mounted → queries match the stale one; call RTL `cleanup()` between them.
 - Never run vitest (or other heavy jobs) while Playwright runs → the browser stalls (2-min `evaluate` hangs, saves stuck retrying). Run e2e alone.
 - Radix Toast items have no `role="status"` → query `listitem`s in the "Notifications" region (`findToast`). Radix `DropdownMenu.Content` names itself after its trigger and has no `onOpenAutoFocus` → set `aria-labelledby`, focus items in an effect.
 - `refetchQueries` is a no-op for a query put in the cache with `setQueryData` (no queryFn) → `fetchQuery` it first in tests.

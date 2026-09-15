@@ -13,6 +13,7 @@ describe('dashboard (SPEC §5.2, §6.13)', () => {
   it('lists owned and shared trees with people count, status, last edit, and a role badge for shared ones', async () => {
     mockApi({
       'GET /api/auth/me': () => ({ body: { user: testUser } }),
+      'GET /api/me/inbox': () => ({ body: { accessInvites: [], linkRequests: [], invitations: [] } }),
       'GET /api/trees': () => ({
         body: {
           trees: [
@@ -42,6 +43,7 @@ describe('dashboard (SPEC §5.2, §6.13)', () => {
     const created = { ...treeDto({ name: 'Osei family' }) };
     const api = mockApi({
       'GET /api/auth/me': () => ({ body: { user: testUser } }),
+      'GET /api/me/inbox': () => ({ body: { accessInvites: [], linkRequests: [], invitations: [] } }),
       'GET /api/trees': () => ({ body: { trees: [] } }),
       'POST /api/trees': () => ({ status: 201, body: { tree: created } }),
       [`GET /api/trees/${TREE_ID}/graph`]: () => ({ body: { tree: created, graph: { people: [], unions: [], parentChildren: [], focusPersonId: null } } }),
@@ -71,6 +73,7 @@ describe('dashboard (SPEC §5.2, §6.13)', () => {
     });
     mockApi({
       'GET /api/auth/me': () => ({ body: { user: testUser } }),
+      'GET /api/me/inbox': () => ({ body: { accessInvites: [], linkRequests: [], invitations: [] } }),
       'GET /api/trees': async () => {
         attempts += 1;
         if (attempts === 1) {

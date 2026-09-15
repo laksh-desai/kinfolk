@@ -90,6 +90,10 @@ export function PersonActions({ tree, person, name, isFocus, focusId, hasDescend
         ) : null}
         {editable ? (
           <>
+            <Link to={`${base}/invite`} className={buttonClasses('secondary')}>
+              <Icon name="mail" />
+              Invite to Kinfolk
+            </Link>
             <Link to={`${base}/merge`} className={buttonClasses('secondary')}>
               <Icon name="merge" />
               Merge with…

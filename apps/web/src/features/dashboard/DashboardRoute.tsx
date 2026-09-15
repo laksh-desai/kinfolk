@@ -6,6 +6,7 @@ import { ErrorState } from '../../components/ErrorState';
 import { LoadingRegion } from '../../components/LoadingRegion';
 import { Skeleton } from '../../components/Skeleton';
 import { useCurrentUser } from '../auth/sessionQuery';
+import { Inbox } from './Inbox';
 import { NewTreeDialog } from './NewTreeDialog';
 import { TreeCard } from './TreeCard';
 import { treesQuery } from './treesApi';
@@ -30,6 +31,10 @@ export function Component() {
             New family tree
           </Button>
         ) : null}
+      </div>
+
+      <div className="mt-6">
+        <Inbox onCreateTree={() => setCreating(true)} />
       </div>
 
       <div className="mt-8">

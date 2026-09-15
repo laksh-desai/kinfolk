@@ -4,14 +4,31 @@ Milestones are defined in `docs/SPEC.md` §10. Update at every checkpoint.
 
 ## In progress
 
-**M8 — Collaboration.** Plan below under "Milestone plans → M8".
+**M9 — Review workflow.** Plan below under "Milestone plans → M9".
 
 ## Up next
 
-M9 Review workflow · M10 Events, import, export
+M10 Events, import, export
 
 ## Done
 
+- **M8 — Collaboration** (2026-09-15).
+  - Access: owner invites by name, email, and role; members accept or decline from the
+    dashboard; roles change inline; access is revoked with confirmation. Everyone sees who
+    has access, but email addresses go only to the owner and to the person themselves.
+  - Share links: signed, optionally expiring, revocable. The public view at `/s/:token`
+    reuses the canvas and list over the redacted allow-list, with no account needed.
+  - Relative invitations: sent from a person's card, tracked through the four real stages,
+    resent and withdrawn; the public `/invite/:token` page explains the invitation before
+    sign-up and returns to it afterwards.
+  - Linked trees: the invitee asks to link a tree of their own, the owner approves on the
+    Link requests screen, and the person's card then opens the linked tree with a
+    breadcrumb back. When it isn't shared with you, the card says so instead.
+  - Dashboard "Waiting for you": access invitations, link requests, and your own
+    invitations, shown only when something is waiting.
+  - Tests: 8 API (roles, redaction, stages, tokens, rate limit, email privacy), 20 web RTL
+    + axe, and 2 Playwright journeys covering dialogs at 768 px, a signed-out share link,
+    and invite → build → link → approve. Gate: lint clean, 518 tests, 14/14 e2e.
 - **M7 — Dashboard, tree management, list view** (2026-09-14).
   - Dashboard: owned and shared trees as cards (people count, status, "Edited 2 hours ago",
     role and owner for shared trees). Skeleton loading, error with retry, an empty state
@@ -341,7 +358,53 @@ path: person ids along the chosen route (for Compare drawing)
 
 # Milestone plans
 
-## M8 — Collaboration (in progress)
+## M9 — Review workflow (in progress)
+
+Model and decisions already in place: `ReviewAssignment` (QUESTIONS Q1), `ChangeRequest`,
+tree statuses, and the rule that `in_review` locks editing for everyone (Q21, already
+enforced by `commitChangeSet` and `canEditTree`).
+
+API (module `review/`):
+- `POST /api/trees/:id/review` (owner): reviewer email, optional note. Creates a
+  `ReviewAssignment` with a signed token, sets status `in_review`, emails the reviewer a
+  `/review/:token` link. Refuses when a review is already open.
+- `DELETE /api/trees/:id/review` (owner): withdraw, back to `draft`.
+- `GET /api/review/:token`: the tree for the reviewer — full graph including planning
+  answers (Q9) — plus who sent it and when. The first signed-in user to open it claims the
+  assignment (Q1); afterwards it is theirs alone.
+- `POST /api/review/:token/approve` and `/changes` (body required, minimum length
+  validated by the shared schema): sets `approved` or `changes_requested` and records a
+  `ChangeRequest` with its author.
+- `POST /api/trees/:id/change-requests/:id/resolve` (owner): marks one resolved.
+- `POST /api/trees/:id/review/resubmit` (owner): back to `in_review` for the same
+  reviewer.
+
+Web:
+- Tree header: "Submit for review" (owner, draft or changes_requested) opens a dialog
+  (reviewer email + note). While `in_review`: a banner saying who has it, when it was
+  sent, that editing is paused, and a Withdraw button.
+- `changes_requested`: a banner with the note, author, and time, plus "Mark resolved" and
+  "Resubmit"; open change requests also appear on the dashboard's "Waiting for you" list.
+- `/review/:token`: the reviewer's screen — read-only canvas and list, planning answers
+  visible, a placeholder count, and Approve / Request changes (free text, minimum length,
+  errors focused and announced).
+- Status badge everywhere: Draft · In review · Changes requested · Approved (already
+  built).
+- Editing an approved tree returns it to draft, with a warning before the first edit (Q21).
+
+Tests:
+- API: full cycle (submit → reviewer opens → requests changes → owner resolves and
+  resubmits → reviewer approves); editing refused with 409 while `in_review`; a second
+  reviewer can't claim a claimed token; expired and revoked tokens explained; only the
+  owner submits.
+- RTL + axe: submit dialog validation, the three banners, the reviewer screen's approve and
+  request-changes paths, and the "returns to draft" warning.
+- Playwright: the §12 journey end to end — submit for review, reviewer requests changes,
+  owner resolves and resubmits, reviewer approves — across two browser contexts.
+
+Done when: the M9 row in table E is demonstrated.
+
+## M8 — Collaboration (done 2026-09-15)
 
 Models already exist: `Access`, `Invitation`, `LinkRequest`, `ShareLink`. The API adds
 modules `access/`, `invitations/`, `sharing/`, and `links/`. Each route checks the role

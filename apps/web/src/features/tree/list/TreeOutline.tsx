@@ -1,19 +1,19 @@
 import { lifespanLabel } from '@kinfolk/shared/dates/partialDate';
-import type { TreeDto } from '@kinfolk/shared/schemas/tree';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { buttonClasses } from '../../../components/Button';
-import { Button } from '../../../components/Button';
+import { Button, buttonClasses } from '../../../components/Button';
 import { cx } from '../../../lib/cx';
 import { usePersonDialogs } from '../people/personDialogStore';
-import { canEditTree } from '../treePermissions';
 import type { TreeView } from '../useTreeView';
 import { outlineTree } from './outlineTree';
 
 interface TreeOutlineProps {
-  tree: TreeDto;
   view: TreeView;
   selectedId: string | null;
+  /** Where a person's name leads: their panel in the app, or a detail view on a share link. */
+  personHref: (personId: string) => string;
+  /** The tree to edit through; null for read-only views (viewers, share links), which get no edit actions. */
+  editTreeId: string | null;
 }
 
 /**
@@ -21,9 +21,8 @@ interface TreeOutlineProps {
  * same actions as the canvas. It is the screen-reader and small-screen path, so everything is
  * plain headings, lists, and links.
  */
-export function TreeOutline({ tree, view, selectedId }: TreeOutlineProps) {
+export function TreeOutline({ view, selectedId, personHref, editTreeId }: TreeOutlineProps) {
   const generations = useMemo(() => outlineTree(view.index, view.layout), [view.index, view.layout]);
-  const editable = canEditTree(tree);
   const openDelete = usePersonDialogs((state) => state.openDelete);
   const nameOf = (id: string) => view.names.get(id) ?? 'Unnamed person';
   const hiddenCount = view.graph.people.length - view.layout.nodes.length;
@@ -41,7 +40,7 @@ export function TreeOutline({ tree, view, selectedId }: TreeOutlineProps) {
       <li key={personId} className={cx('flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2', personId === selectedId && 'rounded-control bg-accent-soft/40 px-2')}>
         <div className="min-w-0">
           <Link
-            to={`/trees/${tree.id}/people/${personId}`}
+            to={personHref(personId)}
             state={{ focusPanel: true }}
             aria-current={personId === selectedId ? 'true' : undefined}
             className={cx('text-base font-semibold text-accent underline-offset-2 hover:underline', person?.isPlaceholder && 'italic')}
@@ -50,12 +49,12 @@ export function TreeOutline({ tree, view, selectedId }: TreeOutlineProps) {
           </Link>
           {details.length ? <p className="text-sm text-ink-muted">{details.join(' · ')}</p> : null}
         </div>
-        {editable ? (
+        {editTreeId ? (
           <div className="flex flex-wrap gap-2">
-            <Link to={`/trees/${tree.id}/people/${personId}/add`} aria-label={`Add relative of ${name}`} className={buttonClasses('secondary', 'min-h-9 px-3 py-1 text-sm')}>
+            <Link to={`/trees/${editTreeId}/people/${personId}/add`} aria-label={`Add relative of ${name}`} className={buttonClasses('secondary', 'min-h-9 px-3 py-1 text-sm')}>
               Add relative
             </Link>
-            <Link to={`/trees/${tree.id}/people/${personId}/edit`} aria-label={`Edit ${name}`} className={buttonClasses('ghost', 'min-h-9 px-3 py-1 text-sm')}>
+            <Link to={`/trees/${editTreeId}/people/${personId}/edit`} aria-label={`Edit ${name}`} className={buttonClasses('ghost', 'min-h-9 px-3 py-1 text-sm')}>
               Edit
             </Link>
             <Button variant="danger-quiet" aria-label={`Delete ${name}`} className="min-h-9 px-3 py-1 text-sm" onClick={() => openDelete(personId)}>
@@ -98,7 +97,7 @@ export function TreeOutline({ tree, view, selectedId }: TreeOutlineProps) {
                         {family.childIds.map((childId, position) => (
                           <span key={childId}>
                             {position > 0 ? ', ' : null}
-                            <Link to={`/trees/${tree.id}/people/${childId}`} className="text-accent underline-offset-2 hover:underline">
+                            <Link to={personHref(childId)} className="text-accent underline-offset-2 hover:underline">
                               {nameOf(childId)}
                             </Link>
                           </span>

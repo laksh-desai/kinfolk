@@ -537,3 +537,49 @@ M7 rename test caught it.
 
 **Consequences.** Titles follow optimistic edits immediately with no extra requests. Title
 functions depend on the query client, a module singleton already used by loaders.
+
+
+## 023 — Collaboration surfaces: dialog routes, a public share view over the same canvas
+Date: 2026-09-15
+Status: accepted
+
+**Context.** SPEC §5.6 wants access control and share links per tree, and §6.5 records that
+the old product's access and link-request dialogs scrolled sideways and clipped their own
+controls. §5.3's canvas and list should not be rebuilt for share-link visitors.
+
+**Decision.**
+- Access, sharing, and link requests are **dialogs rendered by routes**
+  (`/trees/:id/access`, `/trees/:id/link-requests`), so they are addressable and
+  restorable, and the canvas stays behind them. Dialog width is capped, content wraps, and
+  an e2e check asserts nothing inside scrolls sideways or sits outside the window at
+  768 px.
+- The public share view (`/s/:token`) reuses `TreeCanvas` and `TreeOutline`. The redacted
+  graph is widened to the canvas's shape by the pure `toViewGraph`, which only fills absent
+  fields with nulls — it cannot add back anything the server withheld.
+- `TreeOutline` took `personHref` and `editTreeId` instead of a tree object, so the same
+  list serves the app, viewers, and share links.
+- Share link tokens are shown **once**, at creation: only the hash is stored (Q24), so the
+  screen says to copy it now and offers a Copy button with a keyboard fallback.
+- Selection and view mode in the share view live in the query string, like everywhere else.
+
+**Consequences.** One canvas, one list, one dialog primitive across every audience. A lost
+share link can't be recovered, only replaced — the trade for never storing a usable token.
+
+## 024 — Email addresses in the access list are for the owner and for yourself
+Date: 2026-09-15
+Status: accepted
+
+**Context.** SPEC §5.6 describes the access list as "person, email, role", which is the
+owner's management screen. Editors and viewers also open it to see who else is on a tree.
+Sending every collaborator's address to every member would spread personal data further
+than the feature needs, and §9 asks for server-side redaction by entitlement.
+
+**Decision.** `GET /api/trees/:id/access` returns `email: null` for everyone except the
+caller, unless the caller is the owner (who manages access and therefore needs addresses).
+Names and roles are visible to all members. The rule is enforced in the API, and the list
+falls back to the name, or "Someone with access", when there is no address to show.
+
+**Consequences.** Members can still see who has access and their roles. Screens that need
+an address — inviting, changing a role, revoking — are owner-only anyway. Tested in
+`collaboration.test.ts` › "keeps other people's email addresses from members who don't
+manage access".

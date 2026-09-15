@@ -11,6 +11,7 @@ import { queryClient } from '../../lib/queryClient';
 import type { CardMenuItem } from '../../canvas/CardMenu';
 import { TreeCanvas } from '../../canvas/TreeCanvas';
 import { useCanvasStore, useCollapsed } from '../../canvas/useCanvasStore';
+import { LinkedTreeBreadcrumb } from '../collaboration/LinkedTreeBreadcrumb';
 import { commitWithUndo } from './editing/changeQueue';
 import { SaveIndicator } from './editing/SaveIndicator';
 import { UndoRedoButtons } from './editing/UndoRedoButtons';
@@ -74,6 +75,10 @@ export function Component() {
     [navigate, treeId],
   );
 
+  const fromTreeId = searchParams.get('from');
+
+  const personHref = useCallback((personId: string) => `/trees/${treeId}/people/${personId}`, [treeId]);
+
   const compareA = compareMatch ? searchParams.get('a') : null;
   const compareB = compareMatch ? searchParams.get('b') : null;
   const highlightPath = useMemo(() => {
@@ -133,7 +138,14 @@ export function Component() {
     <main id="main" tabIndex={-1} className="flex min-h-0 flex-1 flex-col outline-none">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-surface px-4 py-2 sm:px-6">
         <TreeTitle tree={tree} editing={renaming} onEditingChange={setRenaming} />
-        {tree.role === 'owner' && !renaming ? <TreeSettingsMenu treeName={tree.name} onRename={() => setRenaming(true)} onDelete={() => setDeletingTree(true)} /> : null}
+        {tree.role === 'owner' && !renaming ? (
+          <TreeSettingsMenu
+            treeName={tree.name}
+            onRename={() => setRenaming(true)}
+            onDelete={() => setDeletingTree(true)}
+            onLinkRequests={() => navigate(`/trees/${treeId}/link-requests`)}
+          />
+        ) : null}
         <StatusBadge status={tree.status} />
         {roleLabel ? (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-0.5 text-sm font-semibold text-ink-muted">
@@ -160,6 +172,10 @@ export function Component() {
               </Link>
             </>
           ) : null}
+          <Link to={`/trees/${treeId}/access`} className={buttonClasses('secondary', 'px-3')}>
+            <Icon name="share" />
+            {tree.role === 'owner' ? 'Share' : 'People with access'}
+          </Link>
           {editable && count > 0 ? (
             <Link to={`/trees/${treeId}/add`} className={buttonClasses('secondary', 'px-3')}>
               <Icon name="user-plus" />
@@ -168,6 +184,7 @@ export function Component() {
           ) : null}
         </div>
       </div>
+      {fromTreeId ? <LinkedTreeBreadcrumb fromTreeId={fromTreeId} personId={searchParams.get('person')} /> : null}
       <div className="flex min-h-0 flex-1">
         <div className="relative min-h-[28rem] min-w-0 flex-1" style={{ height: 'calc(100vh - 8.5rem)' }}>
           {count === 0 ? (
@@ -189,7 +206,7 @@ export function Component() {
                 : 'The owner hasn’t added anyone yet. People will appear here as soon as they do.'}
             </EmptyState>
           ) : viewMode === 'list' ? (
-            <TreeOutline tree={tree} view={view} selectedId={selectedId} />
+            <TreeOutline view={view} selectedId={selectedId} personHref={personHref} editTreeId={editable ? treeId : null} />
           ) : (
             <TreeCanvas treeId={treeId} view={view} selectedId={selectedId} onSelect={onSelect} highlightPath={highlightPath} cardMenuItems={cardMenuItems} />
           )}

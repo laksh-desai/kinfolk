@@ -33,7 +33,8 @@ export const updateAccessSchema = z.object({ role });
 
 export interface AccessDto {
   id: string;
-  email: string;
+  /** Null for people other than the caller, unless the caller manages access (owner). */
+  email: string | null;
   name: string | null;
   role: AccessRole;
   status: AccessStatus;
@@ -42,7 +43,7 @@ export interface AccessDto {
 }
 
 export interface AccessListDto {
-  owner: { name: string; email: string };
+  owner: { name: string; email: string | null };
   members: AccessDto[];
   /** Whether the caller may add, change, or revoke. */
   canManage: boolean;

@@ -33,6 +33,9 @@ export function mockTreeServer(options: { graph?: TreeGraph; tree?: Partial<Tree
   const changes: ChangeCall[] = [];
   const api = mockApi({
     'GET /api/auth/me': () => ({ body: { user: testUser } }),
+    'GET /api/me/inbox': () => ({ body: { accessInvites: [], linkRequests: [], invitations: [] } }),
+    [`GET /api/trees/${TREE_ID}/invitations`]: () => ({ body: { invitations: [] } }),
+    [`GET /api/trees/${TREE_ID}`]: () => ({ body: { tree: treeDto({ focusPersonId: graph.focusPersonId, version, ...options.tree }) } }),
     [`GET /api/trees/${TREE_ID}/graph`]: () => ({ body: { tree: treeDto({ focusPersonId: graph.focusPersonId, version, ...options.tree }), graph } }),
     [`POST /api/trees/${TREE_ID}/changes`]: (request) => {
       const body = request.body as ChangeCall;

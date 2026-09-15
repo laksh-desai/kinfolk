@@ -108,6 +108,14 @@ export const routes: RouteObject[] = [
             errorElement: <RouteErrorBoundary />,
             lazy: () => import('../features/tree/TreeRoute'),
             children: [
+              { path: 'access', handle: treeTitle('Sharing'), errorElement: <RouteErrorBoundary />, lazy: () => import('../features/collaboration/AccessDialogRoute') },
+              { path: 'link-requests', handle: treeTitle('Link requests'), errorElement: <RouteErrorBoundary />, lazy: () => import('../features/collaboration/LinkRequestsDialogRoute') },
+              {
+                path: 'people/:personId/invite',
+                handle: personTitle((name) => `Invite ${name}`),
+                errorElement: <RouteErrorBoundary />,
+                lazy: () => import('../features/collaboration/InviteRelativeRoute'),
+              },
               { path: 'add', handle: treeTitle('Add a person'), errorElement: <RouteErrorBoundary />, lazy: () => import('../features/tree/people/AddPersonRoute') },
               { path: 'compare', handle: treeTitle('Compare two people'), errorElement: <RouteErrorBoundary />, lazy: () => import('../features/tree/compare/CompareRoute') },
               { path: 'needs-detail', handle: treeTitle('Needs detail'), errorElement: <RouteErrorBoundary />, lazy: () => import('../features/tree/people/NeedsDetailRoute') },
@@ -163,6 +171,16 @@ export const routes: RouteObject[] = [
           },
         ],
       },
+      {
+        path: 's/:token',
+        handle: handle((match) => {
+          const shared = queryClient.getQueryData<{ tree: { name: string } }>(['shared', match.params.token]);
+          return shared ? `${shared.tree.name} · shared` : 'Shared family tree';
+        }),
+        errorElement: <RouteErrorBoundary />,
+        lazy: () => import('../features/sharing/SharedTreeRoute'),
+      },
+      { path: 'invite/:token', handle: handle('Your invitation'), errorElement: <RouteErrorBoundary />, lazy: () => import('../features/collaboration/InviteAcceptRoute') },
       { path: '*', handle: handle('Page not found'), element: <NotFoundRoute /> },
     ],
   },

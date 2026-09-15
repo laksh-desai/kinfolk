@@ -292,6 +292,28 @@ but has never run against Google. Free text is the default and is tested. Verify
 real key before enabling it in production: load on focus, suggestion fills the parts, CSP
 allows the script.
 
+## Collaboration (§5.5, §5.6) — M8
+
+### Q41 — Who may accept a relative invitation? · Decided
+The invitation link is a bearer token sent to one email address. Requiring the accepting
+account's email to match would strand anyone who signs up with a different address, which
+is common for a relative using a personal account.
+- Decision: any signed-in account holding the link may accept, and the acceptance records
+  who took it. Accepting grants **no** access to the inviting tree (Q22), so the worst case
+  is a wasted invitation the owner can withdraw and resend.
+
+### Q42 — Who may invite a relative? · Decided
+§5.5 says "invite a relative by email from their card", without naming a role.
+- Decision: owners and editors, since it changes nothing in the tree and is how a family
+  builds out its branches. Granting **access** stays owner-only (§5.6). Both are rate
+  limited per account.
+
+### Q43 — A share link can't be shown twice · Decided
+Only the token's hash is stored (Q24), so an existing link can never be displayed again.
+- Decision: the screen says so when the link is created ("copy it now"), lists existing
+  links with their status and expiry for revoking, and offers creating a fresh link when
+  one is lost. The alternative — storing usable tokens — is exactly what a leak would need.
+
 ## Environment
 
 ### Q31 — Node version · Decided

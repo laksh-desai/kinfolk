@@ -13,10 +13,11 @@ export interface InviteRateLimits {
   timeWindow: string;
 }
 
-function toAccessDto(access: Access): AccessDto {
+/** Email addresses are for the owner, who manages access, and for the person themselves. */
+function toAccessDto(access: Access, showEmail: boolean): AccessDto {
   return {
     id: access.id,
-    email: access.email,
+    email: showEmail ? access.email : null,
     name: access.name,
     role: access.role,
     status: access.status,
@@ -32,9 +33,16 @@ export async function accessRoutes(app: FastifyInstance, opts: { deps: AppDeps; 
   app.get('/api/trees/:treeId/access', async (request): Promise<AccessListDto> => {
     const { treeId } = request.params as { treeId: string };
     const { tree, role } = await requireTreeRole(deps, request, treeId, ['owner', 'editor', 'viewer', 'reviewer']);
-    const owner = await deps.prisma.user.findUniqueOrThrow({ where: { id: tree.ownerId }, select: { firstName: true, lastName: true, email: true } });
+    const { user } = requireAuth(request);
+    const owner = await deps.prisma.user.findUniqueOrThrow({ where: { id: tree.ownerId }, select: { id: true, firstName: true, lastName: true, email: true } });
     const members = await deps.prisma.access.findMany({ where: { treeId: tree.id, status: { not: 'revoked' } }, orderBy: { invitedAt: 'asc' } });
-    return { owner: { name: userDisplayName(owner) ?? owner.email, email: owner.email }, members: members.map(toAccessDto), canManage: role === 'owner' };
+    const manages = role === 'owner';
+    const mine = user.email.toLowerCase();
+    return {
+      owner: { name: userDisplayName(owner) ?? 'The owner', email: manages || owner.id === user.id ? owner.email : null },
+      members: members.map((member) => toAccessDto(member, manages || member.email === mine)),
+      canManage: manages,
+    };
   });
 
   app.post('/api/trees/:treeId/access', { config: { rateLimit: opts.rateLimit } }, async (request, reply) => {
@@ -70,7 +78,7 @@ export async function accessRoutes(app: FastifyInstance, opts: { deps: AppDeps; 
         `${deps.env.WEB_URL}/`,
       ].join('\n'),
     });
-    return reply.code(201).send({ access: toAccessDto(access) });
+    return reply.code(201).send({ access: toAccessDto(access, true) });
   });
 
   app.patch('/api/trees/:treeId/access/:accessId', async (request) => {
@@ -83,7 +91,7 @@ export async function accessRoutes(app: FastifyInstance, opts: { deps: AppDeps; 
     await deps.prisma.auditEvent.create({
       data: { treeId: tree.id, actorId: user.id, action: 'access.role', targetType: 'access', targetId: access.id, before: { role: access.role }, after: { role } },
     });
-    return { access: toAccessDto(updated) };
+    return { access: toAccessDto(updated, true) };
   });
 
   app.delete('/api/trees/:treeId/access/:accessId', async (request, reply) => {

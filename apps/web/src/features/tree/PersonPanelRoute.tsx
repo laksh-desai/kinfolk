@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import { Avatar } from '../../components/Avatar';
 import { useCollapsed } from '../../canvas/useCanvasStore';
+import { LinkedTreeNotice } from '../collaboration/LinkedTreeNotice';
 import { PanelShell } from './people/PanelShell';
 import { PersonActions } from './people/PersonActions';
 import { PersonNotFound } from './people/PersonNotFound';
@@ -64,6 +65,7 @@ export function Component() {
         ))}
       </dl>
       {person.notes ? <p className="mx-5 mb-4 rounded-control bg-sunken px-3 py-2 text-base">{person.notes}</p> : null}
+      {person.linkedTreeId ? <LinkedTreeNotice fromTreeId={tree.id} personId={person.id} personName={person.firstName || name} linkedTreeId={person.linkedTreeId} /> : null}
       <h3 className="px-5 pb-1 text-base font-semibold">Family</h3>
       <RelativesSummary treeId={tree.id} relatives={relatives} names={view.names} />
       <PersonActions

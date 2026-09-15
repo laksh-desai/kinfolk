@@ -70,6 +70,32 @@ describe('access control (SPEC §5.6)', () => {
     expect(events.map((event) => event.action)).toEqual(['access.invite', 'access.accept', 'access.role', 'access.revoke']);
   });
 
+  it('keeps other people’s email addresses from members who don’t manage access', async () => {
+    const owner = ctx.client();
+    const { email: ownerEmail } = await signUpUser(owner);
+    const { tree } = await seededTree(owner);
+    const viewer = ctx.client();
+    const { email: viewerEmail } = await signUpUser(viewer);
+    const accessId = (await owner.post(`/api/trees/${tree.id}/access`, { email: viewerEmail, name: 'Vik', role: 'viewer' })).json().access.id;
+    await owner.post(`/api/trees/${tree.id}/access`, { email: 'someone.else@example.com', name: 'Someone Else', role: 'editor' });
+    await viewer.post(`/api/me/access-invites/${accessId}/accept`, {});
+
+    const seen = (await viewer.get(`/api/trees/${tree.id}/access`)).json();
+    expect(seen.owner.email).toBeNull();
+    expect(seen.members.map((member: { name: string; email: string | null }) => [member.name, member.email])).toEqual(
+      expect.arrayContaining([
+        ['Vik', viewerEmail],
+        ['Someone Else', null],
+      ]),
+    );
+    expect(JSON.stringify(seen)).not.toContain('someone.else@example.com');
+    expect(JSON.stringify(seen)).not.toContain(ownerEmail);
+    // The owner still sees every address, which is what the screen is for.
+    const managed = (await owner.get(`/api/trees/${tree.id}/access`)).json();
+    expect(managed.owner.email).toBe(ownerEmail);
+    expect(JSON.stringify(managed)).toContain('someone.else@example.com');
+  });
+
   it('refuses inviting the owner, and lets no one but the invitee accept', async () => {
     const owner = ctx.client();
     const { email: ownerEmail } = await signUpUser(owner);
