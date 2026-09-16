@@ -17,12 +17,15 @@ import { reviewRoutes } from './modules/review/reviewRoutes';
 import { shareRoutes } from './modules/sharing/shareRoutes';
 import { photoRoutes, treeFileAuthorizer } from './modules/trees/photoRoutes';
 import { treeRoutes } from './modules/trees/treeRoutes';
+import { webRoutes } from './modules/web/webRoutes';
 
 export interface BuildAppOptions {
   logger?: boolean;
   authRateLimit?: AuthRateLimits;
   /** Sharing and invitation emails: a few per hour is plenty for a person, and stops mail abuse. */
   inviteRateLimit?: InviteRateLimits;
+  /** Path to the built web app. Given it, this process serves the whole product (SPEC §9). */
+  webDist?: string;
 }
 
 export async function buildApp(deps: AppDeps, options: BuildAppOptions = {}): Promise<FastifyInstance> {
@@ -101,9 +104,14 @@ export async function buildApp(deps: AppDeps, options: BuildAppOptions = {}): Pr
     });
   });
 
+  // Set once: Fastify allows one per instance. With a web build, anything that isn't an API
+  // route and isn't a file is a screen of the app (SPEC §6.1) — `appHtml` is filled in below.
+  let appHtml: string | null = null;
   app.setNotFoundHandler((request, reply) => {
-    reply.code(404).send({ error: { code: 'not_found', message: "We couldn't find that." } });
-    void request;
+    if (appHtml !== null && request.method === 'GET' && !request.url.startsWith('/api/')) {
+      return reply.code(200).header('cache-control', 'no-store').type('text/html').send(appHtml);
+    }
+    return reply.code(404).send({ error: { code: 'not_found', message: "We couldn't find that." } });
   });
 
   const authRateLimit = options.authRateLimit ?? { max: 10, timeWindow: '1 minute' };
@@ -118,6 +126,7 @@ export async function buildApp(deps: AppDeps, options: BuildAppOptions = {}): Pr
   await app.register(reviewRoutes, { deps, rateLimit: inviteRateLimit });
   await app.register(eventRoutes, { deps });
   await app.register(fileRoutes, { deps, authorizers: { 'avatars/': avatarAuthorizer, 'trees/': treeFileAuthorizer(deps) } });
+  if (options.webDist) appHtml = await webRoutes(app, { root: options.webDist });
 
   return app;
 }

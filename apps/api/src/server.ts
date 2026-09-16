@@ -22,7 +22,12 @@ try {
 }
 
 const deps = createDeps(env, apiRoot);
-const app = await buildApp(deps, { logger: env.NODE_ENV !== 'test' });
+// In production this process is the whole product: the API plus the built web app.
+const webDist = path.resolve(apiRoot, '../web/dist');
+const app = await buildApp(deps, {
+  logger: env.NODE_ENV !== 'test',
+  ...(env.NODE_ENV === 'production' && existsSync(path.join(webDist, 'index.html')) ? { webDist } : {}),
+});
 
 const shutdown = async () => {
   await app.close();

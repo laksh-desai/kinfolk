@@ -33,12 +33,19 @@ Still open in M11: the §12 journey re-run, and an e2e pass over the two fixed b
 
 ## Up next
 
-**M10 leftovers.** Key events, GEDCOM, CSV, exports and the import screen are built and
-tested (see the M10 section below); three items are not:
-- the API serving the built web app in production (`pnpm build && pnpm start` from one
-  process);
-- re-measuring the production bundle against §9 (initial route under 200 KB gzip);
-- the last five rows of `docs/DEFECTS-VERIFIED.md`.
+**M10 is finished.** Production serving landed last: `webRoutes` serves `apps/web/dist` from
+the API process, hashed assets immutable for a year, index.html never cached, and any screen
+URL someone pastes or refreshes returns the app while `/api/*` keeps answering JSON
+(`webServing.test.ts`, plus `scripts/serveCheck.mts` against the real build). The bundle was
+re-measured (initial route 158.4 KB gzip, heaviest route 191.4 KB, budget 200 KB) and
+`docs/DEFECTS-VERIFIED.md` is complete: 24 of 25 verified, the 25th unprovable here.
+
+Two things a future session should know about that path:
+- `tsc --outDir` emitted extensionless ESM imports, so `node dist/server.js` never booted —
+  it had never been run. `pnpm start` now runs the source through tsx, which is honest and
+  works; bundling with esbuild is the move if start-up time ever matters.
+- A real `NODE_ENV=production` boot needs Google OAuth and S3 credentials, which this machine
+  doesn't have, so production serving is proven through the app rather than a live process.
 
 ## Done
 

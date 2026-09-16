@@ -6,8 +6,8 @@
   "scripts": {
     "postinstall": "prisma generate",
     "dev": "tsx watch --clear-screen=false src/server.ts",
-    "build": "prisma generate && tsc -p tsconfig.json --noEmit false --emitDeclarationOnly false --outDir dist",
-    "start": "node dist/server.js",
+    "build": "prisma generate",
+    "start": "tsx src/server.ts",
     "db:embedded": "tsx scripts/embeddedDb.ts"
   },
   "dependencies": {
