@@ -12,6 +12,7 @@ import type { CardMenuItem } from '../../canvas/CardMenu';
 import { TreeCanvas } from '../../canvas/TreeCanvas';
 import { useCanvasStore, useCollapsed } from '../../canvas/useCanvasStore';
 import { LinkedTreeBreadcrumb } from '../collaboration/LinkedTreeBreadcrumb';
+import { ExportMenu } from '../export/ExportMenu';
 import { ReviewBanner } from '../review/ReviewBanner';
 import { commitWithUndo } from './editing/changeQueue';
 import { SaveIndicator } from './editing/SaveIndicator';
@@ -183,6 +184,13 @@ export function Component() {
             <Icon name="share" />
             {tree.role === 'owner' ? 'Share' : 'People with access'}
           </Link>
+          {count > 0 ? <ExportMenu input={{ graph: view.graph, layout: view.layout, treeName: tree.name, relationOf: (personId) => view.relationToFocus.get(personId)?.label ?? null }} /> : null}
+          {editable ? (
+            <Link to={`/trees/${treeId}/import`} className={buttonClasses('secondary', 'px-3')}>
+              <Icon name="import" />
+              Import
+            </Link>
+          ) : null}
           {editable && count > 0 ? (
             <Link to={`/trees/${treeId}/add`} className={buttonClasses('secondary', 'px-3')}>
               <Icon name="user-plus" />
@@ -202,15 +210,21 @@ export function Component() {
               className="py-16"
               action={
                 editable ? (
-                  <Link to={`/trees/${treeId}/add`} className={buttonClasses('primary')}>
-                    <Icon name="user-plus" />
-                    Add the first person
-                  </Link>
+                  <>
+                    <Link to={`/trees/${treeId}/add`} className={buttonClasses('primary')}>
+                      <Icon name="user-plus" />
+                      Add the first person
+                    </Link>
+                    <Link to={`/trees/${treeId}/import`} className={buttonClasses('secondary')}>
+                      <Icon name="import" />
+                      Import from a file
+                    </Link>
+                  </>
                 ) : null
               }
             >
               {editable
-                ? 'Start with one person — usually yourself or the person whose planning this is for. From them you can add parents, partners, children, and siblings, and grow the tree in any direction.'
+                ? 'Start with one person — usually yourself. From them you can add parents, partners, children, and siblings, and grow the tree in any direction.'
                 : 'The owner hasn’t added anyone yet. People will appear here as soon as they do.'}
             </EmptyState>
           ) : viewMode === 'list' ? (

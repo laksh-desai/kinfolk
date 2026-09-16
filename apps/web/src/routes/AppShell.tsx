@@ -8,7 +8,10 @@ import { cx } from '../lib/cx';
 import { queryClient } from '../lib/queryClient';
 import { toast } from '../lib/toast';
 
-const NAV_ITEMS = [{ to: '/', label: 'Family trees', icon: 'tree' as const, end: true }];
+const NAV_ITEMS = [
+  { to: '/', label: 'Family trees', icon: 'tree' as const, end: true },
+  { to: '/events', label: 'Key events', icon: 'calendar' as const, end: false },
+];
 
 const menuItemClass =
   'flex min-h-11 cursor-pointer select-none items-center gap-3 rounded-md px-3 text-base text-ink outline-none data-[highlighted]:bg-sunken';
@@ -85,6 +88,9 @@ export function AppShell() {
                   <DropdownMenu.Separator className="my-1 h-px bg-line" />
                   <DropdownMenu.Item className={cx(menuItemClass, 'md:hidden')} onSelect={() => navigate('/')}>
                     <Icon name="tree" /> Family trees
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item className={cx(menuItemClass, 'md:hidden')} onSelect={() => navigate('/events')}>
+                    <Icon name="calendar" /> Key events
                   </DropdownMenu.Item>
                   <DropdownMenu.Item className={menuItemClass} onSelect={() => navigate('/account')}>
                     <Icon name="user" /> Account

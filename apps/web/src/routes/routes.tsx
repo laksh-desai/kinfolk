@@ -97,6 +97,12 @@ export const routes: RouteObject[] = [
             lazy: () => import('../features/dashboard/DashboardRoute'),
           },
           {
+            path: 'events',
+            handle: handle('Key events'),
+            errorElement: <RouteErrorBoundary />,
+            lazy: () => import('../features/events/EventsRoute'),
+          },
+          {
             path: 'account',
             handle: handle('Account'),
             errorElement: <RouteErrorBoundary />,
@@ -108,6 +114,7 @@ export const routes: RouteObject[] = [
             errorElement: <RouteErrorBoundary />,
             lazy: () => import('../features/tree/TreeRoute'),
             children: [
+              { path: 'import', handle: treeTitle('Import people'), errorElement: <RouteErrorBoundary />, lazy: () => import('../features/import/ImportRoute') },
               { path: 'access', handle: treeTitle('Sharing'), errorElement: <RouteErrorBoundary />, lazy: () => import('../features/collaboration/AccessDialogRoute') },
               { path: 'review', handle: treeTitle('Send for review'), errorElement: <RouteErrorBoundary />, lazy: () => import('../features/review/SubmitReviewDialogRoute') },
               { path: 'link-requests', handle: treeTitle('Link requests'), errorElement: <RouteErrorBoundary />, lazy: () => import('../features/collaboration/LinkRequestsDialogRoute') },

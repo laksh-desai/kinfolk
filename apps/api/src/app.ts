@@ -11,6 +11,7 @@ import { registerAuthContext } from './modules/auth/authenticate';
 import { authRoutes, type AuthRateLimits } from './modules/auth/authRoutes';
 import { avatarAuthorizer, fileRoutes } from './modules/files/fileRoutes';
 import { accessRoutes, type InviteRateLimits } from './modules/access/accessRoutes';
+import { eventRoutes } from './modules/events/eventRoutes';
 import { invitationRoutes } from './modules/invitations/invitationRoutes';
 import { reviewRoutes } from './modules/review/reviewRoutes';
 import { shareRoutes } from './modules/sharing/shareRoutes';
@@ -115,6 +116,7 @@ export async function buildApp(deps: AppDeps, options: BuildAppOptions = {}): Pr
   await app.register(shareRoutes, { deps });
   await app.register(invitationRoutes, { deps, rateLimit: inviteRateLimit });
   await app.register(reviewRoutes, { deps, rateLimit: inviteRateLimit });
+  await app.register(eventRoutes, { deps });
   await app.register(fileRoutes, { deps, authorizers: { 'avatars/': avatarAuthorizer, 'trees/': treeFileAuthorizer(deps) } });
 
   return app;
