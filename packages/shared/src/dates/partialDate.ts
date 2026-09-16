@@ -24,8 +24,8 @@ function yearText(date: PartialDate): string {
 }
 
 /**
- * What a card shows instead of a bare age (SPEC §6.17): "1942–2019" for the deceased,
- * "b. 1988" for the living, "d. 2011" when only death is known, and "Deceased" when neither.
+ * A person's dates in words: "1942–2019" for the deceased, "b. 1988" for the living,
+ * "d. 2011" when only death is known, and "Deceased" when neither.
  */
 export function lifespanLabel(person: { lifeStatus: LifeStatus; birthDate?: PartialDate | null; deathDate?: PartialDate | null; birthYear?: number | null }): string | null {
   const birth = person.birthDate ?? (person.birthYear ? { year: person.birthYear, month: null, day: null, approximate: false } : null);
@@ -52,12 +52,32 @@ export function ageOn(birth: PartialDate, on: CalendarDay): { years: number; exa
   return { years, exact: birth.day !== null && !birth.approximate };
 }
 
-/** "Age 37", "Age about 37", or null. The detail panel uses this for living people only. */
-export function ageLabel(person: { lifeStatus: LifeStatus; birthDate?: PartialDate | null }, today: CalendarDay): string | null {
-  if (person.lifeStatus === 'deceased' || !person.birthDate) return null;
-  const age = ageOn(person.birthDate, today);
+/**
+ * "Age 37", "Age about 37", or null. Living people only: the deceased have no current age
+ * (SPEC §3), and a year-only or approximate birth date can only give "about".
+ */
+export function ageLabel(
+  person: { lifeStatus: LifeStatus; birthDate?: PartialDate | null; birthYear?: number | null },
+  today: CalendarDay,
+): string | null {
+  if (person.lifeStatus === 'deceased') return null;
+  const birth = person.birthDate ?? (person.birthYear ? { year: person.birthYear, month: null, day: null, approximate: false } : null);
+  if (!birth) return null;
+  const age = ageOn(birth, today);
   if (!age) return null;
   return age.exact ? `Age ${age.years}` : `Age about ${age.years}`;
+}
+
+/**
+ * What a card shows (ADR 032): a living person's current age, and a lifespan for anyone who
+ * has died — they have no current age, and a card must still say that they died (SPEC §6.17).
+ * Falls back to the dates whenever no age can be worked out.
+ */
+export function cardLabel(
+  person: { lifeStatus: LifeStatus; birthDate?: PartialDate | null; deathDate?: PartialDate | null; birthYear?: number | null },
+  today: CalendarDay,
+): string | null {
+  return ageLabel(person, today) ?? lifespanLabel(person);
 }
 
 /** Sort order for siblings: earliest first; missing parts sort after known ones; unknown dates last. */

@@ -127,7 +127,7 @@ orient. Replace lines rather than stacking them.)*
 - Workspace: `apps/web` (React 18, RR 6.30 lazy routes), `apps/api` (Fastify 5, Prisma 6), `packages/shared` (import by subpath, e.g. `@kinfolk/shared/layout/computeLayout`).
 - Built: cookie auth (password, dev/real Google, OTP reset), account page, tree API, graph ChangeSets, layout, kinship, canvas, person editing, dashboard, list view, access + share links + invitations + linked trees, review workflow, key events, GEDCOM/CSV import, PNG/PDF/GEDCOM/CSV export.
 - Graph edits: `POST /api/trees/:id/changes` → `commitChangeSet` (lock, pure `applyChangeSet`, persist, audit per op, returns inverse). Roles per request: `lib/treeAccess.ts` `requireTreeRole`; redaction: `lib/graphRows.ts` `graphForVisibility`.
-- Pure: `computeLayout(graph, { collapsed })` (ordering never depends on entry order — ADR 029), `createKinshipResolver(graph)(ego, alter)`, `displayName(index, id)`, `lifespanLabel`, `keyEvents`, `writeGedcom`/`parseGedcom`, `planCsvImport`, `treeSvg`.
+- Pure: `computeLayout(graph, { collapsed })` (ordering never depends on entry order — ADR 029), `createKinshipResolver(graph)(ego, alter)`, `displayName(index, id)`, `cardLabel` (age for the living, lifespan for the deceased), `keyEvents`, `writeGedcom`/`parseGedcom`, `planCsvImport`, `treeSvg`.
 - Canvas: `apps/web/src/canvas/` (pure `viewport.ts`, `keyboardNav.ts`, `culling.ts`, one `CardMenu`); tree page `features/tree/TreeRoute.tsx` + `useTreeView`.
 - Review: `features/review/` (owner banner + submit dialog; reviewer screen at `/review/:token`). Editing while `in_review` is refused by `commitChangeSet` and hidden by `canEditTree`.
 - Collaboration: `features/collaboration/` (access and link-request dialogs are routes); public pages `/s/:token` (redacted, `toViewGraph`) and `/invite/:token` live outside the app shell.
@@ -176,4 +176,5 @@ deviation is large, open an ADR and link it here instead of explaining it twice.
 - No planning questionnaire: removed from the model, the UI, and the database (ADR 028, QUESTIONS Q45). SPEC §3/§5.4/§5.7 still describe it.
 - Removing someone's only parent is allowed; their children become roots and are named first (ADR 026, Q44) — SPEC §3 reads as a flat refusal.
 - Dates are month/day/year and quick add takes a whole date of birth (ADR 031, Q46); the locale is fixed, not the browser's.
+- Cards and list rows show a living person's age, not their birth year; the deceased keep a lifespan (ADR 032, Q47) — §5 and §6.17 ask for years.
 - Re-parenting is on the Relationships screen only, no drag onto connectors (Q35); union dates are edited at year precision there (Q36).

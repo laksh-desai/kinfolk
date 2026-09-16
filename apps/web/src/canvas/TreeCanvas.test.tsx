@@ -34,11 +34,13 @@ describe('tree canvas', () => {
     expect(cards).toHaveLength(seed.graph.people.length);
   });
 
-  it('shows dates and death, never a bare age, on cards', async () => {
+  it('shows a living person’s age and a lifespan for the deceased, who are marked as such (ADR 032)', async () => {
     const { seed } = await openSeedTree();
     const mohan = screen.getByRole('button', { name: /^Mohan Sharma/ });
     expect(mohan).toHaveAccessibleDescription(/Deceased\. 1935–2005/);
-    expect(screen.getByRole('button', { name: /^Ravi Sharma/ })).toHaveAccessibleDescription(/b\. 1988/);
+    // Ravi was born on 12 April 1988, so his card counts the years rather than naming one.
+    expect(screen.getByRole('button', { name: /^Ravi Sharma/ })).toHaveAccessibleDescription(/Age \d\d/);
+    expect(screen.getByRole('button', { name: /^Ravi Sharma/ })).not.toHaveAccessibleDescription(/b\. 1988/);
     expect(seed.people.mohan.lifeStatus).toBe('deceased');
   });
 

@@ -753,3 +753,38 @@ the full form only.
 **Consequences.** One more tab stop on the fastest path, and no round trip for anyone who
 knows the date. Sibling order improves as a side effect: full dates sort exactly where year
 alone could only approximate (ADR 029).
+
+## 032 — Cards show a living person's age; the deceased keep their lifespan
+Date: 2026-09-16
+Status: accepted
+
+**Context.** §5 says a person card shows "birth–death years (not a bare age)", and §6.17 lists
+"cards show a bare integer age with no dates and no indication of death" as one of the defects
+being replaced. The build followed that: every card read "b. 1988". The product owner asked for
+the opposite — "instead of displaying birth year on each member's card, display their current
+age" (QUESTIONS Q47).
+
+**Decision.** A card shows the current age for the living, and the lifespan for anyone who has
+died. `cardLabel(person, today)` is `ageLabel(person, today) ?? lifespanLabel(person)`, so:
+- living with a date of birth → "Age 38", or "Age about 37" when only the year or an
+  approximate date is known;
+- deceased → "1935–2005", "1935–?", "d. 2001", or "Deceased" — they have no current age, and
+  §3 is explicit that the deceased show a lifespan;
+- nobody with a date of birth in the future or no date at all gets a made-up number.
+
+The three things §6.17 is actually about are kept: the age is labelled rather than a bare
+integer, death is still stated on the card (and in the card's description for screen readers,
+with a distinct background and a grey photo), and the full dates are one click away in the
+panel, which shows "Born April 12, 1988" beside "Living · Age 38". The canvas and the list view
+use the same label, so the two views of one tree never disagree. The merge picker still lists
+dates, because dates are what tell two people of the same name apart.
+
+Today is passed into the card rather than read inside it: every card then agrees on the date,
+tests are deterministic, and a fresh `Date` per render would defeat `PersonCard`'s memoisation
+and re-render every card on every pan.
+
+**Consequences.** A tree open across midnight on someone's birthday shows a stale age until the
+page is reloaded — acceptable, and the alternative (a timer per card) is not worth it. The
+deviation from §5 and §6.17 is recorded in QUESTIONS Q47 and `DEFECTS-VERIFIED` row 17, which
+drops from verified to partly verified: the "no dates, no death indicator" halves still hold,
+but cards now show an age by explicit product decision.

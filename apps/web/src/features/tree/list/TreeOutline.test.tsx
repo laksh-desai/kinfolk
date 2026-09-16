@@ -22,7 +22,7 @@ describe('list view (SPEC §5.3 accessible parallel view)', () => {
     expect(new Set(people.map((link) => link.getAttribute('href'))).size).toBeGreaterThanOrEqual(server.graph().people.length);
     const sureshFamily = within(list).getByRole('heading', { level: 3, name: 'Family of Suresh Sharma' }).closest('li') as HTMLElement;
     expect(sureshFamily).toHaveTextContent('Children: Maya Sharma, Leo Okonkwo');
-    expect(within(list).getByRole('link', { name: 'Edit Ravi Sharma' }).closest('li')).toHaveTextContent('Focus person · b. 1988');
+    expect(within(list).getByRole('link', { name: 'Edit Ravi Sharma' }).closest('li')).toHaveTextContent(/Focus person · Age \d\d/);
     await expectNoAxeViolations();
 
     await user.click(within(list).getByRole('link', { name: 'Edit Ravi Sharma' }));

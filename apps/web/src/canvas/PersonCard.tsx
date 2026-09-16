@@ -1,4 +1,4 @@
-import { lifespanLabel } from '@kinfolk/shared/dates/partialDate';
+import { cardLabel, type CalendarDay } from '@kinfolk/shared/dates/partialDate';
 import type { LayoutNode } from '@kinfolk/shared/layout/layoutTypes';
 import type { Person } from '@kinfolk/shared/schemas/person';
 import { memo, useId } from 'react';
@@ -15,6 +15,8 @@ interface PersonCardProps {
   isSelected: boolean;
   isTabStop: boolean;
   dimmed: boolean;
+  /** Today, passed in so every card agrees and tests are deterministic. */
+  today: CalendarDay;
   onSelect: (personId: string) => void;
   onToggleCollapsed: (personId: string) => void;
 }
@@ -45,12 +47,13 @@ export const PersonCard = memo(function PersonCard({
   isSelected,
   isTabStop,
   dimmed,
+  today,
   onSelect,
   onToggleCollapsed,
 }: PersonCardProps) {
   const detailsId = useId();
   const deceased = person.lifeStatus === 'deceased';
-  const years = lifespanLabel(person);
+  const years = cardLabel(person, today);
   const place = placeOf(person);
   const gender = GENDER_MARK[person.gender];
   const twin = node.multipleBirthId !== null;

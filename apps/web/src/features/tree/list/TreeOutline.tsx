@@ -1,4 +1,4 @@
-import { lifespanLabel } from '@kinfolk/shared/dates/partialDate';
+import { cardLabel, toCalendarDay } from '@kinfolk/shared/dates/partialDate';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, buttonClasses } from '../../../components/Button';
@@ -23,6 +23,7 @@ interface TreeOutlineProps {
  */
 export function TreeOutline({ view, selectedId, personHref, editTreeId }: TreeOutlineProps) {
   const generations = useMemo(() => outlineTree(view.index, view.layout), [view.index, view.layout]);
+  const today = useMemo(() => toCalendarDay(new Date()), []);
   const openDelete = usePersonDialogs((state) => state.openDelete);
   const nameOf = (id: string) => view.names.get(id) ?? 'Unnamed person';
   const hiddenCount = view.graph.people.length - view.layout.nodes.length;
@@ -33,7 +34,7 @@ export function TreeOutline({ view, selectedId, personHref, editTreeId }: TreeOu
     const relation = view.relationToFocus.get(personId);
     const details = [
       personId === view.graph.focusPersonId ? 'Focus person' : relation?.label,
-      person ? lifespanLabel(person) : null,
+      person ? cardLabel(person, today) : null,
       person?.isPlaceholder ? 'Unnamed placeholder' : null,
     ].filter(Boolean);
     return (

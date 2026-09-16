@@ -1,3 +1,4 @@
+import { toCalendarDay } from '@kinfolk/shared/dates/partialDate';
 import type { LayoutBranch } from '@kinfolk/shared/layout/layoutTypes';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
 import type { TreeView } from '../features/tree/useTreeView';
@@ -70,6 +71,8 @@ export function TreeCanvas({ treeId, view, selectedId, onSelect, highlightPath =
   const toggleCollapsed = useCanvasStore((state) => state.toggleCollapsed);
 
   const people = useMemo(() => new Map(graph.people.map((person) => [person.id, person])), [graph]);
+  // One date for every card: a fresh object per render would re-render them all on each pan.
+  const today = useMemo(() => toCalendarDay(new Date()), []);
   const nodeById = useMemo(() => new Map(layout.nodes.map((node) => [node.personId, node])), [layout]);
   const focusId = graph.focusPersonId;
   const pathKey = highlightPath && highlightPath.length > 1 ? highlightPath.join('>') : null;
@@ -387,6 +390,7 @@ export function TreeCanvas({ treeId, view, selectedId, onSelect, highlightPath =
               isFocus={person.id === focusId}
               isSelected={person.id === selectedId}
               isTabStop={person.id === tabStop}
+              today={today}
               dimmed={
                 onPath ? !onPath.has(person.id) : Boolean(query.trim()) && !matchesQuery({ name: names.get(person.id) ?? '', detail: relationToFocus.get(person.id)?.label ?? null }, query)
               }

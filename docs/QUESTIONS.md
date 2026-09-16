@@ -349,6 +349,19 @@ show or collect them in. The build used day/month/year and quick add asked only 
   countries should not change meaning depending on who opens it. If that is wrong, the
   formatting is in one place (`formatPartialDate`) plus three `toLocaleDateString` calls.
 
+### Q47 — Cards show an age, which §5 and §6.17 rule out · Recommend spec change
+§5 specifies "birth–death years (not a bare age)" on the person card, and §6.17 lists "cards
+show a bare integer age with no dates and no indication of death" as a defect of the product
+being replaced. The product owner asked for the age instead: "instead of displaying birth year
+on each member's card, display their current age."
+- Decision: living people show "Age 38" (or "Age about 37" from a year-only date); the deceased
+  keep their lifespan, since they have no current age and §3 requires the lifespan (ADR 032).
+- The defect's substance is kept: the age is labelled, death is still shown on the card, and the
+  full dates sit in the panel one click away. What changed is the default summary.
+- Recommend spec change: §5 should read "a living person's age or a deceased person's lifespan,
+  never a bare integer with no indication of death", and §6.17 should be narrowed to the real
+  failure — an unlabelled number that hides whether the person is alive.
+
 ## Environment
 
 ### Q31 — Node version · Decided

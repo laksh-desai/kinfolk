@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { partialDateSchema, type PartialDate } from '../schemas/dates';
-import { ageLabel, ageOn, comparePartialDates, formatPartialDate, isSameFullDate, lifespanLabel } from './partialDate';
+import { ageLabel, ageOn, cardLabel, comparePartialDates, formatPartialDate, isSameFullDate, lifespanLabel } from './partialDate';
 
 const d = (year: number, month: number | null = null, day: number | null = null, approximate = false): PartialDate => ({ year, month, day, approximate });
 
@@ -53,6 +53,19 @@ describe('derived age', () => {
 
   it('never gives an age for the deceased', () => {
     expect(ageLabel({ lifeStatus: 'deceased', birthDate: d(1935, 1, 9) }, { year: 2026, month: 1, day: 1 })).toBeNull();
+  });
+
+  it('gives a card the living person’s age and the deceased their lifespan (ADR 032)', () => {
+    const today = { year: 2026, month: 9, day: 16 };
+    expect(cardLabel({ lifeStatus: 'living', birthDate: d(1988, 4, 12) }, today)).toBe('Age 38');
+    expect(cardLabel({ lifeStatus: 'living', birthDate: d(1988) }, today)).toBe('Age about 37');
+    // A share link carries the birth year alone; an age from it is the same information.
+    expect(cardLabel({ lifeStatus: 'living', birthYear: 1988 }, today)).toBe('Age about 37');
+    expect(cardLabel({ lifeStatus: 'deceased', birthDate: d(1935), deathDate: d(2005) }, today)).toBe('1935–2005');
+    expect(cardLabel({ lifeStatus: 'deceased' }, today)).toBe('Deceased');
+    expect(cardLabel({ lifeStatus: 'living' }, today)).toBeNull();
+    // A birth date in the future can't make an age, so the card falls back to the year.
+    expect(cardLabel({ lifeStatus: 'living', birthDate: d(2030) }, today)).toBe('b. 2030');
   });
 });
 
