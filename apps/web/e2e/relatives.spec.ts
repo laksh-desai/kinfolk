@@ -135,4 +135,46 @@ test.describe('building a family outward from one person (SPEC §4, §12)', () =
       await expectLabel(page, name, label);
     }
   });
+
+  /** The two bugs reported from first use (ADR 026, ADR 027), in a real browser. */
+  test('a spouse added to a parent is the children’s parent, and the top of the tree can be removed', async ({ page }) => {
+    test.setTimeout(180_000);
+    await signUp(page);
+    const { treeId } = await createEmptyTree(page, 'Menon family');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(`/trees/${treeId}`);
+
+    await page.getByRole('link', { name: 'Add the first person' }).click();
+    await page.getByRole('textbox', { name: 'First name' }).fill('Deepa');
+    await page.getByRole('combobox', { name: 'Gender' }).selectOption('female');
+    await page.getByRole('button', { name: 'Add person' }).click();
+    await waitForSave(page);
+
+    // A father, then a grandfather above him: the tree grows upward one person at a time.
+    await addRelative(page, 'Deepa', 'Parent', 'Bala', { gender: 'male' });
+    await expectLabel(page, 'Bala', 'Father');
+    await addRelative(page, 'Bala', 'Parent', 'Hari', { gender: 'male' });
+    await expectLabel(page, 'Hari', 'Paternal grandfather');
+
+    // Bala's spouse, added after his child, is Deepa's mother — not her step-mother.
+    await addRelative(page, 'Bala', 'Partner', 'Uma', {
+      gender: 'female',
+      answers: [['Is this person also a parent of Deepa?', /^Yes/]],
+    });
+    await expectLabel(page, 'Uma', 'Mother');
+
+    // The person at the top can be removed on his own; everyone below stays.
+    await select(page, 'Hari');
+    await page.getByRole('complementary', { name: /^Hari/ }).getByRole('button', { name: 'Delete' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Delete Hari?' });
+    await dialog.getByRole('radio', { name: 'Remove Hari' }).check();
+    await expect(dialog).toContainText('Bala will have no parent in the tree');
+    await dialog.getByRole('button', { name: 'Delete Hari' }).click();
+    await waitForSave(page);
+
+    await page.reload();
+    await expect(canvas(page).getByRole('button', { name: /^Hari/ })).toHaveCount(0);
+    await expectLabel(page, 'Uma', 'Mother');
+    await expectLabel(page, 'Bala', 'Father');
+  });
 });

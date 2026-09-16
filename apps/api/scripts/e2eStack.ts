@@ -89,7 +89,14 @@ const env = parseEnv({
   LOCAL_STORAGE_DIR: path.join(e2eDir, 'storage'),
 });
 const deps = createDeps(env, apiRoot);
-const api = await buildApp(deps, { logger: false });
+// Every journey signs up its own people, from one address, far faster than a person would:
+// production limits (10 auth attempts a minute) reject the later specs with a 429. The limiter
+// itself is covered by auth.test.ts, which sets a deliberately tiny limit.
+const api = await buildApp(deps, {
+  logger: false,
+  authRateLimit: { max: 10_000, timeWindow: '1 minute' },
+  inviteRateLimit: { max: 10_000, timeWindow: '1 minute' },
+});
 await api.listen({ port: API_PORT, host: '127.0.0.1' });
 
 process.env.API_PORT = String(API_PORT);
