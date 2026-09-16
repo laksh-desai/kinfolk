@@ -13,7 +13,7 @@ import { PanelShell } from './PanelShell';
 import { QUICK_ADD_LABELS, QuickAddFields } from './QuickAddFields';
 import { ReadOnlyPanel } from './ReadOnlyPanel';
 
-const INITIAL: QuickAddValues = { firstName: '', lastName: '', gender: 'unknown', lifeStatus: 'living', birthYear: '' };
+const INITIAL: QuickAddValues = { firstName: '', lastName: '', gender: 'unknown', lifeStatus: 'living', birthDay: '', birthMonth: '', birthYear: '' };
 
 /**
  * Adds someone with no relationship yet: the first person in a new tree, or a person to connect
@@ -46,7 +46,7 @@ export function Component() {
   return (
     <PanelShell
       title={first ? 'Add the first person' : 'Add a person'}
-      subtitle={first ? 'Usually yourself, or the person this planning is for. Everyone else is added from them.' : 'Someone not connected to anyone yet. You can link them to relatives afterwards.'}
+      subtitle={first ? 'Usually yourself. Everyone else is added from them.' : 'Someone not connected to anyone yet. You can link them to relatives afterwards.'}
       closeTo={`/trees/${tree.id}`}
       closeLabel="Close"
       focusKey={null}

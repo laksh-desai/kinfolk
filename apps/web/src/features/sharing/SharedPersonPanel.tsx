@@ -44,7 +44,7 @@ export function SharedPersonPanel({ person, name, relation, closeTo, relatives }
         </ul>
       ) : null}
       <p className="mx-5 mb-4 rounded-control bg-sunken px-3 py-2 text-sm text-ink-muted">
-        This is a shared, read-only view. Contact details, addresses, full dates, notes, and planning answers aren’t included.
+        This is a shared, read-only view. Contact details, addresses, full dates, and notes aren’t included.
       </p>
     </aside>
   );

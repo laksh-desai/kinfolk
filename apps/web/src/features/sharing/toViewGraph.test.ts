@@ -28,7 +28,6 @@ describe('toViewGraph', () => {
     const view = toViewGraph(redacted);
     const ravi = view.people.find((person) => person.id === people.ravi.id);
     expect(ravi).toMatchObject({ firstName: 'Ravi', birthDate: { year: 1988, month: null, day: null }, email: null, phone: null, address: null, notes: null });
-    expect(ravi && 'planning' in ravi).toBe(false);
     // Relationships still resolve exactly as in the full tree.
     expect(resolveKinship(view, people.ravi.id, people.ishaan.id).label).toBe(resolveKinship(graph, people.ravi.id, people.ishaan.id).label);
   });

@@ -41,7 +41,7 @@ describe('adding relatives (SPEC §4.1, §4.2)', () => {
     await waitFor(() => expect(firstName).toHaveFocus());
     await user.type(firstName, 'Maya');
     await user.selectOptions(screen.getByRole('combobox', { name: 'Gender' }), 'female');
-    await user.click(screen.getByRole('textbox', { name: 'Birth year optional' }));
+    await user.click(screen.getByRole('textbox', { name: 'Year optional' }));
     await user.keyboard('{Enter}');
 
     // Optimistic: on the canvas and in the panel before the server answers.
@@ -59,6 +59,38 @@ describe('adding relatives (SPEC §4.1, §4.2)', () => {
     await waitFor(() => expect(within(canvas()).queryByRole('button', { name: /^Maya, / })).not.toBeInTheDocument());
     expect(server.graph().people.some((person) => person.id === mayaId)).toBe(false);
     expect(server.graph().people.filter((person) => person.isPlaceholder)).toHaveLength(2);
+  }, 60_000);
+
+  it('makes a spouse the second parent of the children already there, or a step-parent when told', async () => {
+    const user = userEvent.setup();
+    const server = mockTreeServer();
+    const { suresh, maya } = server.seed.people;
+    const { router } = await renderApp(`/trees/${TREE_ID}/people/${suresh.id}/add/partner`);
+    await screen.findByRole('heading', { name: 'Add a partner or spouse' });
+
+    // "No" first: a later partner who isn't their parent stays a step-parent.
+    const question = await screen.findByRole('group', { name: 'Is this person also a parent of Maya Sharma and Leo Okonkwo?' });
+    expect(within(question).getByRole('radio', { name: 'Yes — their other parent' })).toBeChecked();
+    await user.click(within(question).getByRole('radio', { name: 'No — a separate family' }));
+    await user.type(screen.getByRole('textbox', { name: 'First name' }), 'Rina');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Gender' }), 'female');
+    await user.click(screen.getByRole('button', { name: 'Add partner or spouse' }));
+    await waitFor(() => expect(server.changes).toHaveLength(1));
+    const rinaId = router.state.location.pathname.split('/').at(-1) as string;
+    expect(resolveKinship(server.graph(), maya.id, rinaId).label).toBe('Step-mother');
+    await screen.findByRole('complementary', { name: 'Rina' });
+
+    // The default answer makes the new spouse the children's second parent.
+    await router.navigate(`/trees/${TREE_ID}/people/${suresh.id}/add/partner`);
+    const second = await screen.findByRole('group', { name: /Is this person also a parent of/ });
+    expect(within(second).getByRole('radio', { name: 'Yes — their other parent' })).toBeChecked();
+    await user.type(await screen.findByRole('textbox', { name: 'First name' }), 'Kala');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Gender' }), 'female');
+    await user.click(screen.getByRole('button', { name: 'Add partner or spouse' }));
+    await waitFor(() => expect(server.changes).toHaveLength(2));
+    const kalaId = router.state.location.pathname.split('/').at(-1) as string;
+    expect(resolveKinship(server.graph(), maya.id, kalaId).label).toBe('Adoptive mother');
+    await findToast(/Added Kala as Suresh’s wife\. She is also recorded as a parent of Maya and Leo\./);
   }, 60_000);
 
   it('asks which parent’s side and which aunt or uncle, and can connect through someone not yet entered', async () => {

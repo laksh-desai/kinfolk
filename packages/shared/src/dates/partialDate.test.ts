@@ -22,10 +22,10 @@ describe('partialDateSchema', () => {
 
 describe('formatting', () => {
   it('formats each precision and marks approximate dates', () => {
-    expect(formatPartialDate(d(1988, 4, 12))).toBe('12 Apr 1988');
+    expect(formatPartialDate(d(1988, 4, 12))).toBe('Apr 12, 1988');
     expect(formatPartialDate(d(1988, 4))).toBe('Apr 1988');
     expect(formatPartialDate(d(1910, null, null, true))).toBe('c. 1910');
-    expect(formatPartialDate(d(1988, 4, 12), 'long')).toBe('12 April 1988');
+    expect(formatPartialDate(d(1988, 4, 12), 'long')).toBe('April 12, 1988');
   });
 
   it('shows a lifespan, never a bare age (SPEC §6.17)', () => {

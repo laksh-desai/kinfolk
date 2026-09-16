@@ -3,7 +3,7 @@ import { applyChangeSet, GraphValidationError } from '@kinfolk/shared/graph/appl
 import type { ChangeOp, ChangeSetResult } from '@kinfolk/shared/schemas/changeSet';
 import type { TreeGraph } from '@kinfolk/shared/schemas/graph';
 import type { ParentChild } from '@kinfolk/shared/schemas/parentChild';
-import type { Person, PersonPlanning } from '@kinfolk/shared/schemas/person';
+import type { Person } from '@kinfolk/shared/schemas/person';
 import type { TreeRole } from '@kinfolk/shared/schemas/tree';
 import type { Union } from '@kinfolk/shared/schemas/union';
 import { randomUUID } from 'node:crypto';
@@ -47,12 +47,6 @@ export class TreeLockedError extends AppError {
   }
 }
 
-function touchesPlanning(op: ChangeOp): boolean {
-  if (op.op === 'person.create') return op.person.planning !== undefined && op.person.planning !== null;
-  if (op.op === 'person.update') return op.patch.planning !== undefined;
-  return false;
-}
-
 interface AuditDraft {
   id: string;
   action: string;
@@ -77,9 +71,6 @@ export async function commitChangeSet(
 ): Promise<ChangeSetResult> {
   const { treeId, actorId, role } = input;
   if (role !== 'owner' && role !== 'editor') throw new ForbiddenError('You can view this family tree but not change it.');
-  if (role !== 'owner' && input.ops.some(touchesPlanning)) {
-    throw new ForbiddenError('Only the tree owner can add or change planning answers.', 'planning_owner_only');
-  }
   assertClientSettableFields(treeId, input.ops);
 
   return deps.prisma.$transaction(
@@ -215,7 +206,7 @@ export async function commitChangeSet(
       return {
         version: updated.version,
         treeStatus: updated.status,
-        inverse: finalizeInverse(result.inverse, deleteAuditIds, role),
+        inverse: finalizeInverse(result.inverse, deleteAuditIds),
       };
     },
     { timeout: 60_000, maxWait: 10_000 },
@@ -223,18 +214,15 @@ export async function commitChangeSet(
 }
 
 /**
- * Undoing a delete must bring back fields the caller can't set or see: planning answers
- * (hidden from editors) and linkedTreeId (server-managed). Every restoring create carries a
- * token naming the audit event that recorded the deletion, and the server restores those
- * fields from that record on replay. Editors never receive the planning text itself.
+ * Undoing a delete must bring back linkedTreeId, which is server-managed and can't be set by a
+ * client. Every restoring create carries a token naming the audit event that recorded the
+ * deletion, and the server restores that field from the record on replay.
  */
-function finalizeInverse(inverse: ChangeOp[], deleteAuditIds: Map<string, string>, role: TreeRole): ChangeOp[] {
+function finalizeInverse(inverse: ChangeOp[], deleteAuditIds: Map<string, string>): ChangeOp[] {
   return inverse.map((op) => {
     if (op.op !== 'person.create') return op;
     const restoreToken = deleteAuditIds.get(op.person.id);
-    const { planning, ...rest } = op.person;
-    const person = role === 'owner' ? { ...rest, planning } : rest;
-    return restoreToken ? { op: 'person.create', person, restoreToken } : { op: 'person.create', person };
+    return restoreToken ? { op: 'person.create', person: op.person, restoreToken } : op;
   });
 }
 
@@ -280,14 +268,7 @@ async function restoreHiddenFields(tx: Prisma.TransactionClient, treeId: string,
       // No verified record of this person being deleted here: nothing server-managed comes back.
       return { ...rest, person: { ...op.person, linkedTreeId: null } };
     }
-    const before = (event.before ?? {}) as { planning?: PersonPlanning | null; linkedTreeId?: string | null };
-    return {
-      ...rest,
-      person: {
-        ...op.person,
-        planning: op.person.planning ?? before.planning ?? null,
-        linkedTreeId: before.linkedTreeId ?? null,
-      },
-    };
+    const before = (event.before ?? {}) as { linkedTreeId?: string | null };
+    return { ...rest, person: { ...op.person, linkedTreeId: before.linkedTreeId ?? null } };
   });
 }

@@ -47,16 +47,6 @@ export const socialsSchema = z.object({
 });
 export type PersonSocials = z.output<typeof socialsSchema>;
 
-/** The five advisory questions. Owner and reviewer only — never sent to editors, viewers, or share links. */
-export const planningSchema = z.object({
-  overallObjective: optionalText(4000, 'Overall objective'),
-  areasOfConcern: optionalText(4000, 'Areas of concern'),
-  marketOutlook: optionalText(4000, 'Market outlook'),
-  familyRelationships: optionalText(4000, 'Family relationships'),
-  rateOfReturnView: optionalText(4000, 'Rate of return view'),
-});
-export type PersonPlanning = z.output<typeof planningSchema>;
-
 const emailField = z
   .string()
   .trim()
@@ -100,7 +90,6 @@ export const personFieldsShape = {
   isPlaceholder: z.boolean().optional().transform((value) => value ?? false),
   details: detailsSchema.nullable().optional().transform((value) => value ?? null),
   socials: socialsSchema.nullable().optional().transform((value) => value ?? null),
-  planning: planningSchema.nullable().optional().transform((value) => value ?? null),
   linkedTreeId: uuidSchema.nullable().optional().transform((value) => value ?? null),
 };
 
@@ -125,8 +114,6 @@ export interface PersonFields {
   isPlaceholder: boolean;
   details: PersonDetails | null;
   socials: PersonSocials | null;
-  /** Absent (undefined) when the caller may not see planning answers. */
-  planning?: PersonPlanning | null;
   linkedTreeId: string | null;
 }
 

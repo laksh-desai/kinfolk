@@ -27,7 +27,7 @@ test('submit for review → reviewer requests changes → owner resolves and res
   await expect(page.getByRole('link', { name: 'Add person' })).toHaveCount(0);
   await expectAccessible(page, 'tree in review');
 
-  // The reviewer opens their link, sees planning answers, and asks for changes.
+  // The reviewer opens their link, sees the full record, and asks for changes.
   const mail = await waitForMail(reviewerEmail, /asked you to review/);
   const reviewLink = /\/review\/[A-Za-z0-9_.-]+/.exec(mail.text)?.[0];
   expect(reviewLink).toBeTruthy();

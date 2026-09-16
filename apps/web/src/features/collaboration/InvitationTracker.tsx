@@ -9,7 +9,7 @@ const STEPS = [
   { stage: 'linked', label: 'Linked', at: (invitation: InvitationDto) => invitation.linkedAt },
 ] as const;
 
-const when = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+const when = (iso: string) => new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 
 /** The four real stages of a relative invitation (SPEC §5.5), each with the time it happened. */
 export function InvitationTracker({ invitation }: { invitation: InvitationDto }) {

@@ -9,6 +9,7 @@ export interface RadioOption {
 
 interface RadioGroupProps {
   legend: string;
+  /** Groups these radios together. Scoped per instance, so two groups can share a name safely. */
   name: string;
   value: string;
   options: readonly RadioOption[];
@@ -39,7 +40,9 @@ export function RadioGroup({ legend, name, value, options, onChange, hint, class
             <input
               id={optionId}
               type="radio"
-              name={name}
+              // Radios with the same name form one browser group even across different forms, and
+              // one left over mid-navigation can silently uncheck the new one: keep names local.
+              name={`${id}-${name}`}
               value={option.value}
               checked={checked}
               onChange={() => onChange(option.value)}

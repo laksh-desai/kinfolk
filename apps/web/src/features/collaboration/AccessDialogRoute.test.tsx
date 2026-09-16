@@ -116,7 +116,7 @@ describe('sharing a tree (SPEC §5.6)', () => {
 
     await renderApp(`/trees/${TREE_ID}/access`);
     const dialog = await screen.findByRole('dialog', { name: 'Share “Sharma family”' });
-    expect(within(dialog).getByText(/never contact details, addresses, notes, or planning answers/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/never contact details, addresses, or notes/)).toBeInTheDocument();
     await user.selectOptions(within(dialog).getByRole('combobox', { name: 'Link works for' }), '7');
     await user.click(within(dialog).getByRole('button', { name: 'Create link' }));
     const field = await within(dialog).findByRole('textbox', { name: /copy it now/i });
@@ -126,7 +126,7 @@ describe('sharing a tree (SPEC §5.6)', () => {
     expect(await screen.findByText('Copied to your clipboard.')).toBeInTheDocument();
 
     const links = await screen.findByRole('list', { name: 'Share links' });
-    expect(links).toHaveTextContent('Works until 14 Oct 2026');
+    expect(links).toHaveTextContent('Works until Oct 14, 2026');
     await user.click(within(links).getByRole('button', { name: /^Turn off the link created/ }));
     await user.click(within(await screen.findByRole('dialog', { name: 'Turn off this link?' })).getByRole('button', { name: 'Turn off link' }));
     await waitFor(() => expect(revoked).toBe(true));

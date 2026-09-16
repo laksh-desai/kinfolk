@@ -2,11 +2,11 @@ import { Prisma, type ParentChild as ParentChildRow, type Person as PersonRow, t
 import type { PartialDate } from '@kinfolk/shared/schemas/dates';
 import type { TreeGraph, RedactedTreeGraph } from '@kinfolk/shared/schemas/graph';
 import type { ParentChild, ParentChildPatch } from '@kinfolk/shared/schemas/parentChild';
-import type { Address, Person, PersonDetails, PersonPatch, PersonPlanning, PersonSocials, RedactedPerson } from '@kinfolk/shared/schemas/person';
+import type { Address, Person, PersonDetails, PersonPatch, PersonSocials, RedactedPerson } from '@kinfolk/shared/schemas/person';
 import type { Union, UnionPatch } from '@kinfolk/shared/schemas/union';
 
 /** What a caller may see of a person. See QUESTIONS Q8/Q9. */
-export type Visibility = 'full' | 'standard' | 'redacted';
+export type Visibility = 'full' | 'redacted';
 
 function dateFrom(year: number | null, month: number | null, day: number | null, approximate: boolean): PartialDate | null {
   return year === null ? null : { year, month, day: month === null ? null : day, approximate };
@@ -50,7 +50,6 @@ export function personFromRow(row: PersonRow): Person {
     isPlaceholder: row.isPlaceholder,
     details: (row.details as PersonDetails | null) ?? null,
     socials: (row.socials as PersonSocials | null) ?? null,
-    planning: (row.planning as PersonPlanning | null) ?? null,
     linkedTreeId: row.linkedTreeId,
   };
 }
@@ -80,13 +79,12 @@ export function personCreateData(treeId: string, person: Person): Prisma.PersonU
     isPlaceholder: person.isPlaceholder,
     details: json(person.details),
     socials: json(person.socials),
-    planning: json(person.planning),
     linkedTreeId: person.linkedTreeId,
   };
 }
 
 export function personUpdateData(patch: PersonPatch): Prisma.PersonUncheckedUpdateManyInput {
-  const { birthDate, deathDate, address, details, socials, planning, ...scalars } = patch;
+  const { birthDate, deathDate, address, details, socials, ...scalars } = patch;
   return {
     ...scalars,
     ...dateColumns('birth', birthDate),
@@ -94,7 +92,6 @@ export function personUpdateData(patch: PersonPatch): Prisma.PersonUncheckedUpda
     ...(address !== undefined ? { address: json(address) } : {}),
     ...(details !== undefined ? { details: json(details) } : {}),
     ...(socials !== undefined ? { socials: json(socials) } : {}),
-    ...(planning !== undefined ? { planning: json(planning) } : {}),
   };
 }
 
@@ -142,12 +139,6 @@ export function parentChildUpdateData(patch: ParentChildPatch): Prisma.ParentChi
   return { ...patch };
 }
 
-/** Drops planning answers. Used for editors and viewers. */
-export function withoutPlanning(person: Person): Person {
-  const { planning: _hidden, ...rest } = person;
-  return rest;
-}
-
 /** The share-link view: an allow-list, so a new Person column can never leak by default. */
 export function redactPerson(person: Person): RedactedPerson {
   return {
@@ -165,11 +156,10 @@ export function redactPerson(person: Person): RedactedPerson {
   };
 }
 
-export function graphForVisibility(graph: TreeGraph, visibility: 'full' | 'standard'): TreeGraph;
+export function graphForVisibility(graph: TreeGraph, visibility: 'full'): TreeGraph;
 export function graphForVisibility(graph: TreeGraph, visibility: 'redacted'): RedactedTreeGraph;
 export function graphForVisibility(graph: TreeGraph, visibility: Visibility): TreeGraph | RedactedTreeGraph {
   if (visibility === 'full') return graph;
-  if (visibility === 'standard') return { ...graph, people: graph.people.map(withoutPlanning) };
   return {
     people: graph.people.map(redactPerson),
     unions: graph.unions.map((union) => ({

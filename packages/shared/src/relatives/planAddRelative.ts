@@ -61,6 +61,8 @@ export const RELATIONS: readonly RelationSpec[] = [
 export const NEW_PERSON = 'new';
 /** For a child: attach to the anchor alone (a one-parent family) rather than an existing couple. */
 export const SOLO_UNION = 'solo';
+/** For a partner: start a separate family rather than joining the anchor's one-parent family. */
+export const NEW_UNION = 'new-union';
 
 /**
  * Existing people the user chose to connect through. Missing → the obvious existing candidate,
@@ -75,7 +77,10 @@ export interface Via {
   partnerId?: string | null;
   auntUncleId?: string | null;
   sharedParentId?: string | null;
-  /** For a child: which of the anchor's unions they belong to. */
+  /**
+   * For a child: which of the anchor's unions they belong to. For a partner: the anchor's
+   * one-parent family they join as the second parent, or `NEW_UNION` for a family of their own.
+   */
   unionId?: string | null;
 }
 
@@ -94,9 +99,13 @@ export interface AddRelativePlan {
   ops: ChangeOp[];
   personId: string;
   placeholderIds: string[];
-  /** One plain sentence saying what was added, including any placeholders. */
+  /** Just what was added, no trailing stop: "Added Kala as Bala’s wife". The undo label. */
+  headline: string;
+  /** The headline plus anything else that happened: placeholders created, children gained. */
   summary: string;
 }
+
+const MARRIED = { type: 'marriage', status: 'current' } as const;
 
 const PARTNER_UNION: Partial<Record<RelationKey, { type: UnionType; status: UnionStatus }>> = {
   partner: { type: 'partnership', status: 'current' },
@@ -104,6 +113,37 @@ const PARTNER_UNION: Partial<Record<RelationKey, { type: UnionType; status: Unio
   'former-spouse': { type: 'marriage', status: 'divorced' },
   'unmarried-partner': { type: 'partnership', status: 'current' },
 };
+
+/**
+ * The anchor's one-parent families: a union where they are the only partner. A new partner
+ * joins one of these by default, because that is what "the other parent isn't recorded yet"
+ * means — starting a second family instead would read as a step-parent (ADR 027).
+ */
+function soloUnionsOf(state: PlanState, anchorId: string) {
+  return state.index
+    .unionsOf(anchorId)
+    .filter((union) => union.partnerBId === null && union.partnerAId === anchorId)
+    .sort((a, b) => state.index.childEdgesOf(b.id).length - state.index.childEdgesOf(a.id).length);
+}
+
+/**
+ * Links `partnerId` as `personId`'s partner. Joining the one-parent family is the default: it
+ * makes the new partner the second parent of children already there, which is what someone who
+ * entered a parent before their spouse means. Returns the children they became a parent of, so
+ * the summary can say so. `NEW_UNION` starts a separate family instead (a later remarriage).
+ */
+function attachPartner(state: PlanState, personId: string, partnerId: string, shape: { type: UnionType; status: UnionStatus }, unionId?: string | null): string[] {
+  const solo = soloUnionsOf(state, personId);
+  const chosen = unionId === NEW_UNION ? undefined : unionId ? solo.find((union) => union.id === unionId) : solo[0];
+  if (unionId && unionId !== NEW_UNION && !chosen) throw new PlanError('That person isn’t in that family on their own.', 'invalid');
+  if (!chosen) {
+    state.addUnion(personId, partnerId, shape.type, shape.status);
+    return [];
+  }
+  const children = state.index.childEdgesOf(chosen.id).map((edge) => state.ref(edge.childId));
+  state.push({ op: 'union.update', id: chosen.id, patch: { partnerBId: partnerId, type: shape.type, status: shape.status } });
+  return children;
+}
 
 function linealParentUnion(state: PlanState, childId: string, kind: ParentChildKind) {
   const edge = state.index.parentEdgesOf(childId).find((candidate) => candidate.kind === kind);
@@ -280,6 +320,8 @@ export function planAddRelative(graph: TreeGraph, request: AddRelativeRequest, c
   const anchorName = state.ref(anchorId);
   const newId = state.addPerson(request.person);
   const kind = request.kind ?? (relation === 'adopted-child' ? 'adopted' : 'biological');
+  /** Children the new partner became a parent of by joining a one-parent family. */
+  let joinedChildren: string[] = [];
 
   switch (relation) {
     case 'parent':
@@ -300,8 +342,7 @@ export function planAddRelative(graph: TreeGraph, request: AddRelativeRequest, c
     case 'spouse':
     case 'former-spouse':
     case 'unmarried-partner': {
-      const shape = PARTNER_UNION[relation] ?? { type: 'unknown', status: 'current' };
-      state.addUnion(anchorId, newId, shape.type, shape.status);
+      joinedChildren = attachPartner(state, anchorId, newId, PARTNER_UNION[relation] ?? { type: 'unknown', status: 'current' }, via.unionId);
       break;
     }
     case 'sibling':
@@ -361,24 +402,27 @@ export function planAddRelative(graph: TreeGraph, request: AddRelativeRequest, c
       attachParent(state, ensurePartner(state, anchorId, via.partnerId), newId, request.kind ?? 'biological');
       break;
     case 'sibling-in-law':
-      if (request.siblingInLawVia === 'sibling') state.addUnion(ensureSibling(state, anchorId, via.siblingId), newId, 'marriage', 'current');
+      if (request.siblingInLawVia === 'sibling') joinedChildren = attachPartner(state, ensureSibling(state, anchorId, via.siblingId), newId, MARRIED);
       else addFullSibling(state, ensurePartner(state, anchorId, via.partnerId), newId);
       break;
     case 'child-in-law':
-      state.addUnion(ensureChild(state, anchorId, via.childId), newId, 'marriage', 'current');
+      joinedChildren = attachPartner(state, ensureChild(state, anchorId, via.childId), newId, MARRIED);
       break;
   }
 
   const person = request.person;
   const newName = person.firstName.trim() || 'Someone';
   const pronoun = person.gender === 'female' ? 'her' : person.gender === 'male' ? 'him' : 'them';
-  const added = `Added ${newName} as ${possessive(anchorName)} ${wordFor(relation, person.gender)}.`;
+  const subject = person.gender === 'female' ? 'She' : person.gender === 'male' ? 'He' : 'They';
+  const headline = `Added ${newName} as ${possessive(anchorName)} ${wordFor(relation, person.gender)}`;
   const phrases = state.placeholders.map((entry) => entry.phrase);
-  const summary = phrases.length
-    ? `${added} To connect ${pronoun} we also added ${joinPhrases(phrases)} — you can name ${phrases.length === 1 ? 'it' : 'them'} anytime.`
-    : added;
+  const sentences = [`${headline}.`];
+  if (phrases.length) sentences.push(`To connect ${pronoun} we also added ${joinPhrases(phrases)} — you can name ${phrases.length === 1 ? 'it' : 'them'} anytime.`);
+  if (joinedChildren.length) {
+    sentences.push(`${subject} ${subject === 'They' ? 'are' : 'is'} also recorded as a parent of ${joinPhrases(joinedChildren)}.`);
+  }
 
-  return { ops: state.ops, personId: newId, placeholderIds: state.placeholders.map((entry) => entry.id), summary };
+  return { ops: state.ops, personId: newId, placeholderIds: state.placeholders.map((entry) => entry.id), headline, summary: sentences.join(' ') };
 }
 
 export interface ConnectionOption {
@@ -451,6 +495,28 @@ export function connectionSteps(graph: TreeGraph, anchorId: string, relation: Re
       }
       break;
     }
+    case 'partner':
+    case 'spouse':
+    case 'former-spouse':
+    case 'unmarried-partner': {
+      // Only worth asking when the anchor has children whose other parent isn't recorded:
+      // the answer decides between a second parent and a step-parent (ADR 027).
+      for (const union of soloUnionsOf(state, anchorId)) {
+        const children = index.childEdgesOf(union.id).map((edge) => fullName(edge.childId));
+        if (children.length === 0) continue;
+        steps.push({
+          key: 'unionId',
+          question: `Is this person also a parent of ${joinPhrases(children)}?`,
+          options: [
+            { id: union.id, label: 'Yes — their other parent' },
+            { id: NEW_UNION, label: 'No — a separate family' },
+          ],
+          allowsNew: false,
+        });
+        break;
+      }
+      break;
+    }
     case 'step-child':
       step('partnerId', `Which of ${anchor}’s partners is the child’s parent?`, partnersOf(anchorId));
       break;
@@ -494,6 +560,8 @@ export function planAddDetached(graph: TreeGraph, person: PersonCreateInput, con
   state.addPerson(person);
   if (!graph.focusPersonId) state.push({ op: 'tree.setFocus', personId: person.id });
   const name = person.firstName.trim() || 'Someone';
-  const summary = graph.people.length === 0 ? `Added ${name} as the first person in this tree.` : `Added ${name} to the tree. Connect them to someone whenever you’re ready.`;
-  return { ops: state.ops, personId: person.id, placeholderIds: [], summary };
+  const first = graph.people.length === 0;
+  const headline = first ? `Added ${name} as the first person in this tree` : `Added ${name} to the tree`;
+  const summary = first ? `${headline}.` : `${headline}. Connect them to someone whenever you’re ready.`;
+  return { ops: state.ops, personId: person.id, placeholderIds: [], headline, summary };
 }

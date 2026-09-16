@@ -8,7 +8,7 @@ export type UnionCreateInput = Omit<Union, 'createdAt'> & { createdAt?: string }
 export type ParentChildCreateInput = Omit<ParentChild, 'createdAt'> & { createdAt?: string };
 
 export type ChangeOp =
-  /** restoreToken: set by the server on the inverse of a delete so hidden fields (planning) come back on undo. */
+  /** restoreToken: set by the server on the inverse of a delete so server-managed fields come back on undo. */
   | { op: 'person.create'; person: PersonCreateInput; restoreToken?: string }
   | { op: 'person.update'; id: string; patch: PersonPatch }
   | { op: 'person.delete'; id: string }

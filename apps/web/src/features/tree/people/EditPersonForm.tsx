@@ -14,7 +14,6 @@ import { announce } from '../../../lib/announcer';
 import { useForm } from '../../../lib/useForm';
 import { commitWithUndo } from '../editing/changeQueue';
 import { useTreeOutlet } from '../treeOutlet';
-import { canSeePlanning } from '../treePermissions';
 import { AddressFields } from './AddressFields';
 import { DateFields } from './DateFields';
 import { FormSection } from './FormSection';
@@ -74,7 +73,6 @@ export function EditPersonForm({ person }: { person: Person }) {
   const navigate = useNavigate();
   const leaving = useRef(false);
   const name = view.names.get(personId) ?? '';
-  const includePlanning = canSeePlanning(tree);
   const relatives = useMemo(() => directRelatives(view.index, view.resolve, personId), [view.index, view.resolve, personId]);
   const panelUrl = `/trees/${tree.id}/people/${personId}`;
   const title = person.firstName ? `Edit ${person.firstName}’s details` : `Edit details for ${name}`;
@@ -85,7 +83,7 @@ export function EditPersonForm({ person }: { person: Person }) {
     labels: PERSON_FORM_LABELS,
     idPrefix: 'person',
     onSubmit: (values) => {
-      const patch = changedFields(person, formValuesToFields(values, { includePlanning }));
+      const patch = changedFields(person, formValuesToFields(values));
       leaving.current = true;
       if (Object.keys(patch).length === 0) {
         announce('Nothing changed, so there was nothing to save.');
@@ -217,16 +215,6 @@ export function EditPersonForm({ person }: { person: Person }) {
           </div>
           <TextAreaField field={form.field('notes')} label="Notes" optionalMark rows={4} />
         </FormSection>
-
-        {includePlanning ? (
-          <FormSection title="Planning" description="Only you and your reviewer see these answers. They never appear in a shared view.">
-            <TextAreaField field={form.field('overallObjective')} label="Overall objective" optionalMark hint="What does this person most want their planning to achieve?" />
-            <TextAreaField field={form.field('areasOfConcern')} label="Areas of concern" optionalMark hint="What worries them most?" />
-            <TextAreaField field={form.field('marketOutlook')} label="Market outlook" optionalMark hint="How do they see markets over the next few years?" />
-            <TextAreaField field={form.field('familyRelationships')} label="Family relationships" optionalMark hint="Anything about family dynamics the advisor should know." />
-            <TextAreaField field={form.field('rateOfReturnView')} label="Rate of return" optionalMark hint="What return do they expect, and how much risk will they accept for it?" />
-          </FormSection>
-        ) : null}
       </form>
     </PanelShell>
   );

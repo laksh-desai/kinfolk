@@ -14,7 +14,7 @@ describe('relativeTime', () => {
     expect(relativeTime(ago(4 * 86_400_000), now)).toBe('4 days ago');
     expect(relativeTime(ago(21 * 86_400_000), now)).toBe('3 weeks ago');
     expect(relativeTime(ago(95 * 86_400_000), now)).toBe('3 months ago');
-    expect(relativeTime('2024-02-03T10:00:00.000Z', now)).toBe('3 Feb 2024');
+    expect(relativeTime('2024-02-03T10:00:00.000Z', now)).toBe('Feb 3, 2024');
   });
 
   it('never shows a time in the future', () => {

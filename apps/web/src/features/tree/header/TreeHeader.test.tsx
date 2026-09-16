@@ -60,7 +60,7 @@ describe('tree management from the tree page (SPEC §6.3, §6.24)', () => {
     await user.click(await screen.findByRole('button', { name: 'Settings for Sharma family' }));
     await user.click(await screen.findByRole('menuitem', { name: 'Delete this tree…' }));
     const dialog = await screen.findByRole('dialog', { name: 'Delete Sharma family?' });
-    expect(dialog).toHaveTextContent('60 people, their details, photos, and planning answers');
+    expect(dialog).toHaveTextContent('60 people, their details, and photos');
     expect(dialog).toHaveTextContent('This can’t be undone.');
     await expectNoAxeViolations();
     await user.click(within(dialog).getByRole('button', { name: 'Delete this tree' }));

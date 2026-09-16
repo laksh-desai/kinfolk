@@ -86,6 +86,8 @@ export function Component() {
     lastName: relation && INHERITS_LAST_NAME.has(relation) ? (anchor?.lastName ?? '') : '',
     gender: spec?.gender ?? 'unknown',
     lifeStatus: 'living',
+    birthDay: '',
+    birthMonth: '',
     birthYear: '',
   };
 
@@ -102,8 +104,7 @@ export function Component() {
         { anchorId: anchor.id, relation, person, via: connection.via, siblingInLawVia, kind: preview?.askKind ? kind : undefined },
         { newId },
       );
-      const label = plan.summary.replace(/ To connect .*$/, '').replace(/\.$/, '');
-      void commitWithUndo(tree.id, plan.ops, label, plan.summary).catch(() => undefined);
+      void commitWithUndo(tree.id, plan.ops, plan.headline, plan.summary).catch(() => undefined);
       if (next.current === 'details') {
         navigate(`/trees/${tree.id}/people/${plan.personId}/edit`);
       } else if (addAnother) {

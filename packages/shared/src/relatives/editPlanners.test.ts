@@ -7,7 +7,7 @@ import type { ChangeOp } from '../schemas/changeSet';
 import type { TreeGraph } from '../schemas/graph';
 import { deletionImpact, planDeletePerson } from './planDeletePerson';
 import { mergeConflicts, planMerge } from './planMerge';
-import { planChangeKind, planDetachParentLink, planDetachPartner, planReparent, planUpdateUnion } from './planRelationshipEdits';
+import { planChangeKind, planDetachParentLink, planDetachPartner, planReparent, planUpdateUnion, reparentTargets } from './planRelationshipEdits';
 import { PlanError } from './planState';
 
 const NOW = '2026-09-13T00:00:00.000Z';
@@ -45,13 +45,34 @@ describe('deletionImpact and planDeletePerson (SPEC §3: never orphan a subtree)
     expect(resolveKinship(after, people.karan.id, people.priti.id).label).toBe('Mother');
   });
 
-  it('refuses a plain remove that would orphan children, naming them', () => {
-    const { graph, people } = buildSeedTree();
-    expect(deletionImpact(graph, people.suresh.id).wouldOrphan.map((child) => child.name).sort()).toEqual(['Leo Okonkwo', 'Maya Sharma']);
-    expect(deletionImpact(graph, people.suresh.id).modes).not.toContain('remove');
-    expect(() => planDeletePerson(graph, people.suresh.id, 'remove')).toThrow(
-      'Removing Suresh Sharma would leave Maya Sharma, Leo Okonkwo with no parent in the tree.',
-    );
+  it('removes an only parent, naming the children who become roots of their own', () => {
+    const { graph, people, unions } = buildSeedTree();
+    const impact = deletionImpact(graph, people.suresh.id);
+    expect(impact.wouldOrphan.map((child) => child.name).sort()).toEqual(['Leo Okonkwo', 'Maya Sharma']);
+    expect(impact.modes).toContain('remove');
+    const after = run(graph, planDeletePerson(graph, people.suresh.id, 'remove'));
+    expect(after.people.some((person) => person.id === people.suresh.id)).toBe(false);
+    expect(after.unions.some((union) => union.id === unions.sureshAlone.id)).toBe(false);
+    for (const child of [people.maya, people.leo]) {
+      expect(after.people.some((person) => person.id === child.id)).toBe(true);
+      expect(after.parentChildren.some((edge) => edge.childId === child.id)).toBe(false);
+    }
+  });
+
+  it('removes the person at the top of a line without touching anyone below them', () => {
+    const b = new FixtureBuilder(41);
+    const grandpa = b.person('Hari', 'Menon', { gender: 'male' });
+    const dad = b.person('Bala', 'Menon', { gender: 'male' });
+    const kid = b.person('Deepa', 'Menon', { gender: 'female' });
+    b.family(grandpa, null, [dad]);
+    b.family(dad, null, [kid]);
+    const graph = b.build();
+
+    expect(deletionImpact(graph, grandpa.id).modes).toEqual(['remove', 'placeholder', 'with-descendants']);
+    const after = run(graph, planDeletePerson(graph, grandpa.id, 'remove'));
+    expect(after.people.map((person) => person.id).sort()).toEqual([dad.id, kid.id].sort());
+    expect(resolveKinship(after, dad.id, kid.id).label).toBe('Daughter');
+    expect(after.focusPersonId).toBe(dad.id);
   });
 
   it('replaces someone with a placeholder, keeping every relationship', () => {
@@ -73,6 +94,20 @@ describe('deletionImpact and planDeletePerson (SPEC §3: never orphan a subtree)
     const { graph, people } = buildSeedTree();
     const after = run(graph, planDeletePerson(graph, people.ravi.id, 'remove', { newFocusId: people.asha.id }));
     expect(after.focusPersonId).toBe(people.asha.id);
+  });
+});
+
+describe('edits that can’t work are refused where they are chosen (SPEC §4.6)', () => {
+  it('refuses to merge two people on one line of descent, and to move a child under their own descendant', () => {
+    const { graph, people, unions } = buildSeedTree();
+    const line = 'Ravi Sharma descends from Vikram Sharma, so they can’t be the same person.';
+    expect(() => planMerge(graph, people.vikram.id, people.ravi.id, {}, { newId: ids() })).toThrow(line);
+    expect(() => planMerge(graph, people.ravi.id, people.vikram.id, {}, { newId: ids() })).toThrow(line);
+    const vikramsLink = graph.parentChildren.find((edge) => edge.childId === people.vikram.id)!;
+    expect(() => planReparent(graph, vikramsLink.id, unions.raviPriya.id)).toThrow(/own ancestor/);
+    expect(reparentTargets(graph, vikramsLink.id)).not.toContain(unions.raviPriya.id);
+    // The families that do work are still offered.
+    expect(reparentTargets(graph, vikramsLink.id)).toContain(unions.sureshAlone.id);
   });
 });
 

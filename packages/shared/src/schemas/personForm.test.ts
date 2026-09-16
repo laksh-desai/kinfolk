@@ -9,13 +9,36 @@ function issues(values: unknown): Record<string, string> {
 }
 
 describe('quick add', () => {
+  const quick = (values: Partial<Record<string, string>> = {}) => ({
+    firstName: 'Maya',
+    lastName: '',
+    gender: 'female',
+    lifeStatus: 'living',
+    birthDay: '',
+    birthMonth: '',
+    birthYear: '',
+    ...values,
+  });
+
   it('requires only a first name; birth year is optional but must be a real year', () => {
-    const empty = quickAddSchema.safeParse({ firstName: '', lastName: '', gender: 'unknown', lifeStatus: 'living', birthYear: '' });
+    const empty = quickAddSchema.safeParse(quick({ firstName: '', gender: 'unknown' }));
     expect(empty.error?.issues.map((issue) => [issue.path[0], issue.message])).toEqual([['firstName', 'Enter a first name.']]);
-    const bad = quickAddSchema.safeParse({ firstName: 'Maya', lastName: '', gender: 'female', lifeStatus: 'living', birthYear: '62' });
+    const bad = quickAddSchema.safeParse(quick({ birthYear: '62' }));
     expect(bad.error?.issues[0]?.message).toBe('Enter the birth year as a four-digit year, like 1962.');
-    const ok = quickAddSchema.parse({ firstName: ' Maya ', lastName: '', gender: 'female', lifeStatus: 'living', birthYear: '2000' });
+    const ok = quickAddSchema.parse(quick({ firstName: ' Maya ', birthYear: '2000' }));
     expect(quickAddToFields(ok)).toEqual({ firstName: 'Maya', lastName: null, gender: 'female', lifeStatus: 'living', birthDate: { year: 2000, month: null, day: null, approximate: false }, isPlaceholder: false });
+  });
+
+  it('takes a whole date of birth, and checks it the same way the full form does', () => {
+    const full = quickAddSchema.parse(quick({ birthDay: '12', birthMonth: '4', birthYear: '1988' }));
+    expect(quickAddToFields(full).birthDate).toEqual({ year: 1988, month: 4, day: 12, approximate: false });
+    const monthOnly = quickAddSchema.parse(quick({ birthMonth: '4', birthYear: '1988' }));
+    expect(quickAddToFields(monthOnly).birthDate).toEqual({ year: 1988, month: 4, day: null, approximate: false });
+    const problems = (values: Record<string, string>) =>
+      Object.fromEntries((quickAddSchema.safeParse(quick(values)).error?.issues ?? []).map((issue) => [issue.path.join('.'), issue.message]));
+    expect(problems({ birthDay: '31', birthMonth: '2', birthYear: '1988' })).toEqual({ birthDay: 'That month only has 29 days.' });
+    expect(problems({ birthDay: '12', birthYear: '1988' })).toEqual({ birthMonth: 'Choose a month to go with the day.' });
+    expect(problems({ birthMonth: '4' })).toEqual({ birthYear: 'Enter the birth year too, or clear the day and month.' });
   });
 });
 
@@ -25,7 +48,7 @@ describe('full person form', () => {
   it('round-trips a full person through form values without changing anything', () => {
     for (const person of [people.ravi, people.hari, people.radhaParent]) {
       const values = personFormSchema.parse(personToFormValues(person));
-      expect(changedFields(person, formValuesToFields(values, { includePlanning: true }))).toEqual({});
+      expect(changedFields(person, formValuesToFields(values))).toEqual({});
     }
   });
 
@@ -41,13 +64,12 @@ describe('full person form', () => {
 
   it('allows an unnamed placeholder, and naming one clears the placeholder flag', () => {
     const values = personFormSchema.parse({ ...personToFormValues(people.radhaParent), firstName: 'Kala' });
-    expect(formValuesToFields(values, { includePlanning: false })).toMatchObject({ firstName: 'Kala', isPlaceholder: false });
+    expect(formValuesToFields(values)).toMatchObject({ firstName: 'Kala', isPlaceholder: false });
     expect(issues(personToFormValues(people.radhaParent))).toEqual({});
   });
 
-  it('only reports changed fields, and leaves planning out for editors', () => {
-    const values = personFormSchema.parse({ ...personToFormValues(people.ravi), nickname: 'Rav', overallObjective: 'x' });
-    expect(changedFields(people.ravi, formValuesToFields(values, { includePlanning: false }))).toEqual({ nickname: 'Rav' });
-    expect(Object.keys(changedFields(people.ravi, formValuesToFields(values, { includePlanning: true }))).sort()).toEqual(['nickname', 'planning']);
+  it('only reports the fields that changed', () => {
+    const values = personFormSchema.parse({ ...personToFormValues(people.ravi), nickname: 'Rav' });
+    expect(changedFields(people.ravi, formValuesToFields(values))).toEqual({ nickname: 'Rav' });
   });
 });

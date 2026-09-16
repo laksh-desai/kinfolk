@@ -6,7 +6,7 @@ import { FormAlert } from '../../../components/FormAlert';
 import { RadioGroup } from '../../../components/RadioGroup';
 import { commitWithUndo } from '../editing/changeQueue';
 import { useTreeOutlet } from '../treeOutlet';
-import { canEditTree, canSeePlanning, newId } from '../treePermissions';
+import { canEditTree, newId } from '../treePermissions';
 import { MERGE_FIELD_LABELS, mergeFieldText } from './mergeFieldWords';
 import { PanelShell } from './PanelShell';
 import { PersonNotFound } from './PersonNotFound';
@@ -28,8 +28,7 @@ export function Component() {
   const second = view.graph.people.find((candidate) => candidate.id === otherId);
   const keep = keepSide === 'this' ? first : second;
   const drop = keepSide === 'this' ? second : first;
-  const includePlanning = canSeePlanning(tree);
-  const conflicts = useMemo(() => (keep && drop ? mergeConflicts(keep, drop).filter((field) => includePlanning || field !== 'planning') : []), [keep, drop, includePlanning]);
+  const conflicts = useMemo(() => (keep && drop ? mergeConflicts(keep, drop) : []), [keep, drop]);
 
   if (!first) return <PersonNotFound treeId={tree.id} />;
   const firstName = view.names.get(first.id) ?? '';
@@ -54,7 +53,7 @@ export function Component() {
   let preview: ReturnType<typeof planMerge> | null = null;
   let planError: string | null = null;
   try {
-    preview = planMerge(view.graph, keep.id, drop.id, choices, { newId }, { includePlanning });
+    preview = planMerge(view.graph, keep.id, drop.id, choices, { newId });
   } catch (caught) {
     planError = caught instanceof Error ? caught.message : 'These two records can’t be merged.';
   }
@@ -62,7 +61,7 @@ export function Component() {
   const merge = () => {
     setError(null);
     try {
-      const plan = planMerge(view.graph, keep.id, drop.id, choices, { newId }, { includePlanning });
+      const plan = planMerge(view.graph, keep.id, drop.id, choices, { newId });
       void commitWithUndo(tree.id, plan.ops, `Merged ${dropName} into ${keepName}`, `Merged ${dropName} into ${keepName}. Their relationships are now combined.`).catch(() => undefined);
       navigate(`/trees/${tree.id}/people/${keep.id}`, { replace: true, state: { focusPanel: true } });
     } catch (caught) {

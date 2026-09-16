@@ -22,7 +22,6 @@ export const MERGE_FIELD_LABELS: Record<MergeField, string> = {
   notes: 'Notes',
   details: 'Personal details',
   socials: 'Social profiles',
-  planning: 'Planning answers',
 };
 
 const WORDS: Record<string, string> = { male: 'Male', female: 'Female', other: 'Other', living: 'Living', deceased: 'Deceased' };
@@ -41,7 +40,6 @@ export function mergeFieldText(person: Person, field: MergeField): string {
       return 'Has a photo';
     case 'details':
     case 'socials':
-    case 'planning':
       return Object.values(value as Record<string, string | null>).filter(Boolean).join(' · ') || 'Not recorded';
     default:
       return WORDS[value as string] ?? String(value);

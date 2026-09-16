@@ -4,7 +4,7 @@ import { FixtureBuilder } from '../fixtures/fixtureBuilder';
 import { buildSeedTree } from '../fixtures/seedTree';
 import { resolveKinship } from '../kinship/resolveKinship';
 import type { TreeGraph } from '../schemas/graph';
-import { connectionSteps, NEW_PERSON, planAddDetached, planAddRelative, RELATIONS, SOLO_UNION, type RelationKey } from './planAddRelative';
+import { connectionSteps, NEW_PERSON, NEW_UNION, planAddDetached, planAddRelative, RELATIONS, SOLO_UNION, type RelationKey } from './planAddRelative';
 import { blankPerson, PlanError } from './planState';
 
 function idFactory(prefix = 'cccccccc') {
@@ -143,6 +143,50 @@ describe('the hard cases', () => {
     const { after, label } = add(b.build(), child.id, 'mother');
     expect(label).toBe('Mother');
     expect(after.unions.find((union) => union.id === family.id)?.partnerBId).toBe('dddddddd-0000-4000-8000-000000000001');
+  });
+
+  it('adds a spouse into the one-parent family, so the children get a second parent not a step-parent', () => {
+    const b = new FixtureBuilder(7);
+    const dad = b.person('Bala', 'Menon', { gender: 'male' });
+    const kid = b.person('Deepa', 'Menon', { gender: 'female' });
+    const kid2 = b.person('Ravi', 'Menon', { gender: 'male' });
+    const family = b.family(dad, null, [kid, kid2]);
+    const graph = b.build();
+
+    const step = connectionSteps(graph, dad.id, 'spouse').steps[0];
+    expect(step?.question).toBe('Is this person also a parent of Deepa Menon and Ravi Menon?');
+    expect(step?.options.map((option) => option.label)).toEqual(['Yes — their other parent', 'No — a separate family']);
+
+    const { after, label, plan } = add(graph, dad.id, 'spouse');
+    expect(label).toBe('Wife');
+    expect(after.unions).toHaveLength(1);
+    expect(after.unions[0]).toMatchObject({ id: family.id, partnerBId: 'dddddddd-0000-4000-8000-000000000001', type: 'marriage', status: 'current' });
+    expect(resolveKinship(after, kid.id, 'dddddddd-0000-4000-8000-000000000001').label).toBe('Mother');
+    expect(plan.summary).toBe('Added New as Bala’s wife. She is also recorded as a parent of Deepa and Ravi.');
+    expect(plan.headline).toBe('Added New as Bala’s wife');
+  });
+
+  it('keeps a later partner out of the children’s family when the user says so', () => {
+    const b = new FixtureBuilder(8);
+    const dad = b.person('Bala', 'Menon', { gender: 'male' });
+    const kid = b.person('Deepa', 'Menon', { gender: 'female' });
+    b.family(dad, null, [kid]);
+    const graph = b.build();
+
+    const { after, label, plan } = add(graph, dad.id, 'spouse', { via: { unionId: NEW_UNION } });
+    expect(label).toBe('Wife');
+    expect(after.unions).toHaveLength(2);
+    expect(resolveKinship(after, kid.id, 'dddddddd-0000-4000-8000-000000000001').label).toBe('Step-mother');
+    expect(plan.summary).toBe('Added New as Bala’s wife.');
+  });
+
+  it('asks nothing and starts a new family when the anchor has no one-parent family', () => {
+    const { graph, people } = buildSeedTree();
+    // Vikram's children already have their other parents: a new spouse is a new union.
+    expect(connectionSteps(graph, people.vikram.id, 'spouse').steps).toEqual([]);
+    const { after } = add(graph, people.vikram.id, 'spouse');
+    expect(after.unions.length).toBe(graph.unions.length + 1);
+    expect(resolveKinship(after, people.ravi.id, 'dddddddd-0000-4000-8000-000000000001').label).toBe('Step-mother');
   });
 
   it('makes a half-sibling through the chosen shared parent, in a separate family', () => {

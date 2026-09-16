@@ -8,7 +8,6 @@ import {
   type Person,
   type PersonDetails,
   type PersonPatch,
-  type PersonPlanning,
   type PersonSocials,
 } from './person';
 
@@ -28,13 +27,35 @@ const yearText = (label: string) =>
       message: `Enter the ${label} as a four-digit year, like 1962.`,
     });
 
-export const quickAddSchema = z.object({
+/** Day, month and year are all optional, but they have to make sense together. */
+function checkDate(ctx: z.RefinementCtx, prefix: 'birth' | 'death', parts: { day: string; month: string; year: string }): void {
+  const { day, month, year } = parts;
+  const label = prefix === 'birth' ? 'birth' : 'death';
+  if ((day || month) && !year) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [`${prefix}Year`], message: `Enter the ${label} year too, or clear the day and month.` });
+  if (day && !month) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [`${prefix}Month`], message: 'Choose a month to go with the day.' });
+  if (day && !/^\d{1,2}$/.test(day)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [`${prefix}Day`], message: 'Enter the day as a number from 1 to 31.' });
+  if (day && month && /^\d{4}$/.test(year) && /^\d{1,2}$/.test(day)) {
+    const max = daysInMonth(Number(year), Number(month));
+    if (Number(day) < 1 || Number(day) > max) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: [`${prefix}Day`], message: `That month only has ${max} days.` });
+    }
+  }
+}
+
+const quickAddFields = z.object({
   firstName: z.string().trim().min(1, 'Enter a first name.').max(100, 'Use 100 characters or fewer for the first name.'),
   lastName: text(100, 'Last name'),
   gender: z.enum(GENDERS, { errorMap: () => ({ message: 'Choose a gender, or “Unknown”.' }) }),
   lifeStatus: z.enum(LIFE_STATUSES, { errorMap: () => ({ message: 'Choose living, deceased, or unknown.' }) }),
+  birthDay: z.string().trim(),
+  birthMonth: z.string().trim(),
   birthYear: yearText('birth year'),
 });
+
+/** Quick add (SPEC §5.3): a name and as much of the date of birth as the person knows. */
+export const quickAddSchema = quickAddFields.superRefine((values, ctx) =>
+  checkDate(ctx, 'birth', { day: values.birthDay, month: values.birthMonth, year: values.birthYear }),
+);
 export type QuickAddValues = z.input<typeof quickAddSchema>;
 
 export function quickAddToFields(values: z.output<typeof quickAddSchema>): Pick<Person, 'firstName' | 'lastName' | 'gender' | 'lifeStatus' | 'birthDate' | 'isPlaceholder'> {
@@ -43,7 +64,7 @@ export function quickAddToFields(values: z.output<typeof quickAddSchema>): Pick<
     lastName: values.lastName || null,
     gender: values.gender,
     lifeStatus: values.lifeStatus,
-    birthDate: values.birthYear ? { year: Number(values.birthYear), month: null, day: null, approximate: false } : null,
+    birthDate: partsToDate(values.birthDay, values.birthMonth, values.birthYear, false),
     isPlaceholder: false,
   };
 }
@@ -56,8 +77,8 @@ export const personFormSchema = z
     maidenName: text(100, 'Maiden name'),
     nickname: text(100, 'Nickname'),
     suffix: text(20, 'Suffix'),
-    gender: quickAddSchema.shape.gender,
-    lifeStatus: quickAddSchema.shape.lifeStatus,
+    gender: quickAddFields.shape.gender,
+    lifeStatus: quickAddFields.shape.lifeStatus,
     birthDay: z.string().trim(),
     birthMonth: z.string().trim(),
     birthYear: yearText('birth year'),
@@ -88,30 +109,13 @@ export const personFormSchema = z
     instagram: text(300, 'Instagram'),
     youtube: text(300, 'YouTube'),
     tiktok: text(300, 'TikTok'),
-    overallObjective: text(4000, 'Overall objective'),
-    areasOfConcern: text(4000, 'Areas of concern'),
-    marketOutlook: text(4000, 'Market outlook'),
-    familyRelationships: text(4000, 'Family relationships'),
-    rateOfReturnView: text(4000, 'Rate of return view'),
   })
   .superRefine((values, ctx) => {
     if (!values.isPlaceholder && values.firstName === '') {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['firstName'], message: 'Enter a first name.' });
     }
     for (const prefix of ['birth', 'death'] as const) {
-      const label = prefix === 'birth' ? 'birth' : 'death';
-      const day = values[`${prefix}Day`];
-      const month = values[`${prefix}Month`];
-      const year = values[`${prefix}Year`];
-      if ((day || month) && !year) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [`${prefix}Year`], message: `Enter the ${label} year too, or clear the day and month.` });
-      if (day && !month) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [`${prefix}Month`], message: 'Choose a month to go with the day.' });
-      if (day && !/^\d{1,2}$/.test(day)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [`${prefix}Day`], message: 'Enter the day as a number from 1 to 31.' });
-      if (day && month && /^\d{4}$/.test(year) && /^\d{1,2}$/.test(day)) {
-        const max = daysInMonth(Number(year), Number(month));
-        if (Number(day) < 1 || Number(day) > max) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, path: [`${prefix}Day`], message: `That month only has ${max} days.` });
-        }
-      }
+      checkDate(ctx, prefix, { day: values[`${prefix}Day`], month: values[`${prefix}Month`], year: values[`${prefix}Year`] });
     }
     const hasDeath = Boolean(values.deathYear || values.deathMonth || values.deathDay);
     if (hasDeath && values.lifeStatus === 'living') {
@@ -176,11 +180,6 @@ export function personToFormValues(person: Person): PersonFormValues {
     instagram: orEmpty(person.socials?.instagram),
     youtube: orEmpty(person.socials?.youtube),
     tiktok: orEmpty(person.socials?.tiktok),
-    overallObjective: orEmpty(person.planning?.overallObjective),
-    areasOfConcern: orEmpty(person.planning?.areasOfConcern),
-    marketOutlook: orEmpty(person.planning?.marketOutlook),
-    familyRelationships: orEmpty(person.planning?.familyRelationships),
-    rateOfReturnView: orEmpty(person.planning?.rateOfReturnView),
   };
 }
 
@@ -195,8 +194,8 @@ function allNull<T extends object>(value: T): T | null {
   return Object.values(value).every((entry) => entry === null) ? null : value;
 }
 
-/** Turns validated form values into person fields. Planning is included only when the caller may edit it. */
-export function formValuesToFields(values: z.output<typeof personFormSchema>, options: { includePlanning: boolean }): PersonPatch {
+/** Turns validated form values into person fields. */
+export function formValuesToFields(values: z.output<typeof personFormSchema>): PersonPatch {
   const address: Address = {
     formatted: nullIfEmpty(values.addressFormatted),
     street: nullIfEmpty(values.addressStreet),
@@ -221,13 +220,6 @@ export function formValuesToFields(values: z.output<typeof personFormSchema>, op
     youtube: nullIfEmpty(values.youtube),
     tiktok: nullIfEmpty(values.tiktok),
   };
-  const planning: PersonPlanning = {
-    overallObjective: nullIfEmpty(values.overallObjective),
-    areasOfConcern: nullIfEmpty(values.areasOfConcern),
-    marketOutlook: nullIfEmpty(values.marketOutlook),
-    familyRelationships: nullIfEmpty(values.familyRelationships),
-    rateOfReturnView: nullIfEmpty(values.rateOfReturnView),
-  };
   const named = values.firstName.trim() !== '';
   const fields: PersonPatch = {
     firstName: values.firstName.trim(),
@@ -250,7 +242,6 @@ export function formValuesToFields(values: z.output<typeof personFormSchema>, op
     details: allNull(details),
     socials: allNull(socials),
   };
-  if (options.includePlanning) fields.planning = allNull(planning);
   return fields;
 }
 

@@ -57,7 +57,7 @@ export interface ReviewStateDto {
   changeRequests: ChangeRequestDto[];
 }
 
-/** What the reviewer sees at /review/:token: the whole tree, including planning answers. */
+/** What the reviewer sees at /review/:token: the whole tree. */
 export interface ReviewTreeDto {
   tree: { id: string; name: string; status: TreeStatus };
   graph: TreeGraph;

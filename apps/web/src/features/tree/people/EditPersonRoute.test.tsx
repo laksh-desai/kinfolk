@@ -16,8 +16,7 @@ describe('editing a person (SPEC §5.4)', () => {
     expect(screen.getByRole('textbox', { name: 'First name' })).toHaveValue('Ravi');
     expect(screen.getByRole('textbox', { name: 'Year' })).toHaveValue('1988');
     expect(screen.getByRole('textbox', { name: /^Address/ })).toHaveValue('12 Alder Street, Portland, OR 97205, USA');
-    // Owners see planning; without a Places key the address is plain text and says so.
-    expect(screen.getByRole('heading', { name: 'Planning' })).toBeInTheDocument();
+    // Without a Places key the address is plain text, and says so.
     expect(screen.getByText('Type the full address as you’d write it on an envelope.')).toBeInTheDocument();
     await expectNoAxeViolations();
   }, 60_000);
@@ -88,14 +87,6 @@ describe('editing a person (SPEC §5.4)', () => {
     await waitFor(() => expect(server.changes).toHaveLength(1));
     expect(server.graph().people.find((person) => person.id === radhaParent.id)).toMatchObject({ firstName: 'Kala', isPlaceholder: false });
   }, 60_000);
-
-  it('leaves planning out entirely for editors', async () => {
-    const server = mockTreeServer({ tree: { role: 'editor' } });
-    await renderApp(`/trees/${TREE_ID}/people/${server.seed.people.ravi.id}/edit`);
-    await screen.findByRole('heading', { level: 2, name: 'Edit Ravi’s details' });
-    expect(screen.queryByRole('heading', { name: 'Planning' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('textbox', { name: /Overall objective/ })).not.toBeInTheDocument();
-  });
 
   it('uploads a photo and attaches it as an undoable change', async () => {
     const user = userEvent.setup();

@@ -15,5 +15,5 @@ export function relativeTime(iso: string, now: number = Date.now()): string {
   if (days < 14) return `${days} days ago`;
   if (days < 60) return plural(Math.floor(days / 7), 'week');
   if (days < 365) return plural(Math.floor(days / 30), 'month');
-  return new Date(then).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(then).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }

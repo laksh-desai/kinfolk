@@ -19,9 +19,9 @@ export function DateFields({ prefix, legend, field, approximate, onApproximateCh
   return (
     <fieldset className="flex min-w-0 flex-col gap-3">
       <legend className="mb-1 text-base font-semibold">{legend}</legend>
-      <div className="grid grid-cols-[minmax(0,5rem)_minmax(0,1fr)_minmax(0,6rem)] gap-3">
-        <TextField field={field(`${prefix}Day`)} label="Day" inputMode="numeric" maxLength={2} autoComplete="off" />
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,5rem)_minmax(0,6rem)] gap-3">
         <SelectField field={field(`${prefix}Month`)} label="Month" options={MONTH_OPTIONS} />
+        <TextField field={field(`${prefix}Day`)} label="Day" inputMode="numeric" maxLength={2} autoComplete="off" />
         <TextField field={field(`${prefix}Year`)} label="Year" inputMode="numeric" maxLength={4} autoComplete="off" />
       </div>
       <CheckboxField id={`person-${prefix}Approximate`} label="This date is approximate" checked={approximate} onChange={onApproximateChange} />

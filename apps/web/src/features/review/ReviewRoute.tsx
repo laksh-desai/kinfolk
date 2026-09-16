@@ -24,7 +24,7 @@ import { reviewApi, reviewTreeQuery } from './reviewApi';
 const EMPTY = { people: [], unions: [], parentChildren: [], focusPersonId: null };
 
 /**
- * The reviewer's screen (SPEC §5.7), at /review/:token. Read-only, with planning answers
+ * The reviewer's screen (SPEC §5.7), at /review/:token. Read-only, with full detail
  * visible, and the two decisions. Requires signing in: a change request needs an author.
  */
 export function Component() {

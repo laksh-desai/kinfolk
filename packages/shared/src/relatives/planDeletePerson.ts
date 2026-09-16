@@ -61,11 +61,9 @@ export function deletionImpact(graph: TreeGraph, personId: string): DeletionImpa
     if (!otherParent && index.parentEdgesOf(childId).length === 1) wouldOrphan.push({ id: childId, name: name(childId) });
   }
   const descendants = descendantsOf(index, personId).map((id) => ({ id, name: name(id) }));
-  const modes: DeleteMode[] = [];
-  if (wouldOrphan.length === 0) modes.push('remove');
+  const modes: DeleteMode[] = ['remove'];
   if (relationships.length > 0) modes.push('placeholder');
   if (descendants.length > 0) modes.push('with-descendants');
-  if (modes.length === 0) modes.push('remove');
   return { name: name(personId), relationships, descendants, wouldOrphan, isFocus: graph.focusPersonId === personId, modes };
 }
 
@@ -93,31 +91,24 @@ const CLEARED: PersonPatch = {
 };
 
 /**
- * Ops for deleting a person. Never orphans a subtree:
- * - `remove` refuses when a child would lose their only parent;
+ * Ops for deleting a person. Three cascades, each named in full before it runs (SPEC §3):
+ * - `remove` takes only this person; children whose last parent this was become roots of
+ *   their own, which §3 allows ("a person may have zero parents"). `wouldOrphan` names them
+ *   so the dialog can say so first — see ADR 026.
  * - `placeholder` keeps every relationship and clears the person's details;
  * - `with-descendants` removes the whole branch below them too.
- * `includePlanning` must be false for editors (they may not touch planning answers).
  */
 export function planDeletePerson(
   graph: TreeGraph,
   personId: string,
   mode: DeleteMode,
-  options: { includePlanning?: boolean; newFocusId?: string | null } = {},
+  options: { newFocusId?: string | null } = {},
 ): ChangeOp[] {
   const index = indexGraph(graph);
   if (!index.person(personId)) throw new PlanError('That person is no longer in this tree.', 'not_found');
 
   if (mode === 'placeholder') {
-    return [{ op: 'person.update', id: personId, patch: options.includePlanning ? { ...CLEARED, planning: null } : CLEARED }];
-  }
-
-  const impact = deletionImpact(graph, personId);
-  if (mode === 'remove' && impact.wouldOrphan.length > 0) {
-    throw new PlanError(
-      `Removing ${impact.name} would leave ${impact.wouldOrphan.map((child) => child.name).join(', ')} with no parent in the tree.`,
-      'would_orphan',
-    );
+    return [{ op: 'person.update', id: personId, patch: CLEARED }];
   }
 
   const doomed = new Set([personId, ...(mode === 'with-descendants' ? descendantsOf(index, personId) : [])]);
@@ -135,7 +126,9 @@ export function planDeletePerson(
     if (remaining.length === partners.length) continue;
     const childEdges = index.childEdgesOf(union.id).filter((edge) => !doomed.has(edge.childId));
     if (remaining.length === 0 || childEdges.length === 0) {
-      // Nobody left to be a family, or a partnership with no children: nothing to keep.
+      // Nobody left to be a family, or a partnership with no children: nothing to keep. Any
+      // children of a family with no parent left become roots — a union can't outlive its partners.
+      for (const edge of childEdges) ops.push({ op: 'parentChild.delete', id: edge.id });
       ops.push({ op: 'union.delete', id: union.id });
     } else {
       ops.push({ op: 'union.update', id: union.id, patch: { partnerAId: remaining[0] as string, partnerBId: null } });

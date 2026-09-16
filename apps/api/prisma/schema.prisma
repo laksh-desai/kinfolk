@@ -196,8 +196,6 @@ model Person {
   isPlaceholder    Boolean    @default(false)
   details          Json?
   socials          Json?
-  /// Owner and reviewer only; never serialised for editors, viewers, or share links.
-  planning         Json?
   linkedTreeId     String?    @db.Uuid
   createdAt        DateTime
   updatedAt        DateTime   @updatedAt

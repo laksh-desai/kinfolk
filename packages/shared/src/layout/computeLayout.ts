@@ -146,7 +146,28 @@ export function computeLayout<P extends GraphPerson>(input: GraphShape<P>, parti
     (order.get(a.childId) as number) - (order.get(b.childId) as number);
   for (const list of edgesOfUnion.values()) list.sort(compareChildren);
 
-  const chronological = (a: Union, b: Union) => comparePartialDates(a.startDate, b.startDate) || byCreated(a, b);
+  /**
+   * A total order on people that doesn't depend on when they were typed in: oldest first, then
+   * by name, then by id. Every structural choice below breaks ties with this, so the same family
+   * draws the same way however it was entered (ADR 029).
+   */
+  const comparePeople = (a: string, b: string): number => {
+    const left = people.get(a);
+    const right = people.get(b);
+    const byDate = comparePartialDates(birthOf(left), birthOf(right));
+    if (byDate !== 0) return byDate;
+    const nameOf = (person: P | undefined) => (person ? `${person.firstName} ${person.lastName ?? ''}`.trim().toLowerCase() : '');
+    const byName = nameOf(left).localeCompare(nameOf(right));
+    if (byName !== 0) return byName;
+    return a < b ? -1 : a > b ? 1 : 0;
+  };
+
+  /** Earliest-born partner first, so a couple's place doesn't depend on who was entered first. */
+  const comparePartners = (a: Union, b: Union) =>
+    comparePeople(a.partnerAId, b.partnerAId) ||
+    comparePeople(a.partnerBId ?? a.partnerAId, b.partnerBId ?? b.partnerAId) ||
+    (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  const chronological = (a: Union, b: Union) => comparePartialDates(a.startDate, b.startDate) || comparePartners(a, b);
   const unionsOfPerson = new Map<string, Union[]>();
   for (const union of [...graph.unions].sort(chronological)) {
     if (!people.has(union.partnerAId)) continue;
@@ -175,7 +196,10 @@ export function computeLayout<P extends GraphPerson>(input: GraphShape<P>, parti
   }
 
   // --- 1. Generations -----------------------------------------------------------------------
-  const generations = assignGenerations(graph);
+  // Generations are numbered from the people in genealogical order, not the order they were
+  // entered: the anchoring walk starts somewhere different otherwise, and a married-in family
+  // can land a row higher or lower purely because of typing order (ADR 029).
+  const generations = assignGenerations({ ...graph, people: [...graph.people].sort((a, b) => comparePeople(a.id, b.id)) });
   const groupOf = generations.classOf;
   const groupCount = generations.classMembers.length;
   const generationOfGroup = generations.generationOfClass;
@@ -209,28 +233,67 @@ export function computeLayout<P extends GraphPerson>(input: GraphShape<P>, parti
       }
     }
   };
+  /** The eldest member of a partner group, for ordering that doesn't depend on entry order. */
+  const eldestInGroup = (group: number): string | undefined =>
+    (generations.classMembers[group] ?? []).reduce<string | undefined>((eldest, id) => (eldest === undefined || comparePeople(id, eldest) < 0 ? id : eldest), undefined);
+  const byEldest = (a: number, b: number) => {
+    const [left, right] = [eldestInGroup(a), eldestInGroup(b)];
+    if (left === undefined || right === undefined) return left === right ? a - b : left === undefined ? 1 : -1;
+    return comparePeople(left, right);
+  };
+
   const roots: number[] = [];
+  const topGroups: number[] = [];
   for (let group = 0; group < groupCount; group += 1) {
-    if ((generations.classParents[group] ?? []).length === 0) roots.push(group);
+    if ((generations.classParents[group] ?? []).length === 0) topGroups.push(group);
   }
-  for (const root of roots) {
+  // Walking in a fixed genealogical order matters: the first walk to reach a group claims it as
+  // its own child, which decides which family each subtree is drawn under.
+  for (const root of topGroups.sort(byEldest)) {
     if (visited.has(root)) continue;
+    roots.push(root);
     preorder.set(root, []);
     visit(root, root);
   }
-  for (let group = 0; group < groupCount; group += 1) {
+  const leftovers: number[] = [];
+  for (let group = 0; group < groupCount; group += 1) if (!visited.has(group)) leftovers.push(group);
+  for (const group of leftovers.sort(byEldest)) {
     if (visited.has(group)) continue;
     roots.push(group);
     preorder.set(group, []);
     visit(group, group);
   }
 
+  /**
+   * Left to right, a tree reads best oldest-line-first, with the focus person's own line leading
+   * and anyone not yet connected to them after it. Ordering roots by their earliest-born member
+   * rather than by entry order is what makes that hold for a tree built in any order (ADR 029).
+   */
+  const focusComponent = graph.focusPersonId === null ? undefined : generations.componentOfClass[groupOf.get(graph.focusPersonId) ?? -1];
+  const eldestOf = (root: number): string | undefined => {
+    const groups = preorder.get(root)?.length ? (preorder.get(root) as number[]) : [root];
+    return groups.reduce<string | undefined>((eldest, group) => {
+      const inGroup = eldestInGroup(group);
+      return inGroup !== undefined && (eldest === undefined || comparePeople(inGroup, eldest) < 0) ? inGroup : eldest;
+    }, undefined);
+  };
+  const eldestByRoot = new Map(roots.map((root) => [root, eldestOf(root)]));
+  roots.sort((a, b) => {
+    const focusFirst =
+      Number(generations.componentOfClass[b] === focusComponent && focusComponent !== undefined) -
+      Number(generations.componentOfClass[a] === focusComponent && focusComponent !== undefined);
+    if (focusFirst !== 0) return focusFirst;
+    const [left, right] = [eldestByRoot.get(a), eldestByRoot.get(b)];
+    if (left === undefined || right === undefined) return left === right ? 0 : left === undefined ? 1 : -1;
+    return comparePeople(left, right);
+  });
+
   // --- 2. Member order within each partner group -------------------------------------------
   const memberOrder: string[][] = generations.classMembers.map((members, group) => {
     if (members.length === 1) return [...members];
     const hub =
       primary.get(group)?.childId ??
-      [...members].sort((a, b) => (unionsOfPerson.get(b)?.length ?? 0) - (unionsOfPerson.get(a)?.length ?? 0) || (order.get(a) as number) - (order.get(b) as number))[0];
+      [...members].sort((a, b) => (unionsOfPerson.get(b)?.length ?? 0) - (unionsOfPerson.get(a)?.length ?? 0) || comparePeople(a, b))[0];
     const placed: string[] = [hub as string];
     const side = new Map<string, 'left' | 'right'>();
     const queue = [hub as string];
@@ -647,6 +710,13 @@ export function computeLayout<P extends GraphPerson>(input: GraphShape<P>, parti
       componentIndex: item.component,
     };
   });
+
+  // Reading order, top row first and left to right. Position already ignores entry order; sorting
+  // the lists too means the same family yields byte-identical drawings and exports (ADR 029).
+  const byPosition = (a: { x: number; y: number }, b: { x: number; y: number }) => a.y - b.y || a.x - b.x;
+  nodes.sort((a, b) => byPosition(a, b) || (a.personId < b.personId ? -1 : 1));
+  layoutUnions.sort((a, b) => byPosition(a.anchor, b.anchor) || (a.unionId < b.unionId ? -1 : 1));
+  layoutEdges.sort((a, b) => byPosition(a.path[0] as Point, b.path[0] as Point) || (a.parentChildId < b.parentChildId ? -1 : 1));
 
   return {
     nodes,

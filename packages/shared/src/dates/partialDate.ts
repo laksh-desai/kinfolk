@@ -13,11 +13,10 @@ export interface CalendarDay {
 /** "12 Apr 1988", "Apr 1988", "1988", with "c. " when approximate. */
 export function formatPartialDate(date: PartialDate, style: 'short' | 'long' = 'short'): string {
   const months = style === 'long' ? MONTHS_LONG : MONTHS_SHORT;
-  const parts: string[] = [];
-  if (date.month !== null && date.day !== null) parts.push(String(date.day));
-  if (date.month !== null) parts.push(months[date.month - 1] ?? '');
-  parts.push(String(date.year));
-  return `${date.approximate ? 'c. ' : ''}${parts.join(' ')}`;
+  // Month first, US order: "Apr 12, 1988", "Apr 1988", "1988".
+  const month = date.month === null ? '' : (months[date.month - 1] ?? '');
+  const head = date.month !== null && date.day !== null ? `${month} ${date.day},` : month;
+  return `${date.approximate ? 'c. ' : ''}${head ? `${head} ` : ''}${date.year}`;
 }
 
 function yearText(date: PartialDate): string {

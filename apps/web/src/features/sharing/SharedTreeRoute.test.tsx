@@ -48,7 +48,7 @@ describe('a tree opened from a share link (SPEC §5.6, §2)', () => {
     await waitFor(() => expect(router.state.location.search).toBe(`?person=${seed.people.sita.id}`));
     const panel = await screen.findByRole('complementary', { name: 'Sita Sharma' });
     expect(panel).toHaveTextContent('b. 1940 · Paternal grandmother');
-    expect(panel).toHaveTextContent('Contact details, addresses, full dates, notes, and planning answers aren’t included');
+    expect(panel).toHaveTextContent('Contact details, addresses, full dates, and notes aren’t included');
     expect(within(panel).getByRole('link', { name: 'Mohan Sharma' })).toBeInTheDocument();
     expect(within(panel).queryByRole('link', { name: /^Edit/ })).not.toBeInTheDocument();
     await expectNoAxeViolations();

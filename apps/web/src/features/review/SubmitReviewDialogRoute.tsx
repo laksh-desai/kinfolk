@@ -58,7 +58,7 @@ export function Component() {
       open
       onOpenChange={(open) => !open && close()}
       title={`Send “${tree.name}” for review`}
-      description="Your reviewer gets a link to read the tree, including the planning answers, and can approve it or ask for changes."
+      description="Your reviewer gets a link to read the tree and can approve it or ask for changes."
       size="md"
       footer={
         <>

@@ -34,11 +34,6 @@ describe('review workflow (SPEC §5.7)', () => {
     const { email: ownerEmail } = await signUpUser(owner, { firstName: 'Asha' });
     const { tree, seed } = await seededTree(owner);
 
-    // Planning answers exist on the tree, so the reviewer's copy can be checked for them.
-    expect(
-      (await owner.post(`/api/trees/${tree.id}/changes`, { ops: [{ op: 'person.update', id: seed.people.ravi.id, patch: { planning: { overallObjective: 'Provide for the grandchildren', areasOfConcern: null, marketOutlook: null, familyRelationships: null, rateOfReturnView: null } } }] })).statusCode,
-    ).toBe(200);
-
     const submitted = await owner.post(`/api/trees/${tree.id}/review`, { reviewerEmail: 'advisor@example.com', note: 'Please check the in-laws.' });
     expect(submitted.statusCode).toBe(201);
     expect(submitted.json().review).toMatchObject({ reviewerEmail: 'advisor@example.com', note: 'Please check the in-laws.', sentBy: 'Asha Rao', decision: null });
@@ -56,9 +51,9 @@ describe('review workflow (SPEC §5.7)', () => {
     const opened = await reviewer.get(`/api/review/${token}`);
     expect(opened.statusCode).toBe(200);
     expect(opened.json().tree).toMatchObject({ name: 'Sharma family', status: 'in_review' });
-    // The reviewer sees planning answers (QUESTIONS Q9).
+    // The reviewer sees the full record, contact details included.
     const reviewedRavi = opened.json().graph.people.find((person: { id: string }) => person.id === seed.people.ravi.id);
-    expect(reviewedRavi.planning).toMatchObject({ overallObjective: 'Provide for the grandchildren' });
+    expect(reviewedRavi.email).toBe('ravi.sharma@example.com');
     expect(opened.headers['cache-control']).toBe('no-store');
 
     const requested = await reviewer.post(`/api/review/${token}/changes`, { body: 'Ravi’s late father is missing a death date, and Priya’s parents need addresses.' });

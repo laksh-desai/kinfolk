@@ -15,14 +15,6 @@ afterAll(async () => {
   await ctx.close();
 });
 
-const PLANNING = {
-  overallObjective: 'Provide for the grandchildren’s education',
-  areasOfConcern: 'Long-term care costs',
-  marketOutlook: null,
-  familyRelationships: 'Close; Karan is estranged',
-  rateOfReturnView: null,
-};
-
 let seedCounter = 0;
 
 async function ownerWithSeedTree() {
@@ -189,40 +181,18 @@ describe('roles and redaction', () => {
     expect(denied.json().error.message).toBe('You can view this family tree but not change it.');
   });
 
-  it('sends planning answers to the owner only — never to editors or viewers — and refuses editor writes to them', async () => {
-    const { owner, treeId, seed } = await ownerWithSeedTree();
-    const sita = seed.people.sita.id;
-    await owner.post(`/api/trees/${treeId}/changes`, { ops: [{ op: 'person.update', id: sita, patch: { planning: PLANNING } }] });
-
-    expect((await graphOf(owner, treeId)).graph.people.find((person) => person.id === sita)?.planning).toEqual(PLANNING);
-    for (const role of ['editor', 'viewer'] as const) {
-      const client = await member(treeId, role);
-      const response = await client.get(`/api/trees/${treeId}/graph`);
-      expect(response.body).not.toContain('grandchildren’s education');
-      expect(response.json().graph.people.every((person: object) => !('planning' in person))).toBe(true);
-    }
-
-    const editor = await member(treeId, 'editor');
-    const write = await editor.post(`/api/trees/${treeId}/changes`, { ops: [{ op: 'person.update', id: sita, patch: { planning: null } }] });
-    expect(write.statusCode).toBe(403);
-    expect(write.json().error.code).toBe('planning_owner_only');
-  });
-
-  it('lets an editor undo deleting someone with planning answers without ever seeing them', async () => {
+  it('lets an editor delete someone and undo it', async () => {
     const { owner, treeId, seed } = await ownerWithSeedTree();
     const samuel = seed.people.samuel.id;
-    await owner.post(`/api/trees/${treeId}/changes`, { ops: [{ op: 'person.update', id: samuel, patch: { planning: PLANNING } }] });
-
     const editor = await member(treeId, 'editor');
     const deleted = await editor.post(`/api/trees/${treeId}/changes`, { ops: [{ op: 'person.delete', id: samuel }] });
     expect(deleted.statusCode).toBe(200);
     const inverse = deleted.json().inverse as ChangeOp[];
-    expect(JSON.stringify(inverse)).not.toContain('grandchildren’s education');
     expect(inverse[0]).toMatchObject({ op: 'person.create', restoreToken: expect.any(String) });
 
     const undone = await editor.post(`/api/trees/${treeId}/changes`, { ops: inverse });
     expect(undone.statusCode, undone.body).toBe(200);
-    expect((await graphOf(owner, treeId)).graph.people.find((person) => person.id === samuel)?.planning).toEqual(PLANNING);
+    expect((await graphOf(owner, treeId)).graph.people.some((person) => person.id === samuel)).toBe(true);
   });
 });
 

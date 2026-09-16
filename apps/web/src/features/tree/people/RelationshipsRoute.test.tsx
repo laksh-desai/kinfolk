@@ -70,15 +70,20 @@ describe('correcting relationships (SPEC §4.6)', () => {
     expect(ethan).toBeDefined();
   }, 60_000);
 
-  it('refuses a move that would make someone their own ancestor, with the reason shown', async () => {
+  it('never offers a move that would make someone their own ancestor', async () => {
     const user = userEvent.setup();
     const server = mockTreeServer();
     const { vikram } = server.seed.people;
     await renderApp(`/trees/${TREE_ID}/people/${vikram.id}/relationships`);
     await screen.findByRole('heading', { level: 2, name: 'Vikram’s relationships' });
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Move to different parents' }), 'Ravi Sharma and Priya Sharma');
+    // Vikram is Ravi's father, so Ravi and Priya's family can never be Vikram's parents (ADR 030).
+    const families = screen.getByRole('combobox', { name: 'Move to different parents' });
+    expect(within(families).queryByRole('option', { name: 'Ravi Sharma and Priya Sharma' })).not.toBeInTheDocument();
+    expect(within(families).getByRole('option', { name: /Suresh Sharma/ })).toBeInTheDocument();
+
+    // Pressing Move without choosing still says what to do, and changes nothing.
     await user.click(screen.getByRole('button', { name: 'Move' }));
-    const alert = await screen.findByText(/own ancestor/);
+    const alert = await screen.findByText(/Choose the family to move them to first/);
     await waitFor(() => expect(alert.closest('[tabindex="-1"]')).toHaveFocus());
     expect(server.changes).toHaveLength(0);
   }, 60_000);

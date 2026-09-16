@@ -4,7 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import type { AppDeps } from '../../lib/deps';
 import { ValidationError } from '../../lib/errors';
 import { graphForVisibility } from '../../lib/graphRows';
-import { requireTreeRole, visibilityFor, type TreeWithOwner } from '../../lib/treeAccess';
+import { requireTreeRole, type TreeWithOwner } from '../../lib/treeAccess';
 import { parseInput } from '../../lib/validate';
 import { requireAuth } from '../auth/authenticate';
 import { commitChangeSet, loadGraph } from '../graph/graphService';
@@ -111,7 +111,7 @@ export async function treeRoutes(app: FastifyInstance, opts: { deps: AppDeps }) 
     const { treeId } = request.params as { treeId: string };
     const { tree, role } = await requireTreeRole(deps, request, treeId, ['owner', 'editor', 'viewer', 'reviewer']);
     const graph = await loadGraph(deps.prisma, tree.id, tree.focusPersonId);
-    return { tree: toTreeDto(tree, role), graph: graphForVisibility(graph, visibilityFor(role)) };
+    return { tree: toTreeDto(tree, role), graph: graphForVisibility(graph, 'full') };
   });
 
   app.post('/api/trees/:treeId/changes', { bodyLimit: 8 * 1024 * 1024 }, async (request) => {

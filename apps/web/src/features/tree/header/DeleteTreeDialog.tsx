@@ -39,7 +39,7 @@ export function DeleteTreeDialog({ tree, peopleCount, open, onOpenChange }: Dele
       <p>This permanently deletes:</p>
       <ul className="list-disc pl-5">
         <li>
-          {peopleCount} {peopleCount === 1 ? 'person' : 'people'}, their details, photos, and planning answers
+          {peopleCount} {peopleCount === 1 ? 'person' : 'people'}, their details, and photos
         </li>
         <li>every relationship in the tree</li>
         <li>access for anyone it’s shared with, share links, and review requests</li>

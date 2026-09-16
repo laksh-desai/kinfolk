@@ -13,12 +13,7 @@ const ravi = seed.people.ravi.id;
 function reviewBody(overrides: Partial<ReviewTreeDto> = {}): ReviewTreeDto {
   return {
     tree: { id: '11111111-1111-4111-8111-111111111111', name: 'Sharma family', status: 'in_review' },
-    graph: {
-      ...seed.graph,
-      people: seed.graph.people.map((person) =>
-        person.id === ravi ? { ...person, planning: { overallObjective: 'Provide for the grandchildren', areasOfConcern: null, marketOutlook: null, familyRelationships: null, rateOfReturnView: null } } : person,
-      ),
-    },
+    graph: seed.graph,
     assignment: {
       id: 'r1',
       reviewerEmail: testUser.email,
@@ -44,7 +39,7 @@ describe('the reviewer’s screen (SPEC §5.7)', () => {
     await expectNoAxeViolations();
   }, 60_000);
 
-  it('shows the whole tree read-only, including planning answers, and approves it', async () => {
+  it('shows the whole tree read-only, with each person’s detail, and approves it', async () => {
     const user = userEvent.setup();
     let approved = false;
     mockApi({
@@ -67,8 +62,6 @@ describe('the reviewer’s screen (SPEC §5.7)', () => {
     await user.click(within(screen.getByRole('region', { name: 'Family tree canvas' })).getByRole('button', { name: /^Ravi Sharma/ }));
     await waitFor(() => expect(router.state.location.search).toBe(`?person=${ravi}`));
     expect(await within(review).findByRole('heading', { level: 2, name: 'Ravi Sharma' })).toBeInTheDocument();
-    expect(review).toHaveTextContent('Planning answers');
-    expect(review).toHaveTextContent('Provide for the grandchildren');
     expect(review).toHaveTextContent('ravi.sharma@example.com');
     await expectNoAxeViolations();
 

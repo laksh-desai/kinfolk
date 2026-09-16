@@ -20,7 +20,7 @@ const EXPIRY = [
   { value: 'never', label: 'Until I turn it off' },
 ];
 
-const date = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+const date = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
 function linkSummary(link: ShareLinkDto): string {
   const created = `Created ${relativeTime(link.createdAt)}${link.createdBy ? ` by ${link.createdBy}` : ''}`;
@@ -75,7 +75,7 @@ export function ShareLinksSection({ treeId }: { treeId: string }) {
           Share a read-only link
         </h3>
         <p className="text-sm text-ink-muted">
-          Anyone with the link sees names, relationships, and birth years — never contact details, addresses, notes, or planning answers. No account needed.
+          Anyone with the link sees names, relationships, and birth years — never contact details, addresses, or notes. No account needed.
         </p>
       </div>
       <div className="flex flex-wrap items-end gap-3">

@@ -404,6 +404,78 @@ describe('the seed tree as a whole', () => {
   });
 });
 
+/**
+ * Shuffling the arrays isn't enough: the engine sorts by createdAt first, so entering the same
+ * family in a different order is what actually changes the input. Re-stamps createdAt in a
+ * shuffled order, keeping ids, dates, and every relationship.
+ */
+function reentered(graph: TreeGraph, seed: number): TreeGraph {
+  const stamp = <T extends { createdAt: string }>(list: readonly T[], salt: number): T[] =>
+    shuffled([...list], seed * 31 + salt).map((item, index) => ({ ...item, createdAt: new Date(Date.UTC(2020, 0, 1) + index * 60_000).toISOString() }));
+  return { ...graph, people: stamp(graph.people, 1), unions: stamp(graph.unions, 2), parentChildren: stamp(graph.parentChildren, 3) };
+}
+
+describe('entry order (SPEC §4.5: the same family always draws the same way)', () => {
+  /** Three generations, an in-law branch, a remarriage, and someone not yet connected. */
+  function datedFamily() {
+    const b = new FixtureBuilder(71);
+    const mohan = b.person('Mohan', 'Sharma', { gender: 'male', born: [1930, 6, 1] });
+    const sita = b.person('Sita', 'Sharma', { gender: 'female', born: [1934, 2, 2] });
+    const vikram = b.person('Vikram', 'Sharma', { gender: 'male', born: [1958, 1, 9] });
+    const nisha = b.person('Nisha', 'Sharma', { gender: 'female', born: [1960, 5, 5] });
+    const priti = b.person('Priti', 'Kapoor', { gender: 'female', born: [1959, 7, 7] });
+    const karan = b.person('Karan', 'Sharma', { gender: 'male', born: [1983, 8, 4] });
+    const ravi = b.person('Ravi', 'Sharma', { gender: 'male', born: [1988, 4, 12] });
+    const asha = b.person('Asha', 'Sharma', { gender: 'female', born: [1991, 11, 30] });
+    const priya = b.person('Priya', 'Nair', { gender: 'female', born: [1990, 2, 17] });
+    const gopal = b.person('Gopal', 'Nair', { gender: 'male', born: [1961, 3, 3] });
+    const lakshmi = b.person('Lakshmi', 'Nair', { gender: 'female', born: [1963, 9, 20] });
+    const aarav = b.person('Aarav', 'Sharma', { gender: 'male', born: [2015, 9, 9] });
+    const anika = b.person('Anika', 'Sharma', { gender: 'female', born: [2019, 3, 2] });
+    const stranger = b.person('Samuel', 'Osei', { gender: 'male', born: [1975, 5, 5] });
+    b.family(mohan, sita, [vikram]);
+    b.family(vikram, priti, [karan], { status: 'divorced', start: [1980, 1, 1] });
+    b.family(vikram, nisha, [ravi, asha], { start: [1986, 6, 6] });
+    b.family(gopal, lakshmi, [priya]);
+    b.family(ravi, priya, [aarav, anika]);
+    b.setFocus(ravi);
+    return { graph: b.build(), ids: { ravi: ravi.id, karan: karan.id, asha: asha.id, stranger: stranger.id, mohan: mohan.id, priya: priya.id } };
+  }
+
+  it('puts every card in the same place however the family was entered', () => {
+    const { graph } = datedFamily();
+    const layout = computeLayout(graph);
+    for (const seed of [1, 2, 3, 4, 5]) {
+      expect(computeLayout(reentered(graph, seed)), `entry order ${seed}`).toEqual(layout);
+    }
+  });
+
+  it('keeps the same width and the same row order for a 60-person tree', () => {
+    const { graph } = buildSeedTree();
+    const layout = computeLayout(graph);
+    for (const seed of [1, 2, 3]) {
+      const other = computeLayout(reentered(graph, seed));
+      expect(other.bounds, `entry order ${seed}`).toEqual(layout.bounds);
+      // Everyone keeps their row, and each row keeps its left-to-right order.
+      const rowOf = (result: LayoutResult) =>
+        result.nodes
+          .slice()
+          .sort((a, b) => a.generation - b.generation || a.x - b.x || (a.personId < b.personId ? -1 : 1))
+          .map((node) => `${node.generation}:${node.personId}`);
+      expect(rowOf(other), `entry order ${seed}`).toEqual(rowOf(layout));
+    }
+  });
+
+  it('orders the parts of a tree by generation and age, not by when they were typed', () => {
+    const { graph, ids } = datedFamily();
+    const layout = computeLayout(graph);
+    // Siblings read oldest-first, and the person not yet connected to anyone sits clear at the end.
+    expect(centreX(layout, ids.karan)).toBeLessThan(centreX(layout, ids.ravi));
+    expect(centreX(layout, ids.ravi)).toBeLessThan(centreX(layout, ids.asha));
+    expect(centreX(layout, ids.stranger)).toBeGreaterThan(centreX(layout, ids.asha));
+  });
+});
+
 describe('collapse', () => {
   it('hides a branch, reports how many are hidden, and keeps the rest valid', () => {
     const { graph, people } = buildSeedTree();

@@ -11,7 +11,7 @@ import type { UnionStatus, UnionType } from '../schemas/union';
 export class PlanError extends Error {
   constructor(
     message: string,
-    public readonly code: 'two_parents' | 'not_found' | 'would_orphan' | 'union_has_children' | 'same_person' | 'invalid',
+    public readonly code: 'two_parents' | 'not_found' | 'union_has_children' | 'same_person' | 'invalid',
   ) {
     super(message);
     this.name = 'PlanError';

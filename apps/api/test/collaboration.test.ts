@@ -144,7 +144,7 @@ describe('share links (SPEC §5.6, §2)', () => {
     const ravi = body.graph.people.find((person: { id: string }) => person.id === seed.people.ravi.id);
     expect(ravi).toMatchObject({ firstName: 'Ravi', birthYear: 1988 });
     const text = JSON.stringify(body);
-    for (const secret of ['ravi.sharma@example.com', '+1 415 555 0142', 'Alder Street', 'Architect', 'executor', 'planning', 'photoUrl', 'address', 'phone', 'email', 'notes', 'linkedTreeId']) {
+    for (const secret of ['ravi.sharma@example.com', '+1 415 555 0142', 'Alder Street', 'Architect', 'executor', 'photoUrl', 'address', 'phone', 'email', 'notes', 'linkedTreeId']) {
       expect(text).not.toContain(secret);
     }
     expect(body.graph.unions.every((union: { startDate: unknown; endDate: unknown }) => union.startDate === null && union.endDate === null)).toBe(true);

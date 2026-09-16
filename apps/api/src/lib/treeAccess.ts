@@ -4,7 +4,6 @@ import type { FastifyRequest } from 'fastify';
 import { requireAuth } from '../modules/auth/authenticate';
 import type { AppDeps } from './deps';
 import { ForbiddenError, NotFoundError } from './errors';
-import type { Visibility } from './graphRows';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -52,7 +51,3 @@ export async function requireTreeRole(
   return { ...resolved, user };
 }
 
-/** Owner and reviewer see planning answers; editors and viewers never receive them (QUESTIONS Q9). */
-export function visibilityFor(role: TreeRole): Exclude<Visibility, 'redacted'> {
-  return role === 'owner' || role === 'reviewer' ? 'full' : 'standard';
-}

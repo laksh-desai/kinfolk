@@ -1,3 +1,4 @@
+import { applyChangeSet } from '../graph/applyChangeSet';
 import { indexGraph } from '../graph/graphIndex';
 import type { ChangeOp } from '../schemas/changeSet';
 import type { TreeGraph } from '../schemas/graph';
@@ -6,6 +7,15 @@ import type { UnionPatch } from '../schemas/union';
 import { PlanError } from './planState';
 
 /** Fixing wrong relationships without deleting anyone (SPEC §4.6). Each returns undoable ops. */
+
+/**
+ * Runs the ops to make sure they're legal before handing them back, so an impossible edit is
+ * refused where it's chosen rather than when it's saved. Throws the same error the server would.
+ */
+function validated(graph: TreeGraph, ops: ChangeOp[]): ChangeOp[] {
+  applyChangeSet(graph, ops, { now: '2000-01-01T00:00:00.000Z' });
+  return ops;
+}
 
 /** Removes a child from one family. If that leaves a one-person family with no children, it goes too. */
 export function planDetachParentLink(graph: TreeGraph, edgeId: string): ChangeOp[] {
@@ -43,7 +53,20 @@ export function planReparent(graph: TreeGraph, edgeId: string, targetUnionId: st
   const ops: ChangeOp[] = [{ op: 'parentChild.update', id: edge.id, patch: { unionId: targetUnionId } }];
   const source = index.union(edge.unionId);
   if (source && source.partnerBId === null && index.childEdgesOf(source.id).length === 1) ops.push({ op: 'union.delete', id: source.id });
-  return ops;
+  return validated(graph, ops);
+}
+
+/** The families a child can actually be moved into: the rest would make them their own ancestor. */
+export function reparentTargets(graph: TreeGraph, edgeId: string): string[] {
+  return graph.unions
+    .filter((union) => {
+      try {
+        return planReparent(graph, edgeId, union.id).length > 0;
+      } catch {
+        return false;
+      }
+    })
+    .map((union) => union.id);
 }
 
 export function planChangeKind(edgeId: string, kind: ParentChildKind): ChangeOp[] {

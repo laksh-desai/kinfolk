@@ -8,11 +8,6 @@ export function canEditTree(tree: Pick<TreeDto, 'role' | 'status'>): boolean {
   return (tree.role === 'owner' || tree.role === 'editor') && tree.status !== 'in_review';
 }
 
-/** Planning answers are for the owner and reviewer only (SPEC §5.4, QUESTIONS Q9). */
-export function canSeePlanning(tree: Pick<TreeDto, 'role'>): boolean {
-  return tree.role === 'owner' || tree.role === 'reviewer';
-}
-
 /** Why editing is unavailable, in words — for routes someone reached by URL. */
 export function readOnlyReason(tree: Pick<TreeDto, 'role' | 'status'>): string {
   if (tree.status === 'in_review' && (tree.role === 'owner' || tree.role === 'editor')) {

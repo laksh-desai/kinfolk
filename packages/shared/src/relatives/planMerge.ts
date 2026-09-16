@@ -1,3 +1,4 @@
+import { applyChangeSet } from '../graph/applyChangeSet';
 import { displayName } from '../graph/displayName';
 import { indexGraph } from '../graph/graphIndex';
 import type { ChangeOp } from '../schemas/changeSet';
@@ -25,7 +26,6 @@ export const MERGE_FIELDS = [
   'notes',
   'details',
   'socials',
-  'planning',
 ] as const;
 export type MergeField = (typeof MERGE_FIELDS)[number];
 
@@ -40,6 +40,22 @@ function same(a: unknown, b: unknown): boolean {
 /** Fields where both records have a different, non-empty value — the person must choose. */
 export function mergeConflicts(keep: Person, other: Person): MergeField[] {
   return MERGE_FIELDS.filter((field) => !isEmpty(keep[field]) && !isEmpty(other[field]) && !same(keep[field], other[field]));
+}
+
+/** Whether `personId` is anywhere below `ancestorId` in the tree. */
+function descendsFrom(index: ReturnType<typeof indexGraph>, personId: string, ancestorId: string): boolean {
+  const seen = new Set<string>([personId]);
+  const queue = [personId];
+  while (queue.length > 0) {
+    for (const link of index.parentsOf(queue.shift() as string)) {
+      if (link.parentId === ancestorId) return true;
+      if (!seen.has(link.parentId)) {
+        seen.add(link.parentId);
+        queue.push(link.parentId);
+      }
+    }
+  }
+  return false;
 }
 
 export interface MergePlan {
@@ -59,17 +75,25 @@ export function planMerge(
   otherId: string,
   choices: Partial<Record<MergeField, 'keep' | 'other'>>,
   context: PlanContext,
-  options: { includePlanning?: boolean } = {},
 ): MergePlan {
   if (keepId === otherId) throw new PlanError('Choose two different people to merge.', 'same_person');
   const index = indexGraph(graph);
   const keep = index.person(keepId);
   const other = index.person(otherId);
   if (!keep || !other) throw new PlanError('That person is no longer in this tree.', 'not_found');
+  // A parent and their child are two people however alike the records look — and merging them
+  // would either make someone their own ancestor or quietly drop the link between them.
+  const descendant = descendsFrom(index, otherId, keepId) ? other : descendsFrom(index, keepId, otherId) ? keep : null;
+  if (descendant) {
+    const ancestor = descendant === other ? keep : other;
+    throw new PlanError(
+      `${displayName(index, descendant.id)} descends from ${displayName(index, ancestor.id)}, so they can’t be the same person.`,
+      'invalid',
+    );
+  }
 
   const patch: PersonPatch = {};
   for (const field of MERGE_FIELDS) {
-    if (field === 'planning' && !options.includePlanning) continue;
     const useOther = choices[field] === 'other' || (isEmpty(keep[field]) && !isEmpty(other[field]));
     if (useOther && !same(keep[field], other[field])) (patch as Record<string, unknown>)[field] = other[field] ?? null;
   }
@@ -123,5 +147,8 @@ export function planMerge(
 
   if (graph.focusPersonId === otherId) ops.push({ op: 'tree.setFocus', personId: keepId });
   ops.push({ op: 'person.delete', id: otherId });
+  // Run them before handing them back: two people on one line of descent can't be one person, and
+  // the merge screen should say so while it's being set up, not when Merge is pressed.
+  applyChangeSet(graph, ops, { now: '2000-01-01T00:00:00.000Z' });
   return { ops, dropped };
 }

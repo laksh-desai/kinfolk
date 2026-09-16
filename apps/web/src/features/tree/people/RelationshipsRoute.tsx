@@ -1,5 +1,5 @@
 import { directRelatives } from '@kinfolk/shared/relatives/directRelatives';
-import { planChangeKind, planDetachParentLink, planDetachPartner, planReparent, planUpdateUnion } from '@kinfolk/shared/relatives/planRelationshipEdits';
+import { planChangeKind, planDetachParentLink, planDetachPartner, planReparent, planUpdateUnion, reparentTargets } from '@kinfolk/shared/relatives/planRelationshipEdits';
 import type { ChangeOp } from '@kinfolk/shared/schemas/changeSet';
 import type { ParentChildKind } from '@kinfolk/shared/schemas/parentChild';
 import type { UnionStatus, UnionType } from '@kinfolk/shared/schemas/union';
@@ -45,6 +45,17 @@ export function Component() {
     () => view.graph.unions.map((union) => ({ value: union.id, label: familyLabel(view.names, union) })).sort((a, b) => a.label.localeCompare(b.label)),
     [view.graph.unions, view.names],
   );
+  // Only the families a child can actually move into: the rest would make them their own ancestor.
+  // Worked out per link on demand and cached until the graph changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the graph is the cache key, not a value read here
+  const allowedTargets = useMemo(() => new Map<string, Set<string>>(), [view.graph]);
+  const movableTo = (edgeId: string) => {
+    const known = allowedTargets.get(edgeId);
+    if (known) return known;
+    const allowed = new Set(reparentTargets(view.graph, edgeId));
+    allowedTargets.set(edgeId, allowed);
+    return allowed;
+  };
 
   if (!person || !relatives) return <PersonNotFound treeId={tree.id} />;
   if (!canEditTree(tree)) return <ReadOnlyPanel tree={tree} personId={person.id} />;
@@ -52,7 +63,7 @@ export function Component() {
   const nameOf = (id: string) => view.names.get(id) ?? 'Unnamed person';
   const panelUrl = `/trees/${tree.id}/people/${person.id}`;
 
-  // Planning runs inside the try too: a planner refuses impossible edits with a plain message.
+  // The planner runs inside the try too: it refuses an impossible edit with a plain message.
   const apply = (plan: () => ChangeOp[], label: string) => {
     setError(null);
     try {
@@ -107,7 +118,7 @@ export function Component() {
                   <InlineSelect
                     label="Move to different parents"
                     value={target}
-                    options={[{ value: '', label: 'Choose a family…' }, ...families.filter((option) => option.value !== family.union.id)]}
+                    options={[{ value: '', label: 'Choose a family…' }, ...families.filter((option) => movableTo(family.edge.id).has(option.value))]}
                     onChange={(value) => setMoveTargets((current) => ({ ...current, [family.edge.id]: value }))}
                     className="min-w-0 flex-1"
                   />

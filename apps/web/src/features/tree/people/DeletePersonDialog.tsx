@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router-dom';
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { RadioGroup } from '../../../components/RadioGroup';
 import { commitWithUndo } from '../editing/changeQueue';
-import { canSeePlanning } from '../treePermissions';
 import type { TreeView } from '../useTreeView';
 
 interface DeletePersonDialogProps {
@@ -31,8 +30,9 @@ function NameList({ names }: { names: string[] }) {
 }
 
 /**
- * Person deletion (SPEC §3, §6.24): names every relationship that changes, never orphans a
- * subtree, and is undoable from the toast that follows.
+ * Person deletion (SPEC §3, §6.24): names every relationship that changes — including any child
+ * left without a parent (ADR 026) — before anything happens, and is undoable from the toast
+ * that follows.
  */
 export function DeletePersonDialog({ tree, view, personId, onClose }: DeletePersonDialogProps) {
   const navigate = useNavigate();
@@ -47,12 +47,13 @@ export function DeletePersonDialog({ tree, view, personId, onClose }: DeletePers
 
   if (!person || !impact) return null;
   const name = impact.name;
-  const includePlanning = canSeePlanning(tree);
   const chosen = impact.modes.includes(mode) ? mode : (impact.modes[0] ?? 'remove');
-  const ops = planDeletePerson(view.graph, person.id, chosen, { includePlanning });
+  const ops = planDeletePerson(view.graph, person.id, chosen);
   const focusOp = ops.find((op) => op.op === 'tree.setFocus');
   const newFocus = focusOp && focusOp.op === 'tree.setFocus' && focusOp.personId ? view.names.get(focusOp.personId) : null;
   const count = impact.descendants.length;
+  const orphans = impact.wouldOrphan.map((child) => child.name);
+  const orphanNames = orphans.length > 1 ? `${orphans.slice(0, -1).join(', ')} and ${orphans[orphans.length - 1]}` : orphans.join('');
 
   const options = impact.modes.map((candidate) => {
     switch (candidate) {
@@ -90,10 +91,10 @@ export function DeletePersonDialog({ tree, view, personId, onClose }: DeletePers
       ) : (
         <p>{name} has no relationships in this tree yet.</p>
       )}
-      {impact.wouldOrphan.length > 0 ? (
+      {impact.wouldOrphan.length > 0 && chosen === 'remove' ? (
         <p className="rounded-control bg-warning-soft px-3 py-2 text-ink">
-          {impact.wouldOrphan.map((child) => child.name).join(', ')} {impact.wouldOrphan.length === 1 ? 'has' : 'have'} no other parent in the tree, so {name}{' '}
-          can’t simply be removed.
+          {orphanNames} will have no parent in the tree, at the top of a line of their own. Everything else about them stays. To keep the connection instead,
+          replace {name} with a placeholder.
         </p>
       ) : null}
       {options.length > 1 ? <RadioGroup legend="What should happen?" name="delete-mode" value={chosen} options={options} onChange={(value) => setMode(value as DeleteMode)} /> : null}

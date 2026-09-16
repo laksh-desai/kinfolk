@@ -79,7 +79,6 @@ export class FixtureBuilder {
       isPlaceholder: false,
       details: null,
       socials: null,
-      planning: null,
       linkedTreeId: null,
       ...rest,
     };
