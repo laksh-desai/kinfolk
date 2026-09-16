@@ -43,7 +43,8 @@ async function addRelative(page: Page, anchor: string, relation: string, firstNa
 }
 
 async function expectLabel(page: Page, name: string, label: string) {
-  await expect(canvas(page).getByRole('button', { name: new RegExp(`^${name}( [A-Z][a-z]+)?, ${label}$`) })).toHaveCount(1);
+  // The focus person's current partner also reads ", client" — the household the tree is for.
+  await expect(canvas(page).getByRole('button', { name: new RegExp(`^${name}( [A-Z][a-z]+)?, ${label}(, client)?$`) })).toHaveCount(1);
 }
 
 test.describe('building a family outward from one person (SPEC §4, §12)', () => {

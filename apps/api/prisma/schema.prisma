@@ -191,6 +191,8 @@ model Person {
   phone            String?
   address          Json?
   photoUrl         String?
+  /// A PDF of this person's public records, stored under this tree (ADR 034).
+  publicRecordUrl  String?
   profession       String?
   notes            String?
   isPlaceholder    Boolean    @default(false)

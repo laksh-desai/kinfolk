@@ -253,6 +253,7 @@ export function parseGedcom(text: string, context: { newId: () => string; now?: 
       phone: null,
       address: null,
       photoUrl: null,
+      publicRecordUrl: null,
       profession: value(record.lines, 'OCCU'),
       notes: null,
       isPlaceholder: placeholder || name.firstName === '',

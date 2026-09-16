@@ -375,6 +375,19 @@ Simplicity Company" while the brief said "ATS financial".
   dated at the foot, so an age reads unambiguously — but if these are filed for years, dates
   may age better than ages. One line in `exportTree.ts` (`today`) switches it back.
 
+### Q49 — Public records and the client household are not in the spec · Decided
+The CEO of ATS asked for a person's public records PDF to be attachable and easy to open, and for
+the client couple to stand out on the canvas. §3 gives a Person a photo and no other file, and
+§5 marks only the focus person.
+- Decision: one `Person.publicRecordUrl`, PDF only, stored under the tree and opened in a new tab
+  (ADR 034); the focus person and their current partner marked together as the client household
+  (ADR 035).
+- Worth the owner's eye: one document per person is all this holds. If ATS will attach wills,
+  deeds, or several records per person, say so and it becomes a table before anyone relies on the
+  single field.
+- Public records are private to the tree: members see them, share links never do, and they are
+  left out of exports and GEDCOM.
+
 ## Environment
 
 ### Q31 — Node version · Decided

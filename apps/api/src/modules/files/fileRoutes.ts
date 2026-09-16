@@ -1,4 +1,4 @@
-import { MAX_IMAGE_BYTES } from '@kinfolk/shared/schemas/account';
+import { MAX_DOCUMENT_BYTES } from '@kinfolk/shared/schemas/account';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { AppDeps } from '../../lib/deps';
 import { ForbiddenError, NotFoundError, ValidationError } from '../../lib/errors';
@@ -29,18 +29,20 @@ export async function fileRoutes(
       .type(object.contentType)
       .header('cache-control', 'private, max-age=86400, immutable')
       .header('x-content-type-options', 'nosniff')
+      // Public records open in a tab rather than downloading; nothing here is ever a page.
+      .header('content-disposition', object.contentType === 'application/pdf' ? 'inline' : 'attachment')
       .send(object.body);
   });
 
   const storage = deps.storage;
   if (storage instanceof FsStorage) {
     app.addContentTypeParser(
-      ['image/jpeg', 'image/png', 'image/webp'],
-      { parseAs: 'buffer', bodyLimit: MAX_IMAGE_BYTES },
+      ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
+      { parseAs: 'buffer', bodyLimit: MAX_DOCUMENT_BYTES },
       (_request, body, done) => done(null, body),
     );
 
-    app.put('/api/uploads/:grant', { bodyLimit: MAX_IMAGE_BYTES }, async (request, reply) => {
+    app.put('/api/uploads/:grant', { bodyLimit: MAX_DOCUMENT_BYTES }, async (request, reply) => {
       requireAuth(request);
       const grant = storage.verifyGrant((request.params as { grant: string }).grant);
       if (!grant) throw new ForbiddenError('This upload link has expired. Choose the file again.', 'upload_expired');
@@ -50,7 +52,9 @@ export async function fileRoutes(
       }
       const body = request.body;
       if (!Buffer.isBuffer(body) || body.length === 0) throw new ValidationError('That file is empty.');
-      if (body.length > grant.maxBytes) throw new ValidationError('Choose an image smaller than 8 MB.');
+      if (body.length > grant.maxBytes) {
+        throw new ValidationError(grant.contentType === 'application/pdf' ? 'Choose a PDF smaller than 25 MB.' : 'Choose an image smaller than 8 MB.');
+      }
       await storage.put(grant.key, body, grant.contentType);
       return reply.code(204).send();
     });

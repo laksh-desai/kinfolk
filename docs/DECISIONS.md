@@ -829,3 +829,50 @@ the tree behind the family, the lockup in the corner, the date, and "CONFIDENTIA
 else knows the shape of the logo. An export with no artwork still renders (the branding is
 skipped, not fatal). The mask means the logo is always one flat colour — correct for this mark,
 but a future multi-colour logo would need real `<img>` elements and a second file.
+
+## 034 — Public records: one PDF per person, stored with the tree
+Date: 2026-09-16
+Status: accepted
+
+**Context.** ATS pulls a person's history from a government public-records site by hand and wants
+it attached to that person for easy viewing. The spec has no document model: §3 gives a Person a
+photo and nothing else.
+
+**Decision.** One nullable `Person.publicRecordUrl`, filled by an upload that mirrors photos
+exactly: ask for an upload target, send the bytes, then attach the returned URL through an
+ordinary ChangeSet, so it is audited, undoable, and refused for viewers like any other edit.
+- **PDF only, decided by the bytes.** The declared type and the filename are both ignored; the
+  server checks the file starts with `%PDF-`. Up to 25 MB — records run to many scanned pages.
+- **Stored under the tree.** `trees/{treeId}/people/{personId}/records/{uuid}.pdf`, behind the
+  same authorizer as photos, so only members of that tree can open it and a share-link visitor
+  never sees the field at all (the redacted view is an allow-list).
+- **`publicRecordUrl` is server-managed.** `assertClientSettableFields` refuses any value that
+  does not match this tree's record prefix, so a person can never be pointed at another family's
+  file or off the site.
+- **Opened in a new tab, not downloaded.** The file route sends `content-disposition: inline`
+  with `x-content-type-options: nosniff`, so a PDF opens in the browser's viewer and nothing
+  else is ever rendered as a page. The link is in the person panel (one click from a card) and
+  in the edit form beside the photo.
+
+**Consequences.** One document per person. A second (a will, a deed) would need a table rather
+than a column, and this column would become its first row. The file is not in exports or GEDCOM:
+an export is a picture of the tree, and a records PDF is not a genealogical fact.
+
+## 035 — The client household is marked on the canvas
+Date: 2026-09-16
+Status: accepted
+
+**Context.** A tree is built for one household — the ATS client and their spouse. The canvas
+already marked the focus person (the person relationships are computed from, which is the first
+person added and changeable from the card menu or the panel). Nothing showed the couple.
+
+**Decision.** `useTreeView.clientHousehold` is the focus person plus anyone they are *currently*
+partnered with; a former spouse is not in it. Both cards get an accent border and a soft ring,
+the focus person keeps the "Focus" badge, and their partner gets a "Client" badge. The marking is
+in the card's accessible name too (", client"), because a badge and a colour are not enough on
+their own. The legend explains it.
+
+**Consequences.** Changing the focus person moves the marking, which is what "this is the couple
+the tree is for" means. A household with two current partners recorded would mark all of them —
+correct for the data, and rare enough to leave alone. Nothing about the graph changed: this is a
+reading of it.

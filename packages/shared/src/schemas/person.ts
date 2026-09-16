@@ -85,6 +85,7 @@ export const personFieldsShape = {
   phone: phoneField,
   address: addressSchema.nullable().optional().transform((value) => value ?? null),
   photoUrl: optionalText(500, 'Photo'),
+  publicRecordUrl: optionalText(500, 'Public records'),
   profession: optionalText(200, 'Profession'),
   notes: optionalText(5000, 'Notes'),
   isPlaceholder: z.boolean().optional().transform((value) => value ?? false),
@@ -109,6 +110,8 @@ export interface PersonFields {
   phone: string | null;
   address: Address | null;
   photoUrl: string | null;
+  /** A PDF of this person's public records, stored under this tree. Server-managed. */
+  publicRecordUrl: string | null;
   profession: string | null;
   notes: string | null;
   isPlaceholder: boolean;

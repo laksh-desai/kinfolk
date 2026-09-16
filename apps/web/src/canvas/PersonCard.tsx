@@ -12,6 +12,8 @@ interface PersonCardProps {
   name: string;
   relation: string | null;
   isFocus: boolean;
+  /** In the household the tree is for: the focus person and their current partner (ADR 035). */
+  isClient: boolean;
   isSelected: boolean;
   isTabStop: boolean;
   dimmed: boolean;
@@ -56,6 +58,7 @@ export const PersonCard = memo(function PersonCard({
   name,
   relation,
   isFocus,
+  isClient,
   isSelected,
   isTabStop,
   dimmed,
@@ -80,14 +83,16 @@ export const PersonCard = memo(function PersonCard({
         type="button"
         data-person-id={person.id}
         tabIndex={isTabStop ? 0 : -1}
-        aria-label={`${name}${relation ? `, ${relation}` : ''}${isFocus ? ', focus person' : ''}`}
+        aria-label={`${name}${relation ? `, ${relation}` : ''}${isFocus ? ', focus person' : ''}${isClient && !isFocus ? ', client' : ''}`}
         aria-describedby={detailsId}
         aria-current={isSelected ? 'true' : undefined}
         onClick={() => onSelect(person.id)}
         className={cx(
           'group relative flex h-full w-full items-start gap-3 overflow-hidden rounded-card border-2 p-3 text-left shadow-card transition-[opacity,box-shadow] duration-150',
           deceased ? 'bg-sunken' : 'bg-surface',
-          person.isPlaceholder ? 'border-dashed border-line-strong' : isSelected ? 'border-accent' : 'border-line',
+          person.isPlaceholder ? 'border-dashed border-line-strong' : isSelected || isClient ? 'border-accent' : 'border-line',
+          // The client household stands out from sixty relatives without shouting.
+          isClient && 'ring-2 ring-accent/45',
           isSelected && 'ring-4 ring-accent/30',
           dimmed && 'opacity-40',
         )}
@@ -121,10 +126,16 @@ export const PersonCard = memo(function PersonCard({
           {twin ? <span className="rounded-full bg-info-soft px-1.5 text-xs font-semibold text-info">Twin</span> : null}
           {gender ? <span className={cx('text-sm leading-none', GENDER_TINT[person.gender].glyph)}>{gender.glyph}</span> : null}
         </span>
-        {isFocus ? (
-          <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-on-accent" aria-hidden="true">
-            <Icon name="target" className="size-3.5" />
-            Focus
+        {isFocus || isClient ? (
+          <span
+            className={cx(
+              'absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold',
+              isFocus ? 'bg-accent text-on-accent' : 'border border-accent text-accent',
+            )}
+            aria-hidden="true"
+          >
+            <Icon name={isFocus ? 'target' : 'heart'} className="size-3.5" />
+            {isFocus ? 'Focus' : 'Client'}
           </span>
         ) : null}
       </button>

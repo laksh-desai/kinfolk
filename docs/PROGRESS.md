@@ -29,7 +29,17 @@ far, each test-first:
 - **Dates**: quick add takes a whole date of birth, and dates read and are entered
   month/day/year (ADR 031).
 
-Still open in M11: the §12 journey re-run, and an e2e pass over the two fixed bugs.
+Then, from the product owner and from ATS:
+- **ATS livery** (ADR 033): two logo assets built from the supplied artwork and painted through a
+  CSS mask, a navy palette that is dark by default, the wordmark in the header, the lockup at the
+  foot of the screens outsiders see, and exports carrying the tree behind the family with the
+  date, CONFIDENTIAL, and the lockup along the bottom.
+- **Public records** (ADR 034): a PDF per person, PDF-checked by its bytes, stored under the tree,
+  opened in a new tab, attached through an ordinary undoable change.
+- **The client household** (ADR 035): the focus person and their current partner marked together
+  on the canvas, in the accessible name as well as the badge.
+
+M11 is done bar the §12 journey re-run end to end.
 
 ## Up next
 

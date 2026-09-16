@@ -83,6 +83,7 @@ const CLEARED: PersonPatch = {
   phone: null,
   address: null,
   photoUrl: null,
+  publicRecordUrl: null,
   profession: null,
   notes: null,
   details: null,

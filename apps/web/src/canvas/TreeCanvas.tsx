@@ -54,7 +54,7 @@ function isEditableTarget(target: EventTarget | null): boolean {
  * and opens fitted to the tree.
  */
 export function TreeCanvas({ treeId, view, selectedId, onSelect, highlightPath = null, cardMenuItems }: TreeCanvasProps) {
-  const { layout, graph, names, relationToFocus, marriedInBranches } = view;
+  const { layout, graph, names, relationToFocus, marriedInBranches, clientHousehold } = view;
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<Size | null>(null);
   const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, scale: 1 });
@@ -388,6 +388,7 @@ export function TreeCanvas({ treeId, view, selectedId, onSelect, highlightPath =
               name={names.get(person.id) ?? ''}
               relation={relationToFocus.get(person.id)?.label ?? null}
               isFocus={person.id === focusId}
+              isClient={clientHousehold.has(person.id)}
               isSelected={person.id === selectedId}
               isTabStop={person.id === tabStop}
               today={today}

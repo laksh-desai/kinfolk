@@ -3,6 +3,7 @@ import { directRelatives } from '@kinfolk/shared/relatives/directRelatives';
 import { useMemo } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import { Avatar } from '../../components/Avatar';
+import { Icon } from '../../components/Icon';
 import { useCollapsed } from '../../canvas/useCanvasStore';
 import { LinkedTreeNotice } from '../collaboration/LinkedTreeNotice';
 import { PanelShell } from './people/PanelShell';
@@ -65,6 +66,21 @@ export function Component() {
         ))}
       </dl>
       {person.notes ? <p className="mx-5 mb-4 rounded-control bg-sunken px-3 py-2 text-base">{person.notes}</p> : null}
+      {person.publicRecordUrl ? (
+        <p className="mx-5 mb-4">
+          <a
+            href={person.publicRecordUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-control border border-line bg-sunken px-3 py-2 text-base font-semibold text-accent underline"
+          >
+            <Icon name="file" className="size-5 shrink-0" />
+            Public records
+            <span className="sr-only">for {name} (PDF, opens in a new tab)</span>
+            <Icon name="external" className="size-4 shrink-0 text-ink-muted" />
+          </a>
+        </p>
+      ) : null}
       {person.linkedTreeId ? <LinkedTreeNotice fromTreeId={tree.id} personId={person.id} personName={person.firstName || name} linkedTreeId={person.linkedTreeId} /> : null}
       <h3 className="px-5 pb-1 text-base font-semibold">Family</h3>
       <RelativesSummary treeId={tree.id} relatives={relatives} names={view.names} />

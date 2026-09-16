@@ -17,6 +17,8 @@ export interface TreeView {
   names: Map<string, string>;
   /** Branch ids with no blood relative of the focus person (married-in families). */
   marriedInBranches: Set<string>;
+  /** The focus person and their current partner — the household this tree is for (ADR 035). */
+  clientHousehold: Set<string>;
 }
 
 /** Everything derived from the graph for drawing, memoised so panning never recomputes it. */
@@ -50,5 +52,20 @@ export function useTreeView(graph: TreeGraph, collapsed: readonly string[]): Tre
     }
     return set;
   }, [layout, relationToFocus, graph.focusPersonId]);
-  return { graph, index, layout, resolve, relationToFocus, names, marriedInBranches };
+  /**
+   * The household the tree is for: the focus person and whoever they are currently partnered
+   * with (ADR 035). Marked together on the canvas so the couple reads at a glance. A former
+   * spouse is not in it — the marriage has ended.
+   */
+  const clientHousehold = useMemo(() => {
+    const set = new Set<string>();
+    const focus = graph.focusPersonId;
+    if (!focus || !index.person(focus)) return set;
+    set.add(focus);
+    for (const { partnerId, union } of index.partnersOf(focus)) {
+      if (partnerId && union.status === 'current') set.add(partnerId);
+    }
+    return set;
+  }, [graph.focusPersonId, index]);
+  return { graph, index, layout, resolve, relationToFocus, names, marriedInBranches, clientHousehold };
 }

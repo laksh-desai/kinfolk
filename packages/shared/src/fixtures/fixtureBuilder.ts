@@ -74,6 +74,7 @@ export class FixtureBuilder {
       phone: null,
       address: null,
       photoUrl: null,
+      publicRecordUrl: null,
       profession: null,
       notes: null,
       isPlaceholder: false,

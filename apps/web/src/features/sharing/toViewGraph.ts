@@ -28,6 +28,7 @@ export function toViewGraph(graph: RedactedTreeGraph): TreeGraph {
       phone: null,
       address: null,
       photoUrl: null,
+      publicRecordUrl: null,
       profession: null,
       notes: null,
       details: null,

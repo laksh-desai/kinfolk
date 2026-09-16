@@ -234,22 +234,31 @@ export class ServerManagedFieldError extends AppError {
 
 const LINK_MESSAGE = 'Linking to another family tree happens through a link request, not by editing a person.';
 const PHOTO_MESSAGE = 'That photo isn’t stored with this family tree. Upload the photo again.';
+const RECORD_MESSAGE = 'Those public records aren’t stored with this family tree. Upload the PDF again.';
 
 /**
  * Fields a client may not set freely:
  * - linkedTreeId changes only through an approved link request (SPEC §5.5);
- * - photoUrl must name a file stored under this tree.
+ * - photoUrl and publicRecordUrl must name a file stored under this tree, so a person can never
+ *   be pointed at another family's files, or anywhere off this site.
  */
 function assertClientSettableFields(treeId: string, ops: ChangeOp[]): void {
   const photoPattern = new RegExp(`^/api/files/trees/${treeId}/people/[0-9a-f-]{36}/[a-z0-9-]+\\.webp$`);
+  const recordPattern = new RegExp(`^/api/files/trees/${treeId}/people/[0-9a-f-]{36}/records/[0-9a-f-]{36}\\.pdf$`);
+  const checkFiles = (person: { photoUrl?: string | null; publicRecordUrl?: string | null }) => {
+    if (person.photoUrl != null && !photoPattern.test(person.photoUrl)) throw new ServerManagedFieldError(PHOTO_MESSAGE, 'photoUrl');
+    if (person.publicRecordUrl != null && !recordPattern.test(person.publicRecordUrl)) {
+      throw new ServerManagedFieldError(RECORD_MESSAGE, 'publicRecordUrl');
+    }
+  };
   for (const op of ops) {
     if (op.op === 'person.update') {
       if (op.patch.linkedTreeId !== undefined) throw new ServerManagedFieldError(LINK_MESSAGE, 'linkedTreeId');
-      if (op.patch.photoUrl != null && !photoPattern.test(op.patch.photoUrl)) throw new ServerManagedFieldError(PHOTO_MESSAGE, 'photoUrl');
+      checkFiles(op.patch);
     }
     if (op.op === 'person.create') {
       if (op.person.linkedTreeId != null && !op.restoreToken) throw new ServerManagedFieldError(LINK_MESSAGE, 'linkedTreeId');
-      if (op.person.photoUrl != null && !photoPattern.test(op.person.photoUrl)) throw new ServerManagedFieldError(PHOTO_MESSAGE, 'photoUrl');
+      checkFiles(op.person);
     }
   }
 }

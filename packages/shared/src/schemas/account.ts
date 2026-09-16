@@ -58,4 +58,22 @@ export const uploadTargetSchema = z.object({
 });
 export type UploadTargetDto = z.infer<typeof uploadTargetSchema>;
 
+/**
+ * Public records (SPEC deviation, ADR 034): a PDF pulled from a government records site by an
+ * ATS employee and attached to one person. PDF only — the server checks the bytes, not the
+ * name — and larger than a photo, because a records file runs to many scanned pages.
+ */
+export const DOCUMENT_TYPE = 'application/pdf';
+export const MAX_DOCUMENT_BYTES = 25 * 1024 * 1024;
+
+export const documentUploadTargetRequestSchema = z.object({
+  contentType: z.literal(DOCUMENT_TYPE, { errorMap: () => ({ message: 'Public records have to be a PDF.' }) }),
+  size: z
+    .number()
+    .int()
+    .positive('That file is empty.')
+    .max(MAX_DOCUMENT_BYTES, 'Choose a PDF smaller than 25 MB.'),
+});
+export type DocumentUploadTargetRequest = z.input<typeof documentUploadTargetRequestSchema>;
+
 export const completeUploadSchema = z.object({ key: z.string().min(1) });

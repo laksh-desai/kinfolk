@@ -44,6 +44,17 @@ describe('tree canvas', () => {
     expect(seed.people.mohan.lifeStatus).toBe('deceased');
   });
 
+  it('marks the client household: the focus person and their current partner (ADR 035)', async () => {
+    const { seed } = await openSeedTree();
+    const canvas = screen.getByRole('region', { name: 'Family tree canvas' });
+    // Ravi is the focus person and Priya is his wife: both are the household the tree is for.
+    expect(within(canvas).getByRole('button', { name: 'Ravi Sharma, Self, focus person' })).toBeInTheDocument();
+    expect(within(canvas).getByRole('button', { name: 'Priya Sharma, Wife, client' })).toBeInTheDocument();
+    // A former spouse is not: that marriage has ended.
+    expect(within(canvas).getByRole('button', { name: /^Priti Kapoor/ }).getAttribute('aria-label')).not.toMatch(/client/);
+    expect(seed.people.priya.id).toBeTruthy();
+  }, 60_000);
+
   it('names every toolbar control and shows the zoom level', async () => {
     await openSeedTree();
     const toolbar = screen.getByRole('toolbar', { name: 'Canvas controls' });

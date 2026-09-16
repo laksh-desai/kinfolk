@@ -39,6 +39,14 @@ export function Legend() {
               Focus person — relationships are shown relative to them
             </li>
             <li className="flex items-center gap-3">
+              <span className="inline-flex w-11 shrink-0 justify-center">
+                <span className="inline-flex items-center gap-1 rounded-full border border-accent px-2 py-0.5 text-xs font-semibold text-accent">
+                  <Icon name="heart" className="size-3" />
+                </span>
+              </span>
+              The client household — the focus person and their current partner
+            </li>
+            <li className="flex items-center gap-3">
               <span aria-hidden="true" className="inline-block h-6 w-11 shrink-0 rounded-md border-2 border-line bg-sunken" />
               Deceased (card is shaded, dates show the lifespan)
             </li>

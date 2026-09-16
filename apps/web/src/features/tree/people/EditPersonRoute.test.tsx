@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { expectNoAxeViolations } from '../../../test/axe';
@@ -104,6 +104,56 @@ describe('editing a person (SPEC §5.4)', () => {
     expect(server.changes[0]).toEqual({ description: 'Changed Ravi Sharma’s photo', ops: [{ op: 'person.update', id: ravi.id, patch: { photoUrl } }] });
     expect(await screen.findByRole('button', { name: 'Change photo' })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Ravi Sharma' })).toHaveAttribute('src', photoUrl);
+  }, 60_000);
+
+  it('attaches a public records PDF, opens it in a new tab, and can take it away again (ADR 034)', async () => {
+    const user = userEvent.setup();
+    const server = mockTreeServer();
+    const { ravi } = server.seed.people;
+    const publicRecordUrl = `/api/files/trees/${TREE_ID}/people/${ravi.id}/records/r1.pdf`;
+    server.api.set(`POST /api/trees/${TREE_ID}/people/${ravi.id}/record/upload-target`, () => ({
+      body: { key: 'uploads/raw/u/2', url: '/api/uploads/grant', method: 'PUT', headers: { 'content-type': 'application/pdf' } },
+    }));
+    server.api.set('PUT /api/uploads/grant', () => ({ status: 204 }));
+    server.api.set(`POST /api/trees/${TREE_ID}/people/${ravi.id}/record`, () => ({ body: { publicRecordUrl } }));
+    const { container } = await renderApp(`/trees/${TREE_ID}/people/${ravi.id}/edit`);
+    await screen.findByRole('heading', { level: 3, name: 'Public records' });
+    expect(screen.getByText('No public records attached yet.')).toBeInTheDocument();
+
+    const inputs = container.ownerDocument.querySelectorAll<HTMLInputElement>('input[type="file"]');
+    const pdfInput = [...inputs].find((input) => input.accept.includes('pdf')) as HTMLInputElement;
+    await user.upload(pdfInput, new File([new Uint8Array([37, 80, 68, 70])], 'records.pdf', { type: 'application/pdf' }));
+    await waitFor(() => expect(server.changes).toHaveLength(1));
+    expect(server.changes[0]).toEqual({
+      description: 'Attached public records for Ravi Sharma',
+      ops: [{ op: 'person.update', id: ravi.id, patch: { publicRecordUrl } }],
+    });
+
+    const link = await screen.findByRole('link', { name: /Open Ravi Sharma’s public records/ });
+    expect(link).toHaveAttribute('href', publicRecordUrl);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+    expect(link).toHaveAccessibleName(/opens in a new tab/);
+
+    await user.click(screen.getByRole('button', { name: 'Remove records' }));
+    await waitFor(() => expect(server.changes).toHaveLength(2));
+    expect(server.changes[1]?.ops).toEqual([{ op: 'person.update', id: ravi.id, patch: { publicRecordUrl: null } }]);
+  }, 60_000);
+
+  it('refuses a records file that isn’t a PDF, visibly', async () => {
+    const server = mockTreeServer();
+    const { ravi } = server.seed.people;
+    const { container } = await renderApp(`/trees/${TREE_ID}/people/${ravi.id}/edit`);
+    await screen.findByRole('heading', { level: 3, name: 'Public records' });
+    const inputs = container.ownerDocument.querySelectorAll<HTMLInputElement>('input[type="file"]');
+    const pdfInput = [...inputs].find((input) => input.accept.includes('pdf')) as HTMLInputElement;
+    // `user.upload` honours the accept filter, so a non-PDF never reaches the handler through it;
+    // a drag-drop or a renamed file does, which is exactly what this guard is for.
+    const file = new File(['not a pdf'], 'records.txt', { type: 'text/plain' });
+    Object.defineProperty(pdfInput, 'files', { value: [file], configurable: true });
+    fireEvent.change(pdfInput);
+    expect(await screen.findByText('Public records have to be a PDF.')).toBeInTheDocument();
+    expect(server.changes).toHaveLength(0);
   }, 60_000);
 
   it('refuses a file that isn’t an image, visibly', async () => {

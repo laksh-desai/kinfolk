@@ -19,6 +19,7 @@ import { DateFields } from './DateFields';
 import { FormSection } from './FormSection';
 import { PanelShell } from './PanelShell';
 import { PersonPhotoField } from './PersonPhotoField';
+import { PersonRecordField } from './PersonRecordField';
 import { GENDER_OPTIONS, LIFE_STATUS_OPTIONS } from './QuickAddFields';
 import { RelativesSummary } from './RelativesSummary';
 import { UnsavedChangesGuard } from './UnsavedChangesGuard';
@@ -169,6 +170,10 @@ export function EditPersonForm({ person }: { person: Person }) {
             <p className="text-base font-semibold">Photo</p>
             <PersonPhotoField treeId={tree.id} person={person} name={name} />
           </div>
+        </FormSection>
+
+        <FormSection title="Public records" description="A PDF of this person’s public records, for anyone working on this tree.">
+          <PersonRecordField treeId={tree.id} person={person} name={name} />
         </FormSection>
 
         <FormSection title="Contact">
