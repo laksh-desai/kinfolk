@@ -788,3 +788,44 @@ page is reloaded — acceptable, and the alternative (a timer per card) is not w
 deviation from §5 and §6.17 is recorded in QUESTIONS Q47 and `DEFECTS-VERIFIED` row 17, which
 drops from verified to partly verified: the "no dates, no death indicator" halves still hold,
 but cards now show an age by explicit product decision.
+
+## 033 — Kinfolk is ATS-branded: navy palette, dark by default, and a signed export
+Date: 2026-09-16
+Status: accepted
+
+**Context.** Kinfolk is built for ATS Wealth Management, who supplied two logo files: the tree
+alone (transparent) and the full lockup on white. The brief: put the logo in the product without
+overdoing it, a professional dark theme, blue and pink for men and women, and exports that carry
+the tree behind the family, the lockup in the corner, the date, and "CONFIDENTIAL".
+
+**Decision.**
+- **Two assets, one colourway.** `apps/web/scripts/buildBrandAssets.mjs` trims the supplied art,
+  keys the white background out into an alpha mask, and writes `ats-mark.png` (512px) and
+  `ats-lockup.png` (900px) in the brand navy — 75 KB each, from 1.7 MB of source. The originals
+  live in `apps/web/brand-source/`, outside anything the server hands out.
+- **Painted through a CSS mask.** The app draws both through `mask-image` over
+  `--kf-brand-ink`, so one file is the brand navy in daylight and a pale ink at night, with no
+  second download and no JavaScript. Exports use the same PNGs directly, where navy on white
+  paper is right.
+- **Where the logo appears.** The tree with "Kinfolk / by ATS Wealth Management" in the header of
+  every signed-in screen; the full lockup at the foot of the screens outsiders see (sign-in, an
+  invitation, a shared tree); and the export. Nowhere else — a logo on every panel is a brochure,
+  not a tool.
+- **Palette.** One navy system replaces the warm paper and teal: `#102a5e` accent on a cool paper
+  ground in light, a `#0b1220` ground with a `#8fb5ee` accent in dark. Dark is now the default
+  (`DEFAULT_THEME`); light and "match this device" stay in Account → Appearance. All 70
+  contrast pairs still pass in both themes, including the two new gender colours.
+- **Gender colour, as an accent.** `--kf-male` / `--kf-female` tint the monogram circle and the
+  gender glyph on a card, and a slim bar down the side of each card in an export. Not the whole
+  card: across sixty cards a wash of colour is noise, and colour is never the only signal — the
+  card's description says "male" or "female" in words either way.
+- **The export is a document.** The tree mark sits centred behind the family at 7% opacity; the
+  foot carries the export date on the left, CONFIDENTIAL centred in navy small caps, and the
+  lockup on the right. Titles and footer scale with the drawing (a family tree exports many
+  thousands of pixels wide, where 13px type is invisible), and the artwork travels as a data URI
+  because the SVG is rasterised in an isolated image that cannot fetch files.
+
+**Consequences.** Re-running the asset script is the only step if ATS sends new artwork; nothing
+else knows the shape of the logo. An export with no artwork still renders (the branding is
+skipped, not fatal). The mask means the logo is always one flat colour — correct for this mark,
+but a future multi-colour logo would need real `<img>` elements and a second file.

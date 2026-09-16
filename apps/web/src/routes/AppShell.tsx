@@ -1,9 +1,10 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
 import { authApi } from '../features/auth/authApi';
 import { sessionQuery, useCurrentUser } from '../features/auth/sessionQuery';
+import { Wordmark } from '../components/Brand';
 import { cx } from '../lib/cx';
 import { queryClient } from '../lib/queryClient';
 import { toast } from '../lib/toast';
@@ -40,13 +41,7 @@ export function AppShell() {
       </a>
       <header className="sticky top-0 z-30 border-b border-line bg-surface/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-screen-2xl items-center gap-4 px-4 sm:px-6">
-          <Link to="/" className="inline-flex min-h-11 items-center gap-2 font-serif text-xl font-semibold text-ink">
-            <svg aria-hidden="true" viewBox="0 0 32 32" className="size-7 text-accent">
-              <rect width="32" height="32" rx="7" fill="currentColor" />
-              <path d="M16 7v6m0 0-6 5m6-5 6 5M10 18v5m12-5v5" stroke="var(--kf-surface)" strokeWidth="2.4" strokeLinecap="round" fill="none" />
-            </svg>
-            Kinfolk
-          </Link>
+          <Wordmark />
           <nav aria-label="Main" className="ml-2 hidden items-center gap-1 md:flex">
             {NAV_ITEMS.map((item) => (
               <NavLink

@@ -22,9 +22,12 @@ function write(key: string, value: string): void {
   }
 }
 
+/** Kinfolk is a dark product by default; light and "match this device" are a choice away. */
+export const DEFAULT_THEME: ThemePreference = 'dark';
+
 export function getThemePreference(): ThemePreference {
   const value = read(THEME_KEY);
-  return value === 'light' || value === 'dark' ? value : 'system';
+  return value === 'light' || value === 'dark' || value === 'system' ? value : DEFAULT_THEME;
 }
 
 function systemPrefersDark(): boolean {

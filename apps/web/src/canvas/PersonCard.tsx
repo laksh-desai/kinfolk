@@ -28,6 +28,18 @@ const GENDER_MARK: Record<Person['gender'], { glyph: string; label: string } | n
   unknown: null,
 };
 
+/**
+ * Blue for men, pink for women, the house accent for everyone else. It is an accent on the
+ * monogram and the gender glyph, never the whole card: at sixty cards a wash of colour is
+ * noise, and colour is never the only way to know — the card's description says it in words.
+ */
+const GENDER_TINT: Record<Person['gender'], { circle: string; glyph: string }> = {
+  male: { circle: 'bg-male-soft text-male', glyph: 'text-male' },
+  female: { circle: 'bg-female-soft text-female', glyph: 'text-female' },
+  other: { circle: 'bg-accent-soft text-accent', glyph: 'text-ink-muted' },
+  unknown: { circle: 'bg-accent-soft text-accent', glyph: 'text-ink-muted' },
+};
+
 function placeOf(person: Person): string | null {
   const address = person.address;
   if (address?.city) return [address.city, address.state ?? address.country].filter(Boolean).join(', ');
@@ -87,7 +99,8 @@ export const PersonCard = memo(function PersonCard({
             aria-hidden="true"
             className={cx(
               'inline-flex size-12 shrink-0 items-center justify-center rounded-full text-lg font-semibold',
-              person.isPlaceholder ? 'border-2 border-dashed border-line-strong text-ink-muted' : deceased ? 'bg-line text-ink-muted' : 'bg-accent-soft text-accent',
+              person.isPlaceholder ? 'border-2 border-dashed border-line-strong text-ink-muted' : GENDER_TINT[person.gender].circle,
+              deceased && !person.isPlaceholder && 'opacity-80',
             )}
           >
             {initials}
@@ -106,7 +119,7 @@ export const PersonCard = memo(function PersonCard({
         </span>
         <span className="absolute right-2 top-2 flex items-center gap-1" aria-hidden="true">
           {twin ? <span className="rounded-full bg-info-soft px-1.5 text-xs font-semibold text-info">Twin</span> : null}
-          {gender ? <span className="text-sm leading-none text-ink-muted">{gender.glyph}</span> : null}
+          {gender ? <span className={cx('text-sm leading-none', GENDER_TINT[person.gender].glyph)}>{gender.glyph}</span> : null}
         </span>
         {isFocus ? (
           <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-on-accent" aria-hidden="true">

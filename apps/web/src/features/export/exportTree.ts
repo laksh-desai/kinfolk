@@ -1,3 +1,4 @@
+import { toCalendarDay } from '@kinfolk/shared/dates/partialDate';
 import { buildImagePdf } from '@kinfolk/shared/export/pdf';
 import { treeSvg } from '@kinfolk/shared/export/treeSvg';
 import { writeGedcom } from '@kinfolk/shared/gedcom/gedcom';
@@ -74,6 +75,32 @@ function dataUrlToBytes(dataUrl: string): Uint8Array {
   return bytes;
 }
 
+/**
+ * The ATS artwork, as data URIs. An exported picture is rasterised from an SVG in an isolated
+ * image, which may not reach back for a file, so the bytes have to travel inside it. Fetched
+ * once per session, and an export still works without them.
+ */
+const brandArtwork = new Map<string, Promise<string | null>>();
+
+function brandImage(path: string): Promise<string | null> {
+  const cached = brandArtwork.get(path);
+  if (cached) return cached;
+  const pending = fetch(path)
+    .then(async (response) => {
+      if (!response.ok) return null;
+      const blob = await response.blob();
+      return await new Promise<string | null>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+    })
+    .catch(() => null);
+  brandArtwork.set(path, pending);
+  return pending;
+}
+
 export interface ExportInput {
   graph: TreeGraph;
   layout: LayoutResult;
@@ -92,10 +119,15 @@ export async function exportTree(format: ExportFormat, input: ExportInput): Prom
     return;
   }
 
+  const [watermark, logo] = await Promise.all([brandImage('/brand/ats-mark.png'), brandImage('/brand/ats-lockup.png')]);
   const svg = treeSvg(input.graph, input.layout, {
     title: input.treeName,
     relationOf: input.relationOf,
-    footer: `Exported from Kinfolk on ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`,
+    footer: `Exported ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`,
+    confidential: 'CONFIDENTIAL',
+    today: toCalendarDay(new Date()),
+    ...(watermark ? { watermark } : {}),
+    ...(logo ? { logo } : {}),
   });
   const canvas = await rasterise(svg);
 

@@ -7,7 +7,7 @@ import { Icon } from '../../components/Icon';
 import { LoadingRegion } from '../../components/LoadingRegion';
 import { Skeleton } from '../../components/Skeleton';
 import { StatusBadge } from '../../components/StatusBadge';
-import { Wordmark } from '../../components/Wordmark';
+import { Wordmark } from '../../components/Brand';
 import { ApiError, describeError } from '../../lib/api';
 import { cx } from '../../lib/cx';
 import { queryClient } from '../../lib/queryClient';

@@ -19,7 +19,8 @@ describe('tree SVG export (SPEC §5.3)', () => {
   it('draws every person and connector inside a canvas big enough for them', () => {
     expect(svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg"')).toBe(true);
     expect(svg.trimEnd().endsWith('</svg>')).toBe(true);
-    expect((svg.match(/<rect /g) ?? []).length).toBe(layout.nodes.length + 1);
+    // Each person is a card plus the slim bar in their colour, over one page-sized background.
+    expect((svg.match(/<rect /g) ?? []).length).toBe(layout.nodes.length * 2 + 1);
     expect((svg.match(/<polyline /g) ?? []).length).toBeGreaterThanOrEqual(layout.edges.length);
     const size = /width="(\d+)" height="(\d+)"/.exec(svg);
     expect(Number(size?.[1])).toBeGreaterThanOrEqual(layout.bounds.width);
@@ -46,6 +47,55 @@ describe('tree SVG export (SPEC §5.3)', () => {
 
   it('leaves out contact details', () => {
     for (const secret of ['ravi.sharma@example.com', '+1 415 555 0142', 'Alder Street', 'Architect']) expect(svg).not.toContain(secret);
+  });
+
+  it('marks men and women in their own colour', () => {
+    // Vikram is male and Nisha female, so the two bars differ; the export matches the canvas.
+    expect(svg).toContain('#17458c');
+    expect(svg).toContain('#8d2a63');
+  });
+
+  it('carries the ATS branding: the tree behind, the lockup, the date, and CONFIDENTIAL (ADR 033)', () => {
+    const branded = treeSvg(graph, layout, {
+      title: 'Sharma family',
+      footer: 'Exported September 16, 2026',
+      confidential: 'CONFIDENTIAL',
+      watermark: 'data:image/png;base64,MARK',
+      logo: 'data:image/png;base64,LOCKUP',
+    });
+    const size = /width="(\d+)" height="(\d+)"/.exec(branded);
+    const [width, height] = [Number(size?.[1]), Number(size?.[2])];
+
+    // The mark sits behind everything, faint, and before the first card in the file.
+    const mark = /<image href="data:image\/png;base64,MARK" x="(\d+)" y="(\d+)" width="(\d+)" height="(\d+)" opacity="([\d.]+)"/.exec(branded);
+    expect(mark, 'watermark').not.toBeNull();
+    expect(Number(mark?.[5])).toBeLessThan(0.12);
+    expect(branded.indexOf('MARK')).toBeLessThan(branded.indexOf('>Ravi Sharma<'));
+    // Centred across the page.
+    expect(Number(mark?.[1]) + Number(mark?.[3]) / 2).toBeCloseTo(width / 2, -1);
+
+    // Date bottom left, CONFIDENTIAL centred, the lockup in the bottom right corner — all of it
+    // below the rule that closes the drawing, whatever size the page came out.
+    const rule = Number(/<line x1="\d+" y1="(\d+)"/.exec(branded)?.[1]);
+    expect(rule, 'footer rule').toBeGreaterThan(height / 2);
+    expect(branded).toContain('>Exported September 16, 2026<');
+    const confidential = /<text x="(\d+)" y="(\d+)"[^>]*text-anchor="middle"[^>]*>CONFIDENTIAL</.exec(branded);
+    expect(confidential, 'confidential').not.toBeNull();
+    expect(Number(confidential?.[1])).toBeCloseTo(width / 2, -1);
+    expect(Number(confidential?.[2])).toBeGreaterThan(rule);
+    const logo = /<image href="data:image\/png;base64,LOCKUP" x="(\d+)" y="(\d+)" width="(\d+)"/.exec(branded);
+    expect(logo, 'lockup').not.toBeNull();
+    expect(Number(logo?.[1]) + Number(logo?.[3])).toBeLessThanOrEqual(width);
+    expect(Number(logo?.[1])).toBeGreaterThan(width / 2);
+    expect(Number(logo?.[2])).toBeGreaterThan(rule);
+
+    // Small but noticeable: the type grows with a drawing that is thousands of pixels wide.
+    const footerSize = Number(/<text x="\d+" y="\d+" font-size="(\d+)"[^>]*>Exported/.exec(branded)?.[1]);
+    expect(footerSize).toBeGreaterThan(13);
+    expect(footerSize).toBeLessThan(width / 40);
+
+    // Nothing branded, nothing broken: an export without the artwork still opens.
+    expect(treeSvg(graph, layout, { title: 'Sharma family' })).not.toContain('<image');
   });
 });
 

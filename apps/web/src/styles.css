@@ -1,71 +1,82 @@
 @import 'tailwindcss';
 
 /*
- * Design tokens. One system for the whole app: warm paper ground, one deep ink, one
- * restrained accent, semantic status colours. Every text/background pair used in the UI is
+ * Design tokens. One system for the whole app, built on the ATS navy: a cool paper ground in
+ * daylight, a deep navy ground at night, one restrained accent, semantic status colours, and
+ * the two colours that mark a person's gender on a card. Every text/background pair used in the UI is
  * checked for 4.5:1 contrast in src/components/tokens.test.ts — change a value here and
  * that test tells you if it breaks.
  */
 :root {
   color-scheme: light;
-  --kf-ground: #f6f2ea;
-  --kf-surface: #fffdf9;
-  --kf-sunken: #eee8dc;
-  --kf-ink: #1e2a2d;
-  --kf-ink-muted: #4b5659;
-  --kf-ink-faint: #5c6669;
-  --kf-border: #d9d0c1;
-  --kf-border-strong: #857f72;
-  --kf-accent: #1f5c52;
-  --kf-accent-hover: #174840;
-  --kf-accent-soft: #e2ede9;
+  --kf-ground: #f4f6fa;
+  --kf-surface: #ffffff;
+  --kf-sunken: #e9edf4;
+  --kf-ink: #0f1829;
+  --kf-ink-muted: #46536b;
+  --kf-ink-faint: #54617a;
+  --kf-border: #d3dae5;
+  --kf-border-strong: #78849a;
+  --kf-accent: #102a5e;
+  --kf-accent-hover: #0a1e46;
+  --kf-accent-soft: #e2e9f5;
   --kf-on-accent: #ffffff;
-  --kf-danger: #9b2c24;
-  --kf-danger-soft: #f7e4e1;
+  --kf-danger: #97271f;
+  --kf-danger-soft: #f8e3e1;
   --kf-on-danger: #ffffff;
-  --kf-warning: #74500a;
-  --kf-warning-soft: #f6ead0;
-  --kf-success: #2c5f35;
-  --kf-success-soft: #e0ede1;
-  --kf-info: #2c5378;
-  --kf-info-soft: #e1eaf2;
-  --kf-focus: #1f5c52;
-  --kf-canvas: #f1ece2;
-  --kf-canvas-grid: #e4ddd0;
-  --kf-edge: #6f6a60;
-  --kf-branch-tint: #ebe3d3;
-  --kf-shadow: 0 1px 2px rgb(30 42 45 / 0.08), 0 4px 12px rgb(30 42 45 / 0.06);
+  --kf-warning: #6f4a06;
+  --kf-warning-soft: #f7ead1;
+  --kf-success: #1f5a39;
+  --kf-success-soft: #dcebe2;
+  --kf-info: #1c4f7c;
+  --kf-info-soft: #e0eaf3;
+  --kf-male: #17458c;
+  --kf-male-soft: #dde8f8;
+  --kf-female: #8d2a63;
+  --kf-female-soft: #fadfee;
+  --kf-focus: #102a5e;
+  --kf-brand-ink: #102a5e;
+  --kf-canvas: #eef2f7;
+  --kf-canvas-grid: #dfe5ee;
+  --kf-edge: #67728a;
+  --kf-branch-tint: #e6ecf5;
+  --kf-shadow: 0 1px 2px rgb(15 24 41 / 0.08), 0 4px 12px rgb(15 24 41 / 0.06);
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --kf-ground: #141a1b;
-  --kf-surface: #1c2324;
-  --kf-sunken: #101415;
-  --kf-ink: #ede7dc;
-  --kf-ink-muted: #b8b1a6;
-  --kf-ink-faint: #a29c92;
-  --kf-border: #334041;
-  --kf-border-strong: #7e8886;
-  --kf-accent: #82c7b5;
-  --kf-accent-hover: #9fd6c7;
-  --kf-accent-soft: #1f3632;
-  --kf-on-accent: #0d1a17;
-  --kf-danger: #f0a39a;
-  --kf-danger-soft: #3b2220;
-  --kf-on-danger: #1e0c0a;
-  --kf-warning: #e8c27a;
-  --kf-warning-soft: #372c17;
-  --kf-success: #9fd0a6;
-  --kf-success-soft: #1d3322;
-  --kf-info: #9ec1e3;
-  --kf-info-soft: #1c2c3b;
-  --kf-focus: #82c7b5;
-  --kf-canvas: #111718;
-  --kf-canvas-grid: #1c2426;
-  --kf-edge: #8c9592;
-  --kf-branch-tint: #202a2a;
-  --kf-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 12px rgb(0 0 0 / 0.3);
+  --kf-ground: #0b1220;
+  --kf-surface: #141e31;
+  --kf-sunken: #070d18;
+  --kf-ink: #e9eef7;
+  --kf-ink-muted: #a7b5cc;
+  --kf-ink-faint: #97a6c0;
+  --kf-border: #26344d;
+  --kf-border-strong: #7d8ba5;
+  --kf-accent: #8fb5ee;
+  --kf-accent-hover: #accbf7;
+  --kf-accent-soft: #18263e;
+  --kf-on-accent: #07101f;
+  --kf-danger: #f2a49b;
+  --kf-danger-soft: #3a211f;
+  --kf-on-danger: #1d0b09;
+  --kf-warning: #e9c37c;
+  --kf-warning-soft: #362c18;
+  --kf-success: #9ad3ab;
+  --kf-success-soft: #16301f;
+  --kf-info: #9dc2e8;
+  --kf-info-soft: #16273a;
+  --kf-male: #8ebaf5;
+  --kf-male-soft: #14263f;
+  --kf-female: #f0a6cb;
+  --kf-female-soft: #33192a;
+  --kf-focus: #8fb5ee;
+  --kf-brand-ink: #dce4f0;
+  --kf-canvas: #0a101d;
+  --kf-canvas-grid: #151f31;
+  --kf-edge: #8b99b2;
+  --kf-branch-tint: #131d30;
+  --kf-shadow: 0 1px 2px rgb(0 0 0 / 0.45), 0 4px 14px rgb(0 0 0 / 0.35);
 }
 
 @theme inline {
@@ -106,6 +117,10 @@
   --color-success-soft: var(--kf-success-soft);
   --color-info: var(--kf-info);
   --color-info-soft: var(--kf-info-soft);
+  --color-male: var(--kf-male);
+  --color-male-soft: var(--kf-male-soft);
+  --color-female: var(--kf-female);
+  --color-female-soft: var(--kf-female-soft);
   --color-focus: var(--kf-focus);
   --color-canvas: var(--kf-canvas);
   --color-canvas-grid: var(--kf-canvas-grid);
@@ -115,6 +130,35 @@
   --radius-control: 0.5rem;
   --radius-card: 0.75rem;
   --shadow-card: var(--kf-shadow);
+}
+
+/*
+ * The ATS logos. One navy PNG each, painted through a CSS mask so the artwork takes the brand
+ * navy in daylight and a pale ink at night without shipping a second copy or any JavaScript.
+ * Exports use the same PNGs directly, where the navy is right on white paper.
+ */
+.brand-mark,
+.brand-lockup {
+  display: inline-block;
+  background-color: var(--kf-brand-ink);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.brand-mark {
+  aspect-ratio: 512 / 392;
+  -webkit-mask-image: url('/brand/ats-mark.png');
+  mask-image: url('/brand/ats-mark.png');
+}
+
+.brand-lockup {
+  aspect-ratio: 900 / 214;
+  -webkit-mask-image: url('/brand/ats-lockup.png');
+  mask-image: url('/brand/ats-lockup.png');
 }
 
 @layer base {
@@ -138,6 +182,16 @@
   :focus-visible {
     outline: 3px solid var(--kf-focus);
     outline-offset: 2px;
+  }
+
+  /*
+   * Every route change moves focus to the main landmark so screen readers announce the new page
+   * (RootLayout). It is not an interactive control, and a ring around the whole viewport reads
+   * as a stray border, so it keeps the focus without the outline. Controls all keep theirs.
+   */
+  main[tabindex='-1']:focus,
+  main[tabindex='-1']:focus-visible {
+    outline: none;
   }
 
   ::placeholder {

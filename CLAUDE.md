@@ -128,10 +128,10 @@ orient. Replace lines rather than stacking them.)*
 - Built: cookie auth (password, dev/real Google, OTP reset), account page, tree API, graph ChangeSets, layout, kinship, canvas, person editing, dashboard, list view, access + share links + invitations + linked trees, review workflow, key events, GEDCOM/CSV import, PNG/PDF/GEDCOM/CSV export.
 - Graph edits: `POST /api/trees/:id/changes` → `commitChangeSet` (lock, pure `applyChangeSet`, persist, audit per op, returns inverse). Roles per request: `lib/treeAccess.ts` `requireTreeRole`; redaction: `lib/graphRows.ts` `graphForVisibility`.
 - Pure: `computeLayout(graph, { collapsed })` (ordering never depends on entry order — ADR 029), `createKinshipResolver(graph)(ego, alter)`, `displayName(index, id)`, `cardLabel` (age for the living, lifespan for the deceased), `keyEvents`, `writeGedcom`/`parseGedcom`, `planCsvImport`, `treeSvg`.
-- Canvas: `apps/web/src/canvas/` (pure `viewport.ts`, `keyboardNav.ts`, `culling.ts`, one `CardMenu`); tree page `features/tree/TreeRoute.tsx` + `useTreeView`.
-- Review: `features/review/` (owner banner + submit dialog; reviewer screen at `/review/:token`). Editing while `in_review` is refused by `commitChangeSet` and hidden by `canEditTree`.
-- Collaboration: `features/collaboration/` (access and link-request dialogs are routes); public pages `/s/:token` (redacted, `toViewGraph`) and `/invite/:token` live outside the app shell.
+- Review + collaboration: `features/review/` (reviewer at `/review/:token`; editing while `in_review` is refused by `commitChangeSet`, hidden by `canEditTree`) and `features/collaboration/` (dialogs are routes); the public `/s/:token` (redacted, `toViewGraph`) and `/invite/:token` live outside the app shell.
 - Editing: build ops only with planners in `packages/shared/src/relatives/`; send via `features/tree/editing/changeQueue.ts` `commitWithUndo` (optimistic, queued, undoable). Person screens are panel routes in `features/tree/people/` wrapped in `PanelShell`.
+- Canvas: `apps/web/src/canvas/` (pure `viewport.ts`, `keyboardNav.ts`, `culling.ts`, one `CardMenu`); tree page `features/tree/TreeRoute.tsx` + `useTreeView`.
+- Brand: `components/Brand.tsx` (`Wordmark`, `BrandMark`, `BrandLockup`, `BrandFooter`, `COMPANY`); two navy PNGs in `public/brand/` painted through a CSS mask; rebuild with `node apps/web/scripts/buildBrandAssets.mjs`.
 - Web conventions: calls via `lib/api.ts`; forms via `lib/useForm.ts`; `test/renderApp` renders the real routes; `test/treeServer.ts` `mockTreeServer()` fakes the tree API with real `applyChangeSet` (+ `findToast`).
 - Tests: `pnpm test` (shared/api/web; API clones a per-file embedded-Postgres DB via `test/testApp.ts`). `pnpm e2e`: one-process stack `apps/api/scripts/e2eStack.ts` (web 5180/api 4180).
 - E2E helpers: `e2e/support/seedTree.ts` (`signUp`, `createSeededTree`, `createEmptyTree`), `outbox.ts`, `a11y.ts` (axe with contrast). Fixtures: `buildSeedTree({ namespace })` (60, §4.5), `buildLargeTree()` (500); `pnpm db:seed` writes both.
@@ -177,4 +177,5 @@ deviation is large, open an ADR and link it here instead of explaining it twice.
 - Removing someone's only parent is allowed; their children become roots and are named first (ADR 026, Q44) — SPEC §3 reads as a flat refusal.
 - Dates are month/day/year and quick add takes a whole date of birth (ADR 031, Q46); the locale is fixed, not the browser's.
 - Cards and list rows show a living person's age, not their birth year; the deceased keep a lifespan (ADR 032, Q47) — §5 and §6.17 ask for years.
+- The product is ATS-branded and dark by default, with blue/pink gender accents and a signed, watermarked export (ADR 033, Q48); §5 describes an unbranded warm surface.
 - Re-parenting is on the Relationships screen only, no drag onto connectors (Q35); union dates are edited at year precision there (Q36).

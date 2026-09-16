@@ -3,9 +3,9 @@ import { getThemePreference, setThemePreference, type ThemePreference } from '..
 import { AccountSection } from './AccountSection';
 
 const OPTIONS: Array<{ value: ThemePreference; label: string; description: string }> = [
+  { value: 'dark', label: 'Dark', description: 'Kinfolk’s default: pale text on deep navy, easier in dim rooms.' },
+  { value: 'light', label: 'Light', description: 'Navy text on a cool paper background.' },
   { value: 'system', label: 'Match this device', description: 'Follows your computer’s light or dark setting.' },
-  { value: 'light', label: 'Light', description: 'Dark text on a warm paper background.' },
-  { value: 'dark', label: 'Dark', description: 'Light text on a dark background, easier in dim rooms.' },
 ];
 
 export function AppearanceSection() {

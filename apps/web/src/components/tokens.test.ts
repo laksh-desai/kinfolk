@@ -51,6 +51,10 @@ const TEXT_PAIRS: Array<[string, string]> = [
   ['info', 'surface'],
   ['ground', 'ink'],
   ['ink', 'branch-tint'],
+  ['male', 'male-soft'],
+  ['male', 'surface'],
+  ['female', 'female-soft'],
+  ['female', 'surface'],
 ];
 
 /** Non-text UI (control borders, canvas edges, focus rings) needs 3:1 (WCAG 1.4.11). */

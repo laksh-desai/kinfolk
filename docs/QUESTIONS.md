@@ -362,6 +362,19 @@ on each member's card, display their current age."
   never a bare integer with no indication of death", and §6.17 should be narrowed to the real
   failure — an unlabelled number that hides whether the person is alive.
 
+### Q48 — Whose name goes beside Kinfolk, and how far the branding goes · Decided
+The spec describes an unbranded product. The logo supplied reads "ATS Wealth Management — A
+Simplicity Company" while the brief said "ATS financial".
+- Decision (from the product owner): "ATS Wealth Management" everywhere, held in one constant
+  (`COMPANY` in `components/Brand.tsx`) so it can never be spelled two ways; dark theme by
+  default; gender colour as an accent rather than a full card tint (ADR 033).
+- §5 says the canvas is "a warm, calm surface" and names no company. The build now carries ATS
+  livery throughout. Recommend the spec gain a short branding section rather than leaving the
+  product nameless.
+- Also worth the owner's eye: exports now show the same age the app shows. A printed tree is
+  dated at the foot, so an age reads unambiguously — but if these are filed for years, dates
+  may age better than ages. One line in `exportTree.ts` (`today`) switches it back.
+
 ## Environment
 
 ### Q31 — Node version · Decided
