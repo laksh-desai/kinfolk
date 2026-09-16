@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildApp } from './app';
 import { createDeps } from './lib/deps';
-import { EnvValidationError, parseEnv, type Env } from './lib/env';
+import { devAdaptersInUse, EnvValidationError, parseEnv, type Env } from './lib/env';
 
 const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repoEnv = path.resolve(apiRoot, '../../.env');
@@ -19,6 +19,17 @@ try {
     process.exit(1);
   }
   throw error;
+}
+
+if (env.NODE_ENV === 'production' && env.ALLOW_DEV_ADAPTERS) {
+  const lines = [
+    '',
+    '  ⚠  Kinfolk is running as a PREVIEW deployment (ALLOW_DEV_ADAPTERS=true).',
+    ...devAdaptersInUse(env).map((service) => `     · ${service}`),
+    '     Do not put real client data in it.',
+    '',
+  ];
+  console.warn(lines.join('\n'));
 }
 
 const deps = createDeps(env, apiRoot);

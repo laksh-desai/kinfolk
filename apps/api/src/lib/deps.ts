@@ -8,6 +8,7 @@ import { FsStorage } from './storage/fsStorage';
 import { S3Storage } from './storage/s3Storage';
 import type { ObjectStorage } from './storage/storage';
 import { DevOAuthProvider } from '../modules/auth/oauth/devOAuthProvider';
+import { DisabledOAuthProvider } from '../modules/auth/oauth/disabledOAuthProvider';
 import { GoogleOAuthProvider } from '../modules/auth/oauth/googleOAuthProvider';
 import type { OAuthProvider } from '../modules/auth/oauth/oauthProvider';
 
@@ -38,10 +39,15 @@ export function createDeps(env: Env, baseDir: string, prisma = new PrismaClient(
         })
       : new FsStorage(path.resolve(baseDir, env.LOCAL_STORAGE_DIR), env.SESSION_SECRET);
 
+  // The development stand-in signs in as whatever email is typed into it. That is fine on a
+  // laptop and an open door on a deployed URL, so off a developer's machine it is never the
+  // fallback: without real Google credentials, Google sign-in is simply off (ADR 036).
   const oauth: OAuthProvider =
     env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
       ? new GoogleOAuthProvider(env.GOOGLE_CLIENT_ID, env.GOOGLE_CLIENT_SECRET)
-      : new DevOAuthProvider(env.SESSION_SECRET);
+      : env.NODE_ENV === 'development' || env.NODE_ENV === 'test'
+        ? new DevOAuthProvider(env.SESSION_SECRET)
+        : new DisabledOAuthProvider();
 
   return { env, prisma, mailer, storage, oauth, now: () => new Date() };
 }

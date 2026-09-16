@@ -72,7 +72,7 @@ export const userDtoSchema = z.object({
 export type UserDto = z.infer<typeof userDtoSchema>;
 
 export const authProvidersSchema = z.object({
-  google: z.object({ mode: z.enum(['google', 'dev']) }),
+  google: z.object({ mode: z.enum(['google', 'dev', 'off']) }),
 });
 export type AuthProvidersDto = z.infer<typeof authProvidersSchema>;
 

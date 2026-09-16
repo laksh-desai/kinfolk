@@ -22,16 +22,23 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-export const SEED_EMAIL = 'seed@kinfolk.test';
-export const SEED_PASSWORD = 'kinfolk sample family';
+/**
+ * The account the sample trees belong to. A deployment overrides both, so a preview can be
+ * seeded with a real address for the people who are going to look at it, and a password that
+ * was never written down in this repository (SEED_EMAIL / SEED_PASSWORD).
+ */
+export const SEED_EMAIL = process.env.SEED_EMAIL?.trim().toLowerCase() || 'seed@kinfolk.test';
+export const SEED_PASSWORD = process.env.SEED_PASSWORD || 'kinfolk sample family';
 
 const prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL });
 const deps = { prisma, now: () => new Date() };
 
+const passwordHash = await hashPassword(SEED_PASSWORD);
 const user = await prisma.user.upsert({
   where: { email: SEED_EMAIL },
-  update: {},
-  create: { email: SEED_EMAIL, firstName: 'Ravi', lastName: 'Sharma', passwordHash: await hashPassword(SEED_PASSWORD) },
+  // Re-seeding resets the password, which is how a preview's demo login gets rotated.
+  update: { passwordHash },
+  create: { email: SEED_EMAIL, firstName: 'Ravi', lastName: 'Sharma', passwordHash },
 });
 
 const trees = [
@@ -46,5 +53,5 @@ for (const { name, description, graph } of trees) {
   console.log(`Seeded “${name}”: ${graph.people.length} people, ${graph.unions.length} unions (tree version ${result.version}).`);
 }
 
-console.log(`Sign in with ${SEED_EMAIL} / ${SEED_PASSWORD}`);
+console.log(`Sign in with ${SEED_EMAIL}${process.env.SEED_PASSWORD ? '' : ` / ${SEED_PASSWORD}`}`);
 await prisma.$disconnect();

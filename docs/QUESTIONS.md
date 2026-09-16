@@ -388,6 +388,20 @@ the client couple to stand out on the canvas. §3 gives a Person a photo and no 
 - Public records are private to the tree: members see them, share links never do, and they are
   left out of exports and GEDCOM.
 
+### Q50 — A preview deployment needs services the spec assumes exist · Decided
+§9 describes production: real Google sign-in, object storage, and mail. A preview for ATS has
+none of those and should cost nothing.
+- Decision: `ALLOW_DEV_ADAPTERS=true` lets a production build boot on the file-backed adapters,
+  saying so at boot; Google sign-in is switched off rather than stood in for, because the
+  development consent page signs you in as any address typed into it; `SIGNUP_ALLOWLIST` closes
+  registration (ADR 036, `docs/DEPLOY.md`).
+- Open for the owner: a preview delivers no email, so password reset, access invitations, and
+  review links do not arrive. Members already see invitations in their dashboard inbox and share
+  links are copied from the UI, so the gap is password reset. Setting `SMTP_URL` closes it
+  whenever a mail provider is worth the ten minutes.
+- Free-plan caveats worth knowing before the link is sent: the database expires after 30 days and
+  the service sleeps after 15 minutes idle, so the first visit of the day takes about a minute.
+
 ## Environment
 
 ### Q31 — Node version · Decided

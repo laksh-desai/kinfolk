@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EnvValidationError, parseEnv } from './env';
+import { devAdaptersInUse, EnvValidationError, parseEnv } from './env';
 
 const valid = {
   DATABASE_URL: 'postgres://kinfolk:kinfolk@localhost:5432/kinfolk',
@@ -48,14 +48,15 @@ describe('parseEnv', () => {
     expect(problems).toContain('ACCESS_TOKEN_TTL must look like 15m or 30d');
   });
 
-  it('requires Google, S3 and SMTP settings in production', () => {
+  it('requires Google, S3 and SMTP settings in production, and says how to run a preview instead', () => {
     const problems = problemsFor({ ...valid, NODE_ENV: 'production' });
+    const preview = ' is required in production (or set ALLOW_DEV_ADAPTERS=true for a preview deployment)';
     expect(problems).toEqual(
       expect.arrayContaining([
-        'GOOGLE_CLIENT_ID is required in production',
-        'GOOGLE_CLIENT_SECRET is required in production',
-        'S3_BUCKET is required in production',
-        'SMTP_URL is required in production',
+        `GOOGLE_CLIENT_ID${preview}`,
+        `GOOGLE_CLIENT_SECRET${preview}`,
+        `S3_BUCKET${preview}`,
+        `SMTP_URL${preview}`,
         'MAIL_FROM is required in production',
       ]),
     );
@@ -65,5 +66,58 @@ describe('parseEnv', () => {
     expect(problemsFor({ ...valid, GOOGLE_CLIENT_ID: 'abc' })).toEqual([
       'GOOGLE_CLIENT_SECRET is required when GOOGLE_CLIENT_ID is set',
     ]);
+  });
+});
+
+describe('deploying (ADR 036)', () => {
+  const production = { ...valid, NODE_ENV: 'production' };
+
+  it('still refuses to ship a development adapter silently', () => {
+    const problems = problemsFor(production);
+    for (const name of ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'S3_ENDPOINT', 'S3_BUCKET', 'SMTP_URL']) {
+      expect(problems.some((problem) => problem.startsWith(name)), name).toBe(true);
+    }
+    expect(problems[0]).toMatch(/ALLOW_DEV_ADAPTERS=true for a preview deployment/);
+  });
+
+  it('boots a preview when the deployment says so in as many words, and names what is stood in for', () => {
+    const env = parseEnv({ ...production, ALLOW_DEV_ADAPTERS: 'true' });
+    expect(env.ALLOW_DEV_ADAPTERS).toBe(true);
+    expect(devAdaptersInUse(env)).toEqual([
+      expect.stringContaining('object storage'),
+      expect.stringContaining('email'),
+      expect.stringContaining('Google sign-in'),
+    ]);
+  });
+
+  it('says nothing is stood in for once the real services are configured', () => {
+    const env = parseEnv({
+      ...production,
+      ALLOW_DEV_ADAPTERS: 'true',
+      S3_ENDPOINT: 'https://example.r2.cloudflarestorage.com',
+      S3_REGION: 'auto',
+      S3_BUCKET: 'kinfolk',
+      S3_ACCESS_KEY_ID: 'key',
+      S3_SECRET_ACCESS_KEY: 'secret',
+      SMTP_URL: 'smtp://user:pass@smtp.example.com:587',
+      MAIL_FROM: 'Kinfolk <no-reply@example.com>',
+      GOOGLE_CLIENT_ID: 'id',
+      GOOGLE_CLIENT_SECRET: 'secret',
+    });
+    expect(devAdaptersInUse(env)).toEqual([]);
+  });
+
+  it('takes the port a platform hands it, and prefers an explicit API_PORT', () => {
+    expect(parseEnv({ ...valid, PORT: '8080' }).API_PORT).toBe(8080);
+    expect(parseEnv({ ...valid, PORT: '8080', API_PORT: '4000' }).API_PORT).toBe(4000);
+    expect(parseEnv(valid).API_PORT).toBe(4000);
+  });
+
+  it('reads the sign-up allow-list as addresses and domains, lower-cased', () => {
+    expect(parseEnv({ ...valid, SIGNUP_ALLOWLIST: ' Person@ATS.com , @atswealth.com ,, ' }).SIGNUP_ALLOWLIST).toEqual([
+      'person@ats.com',
+      '@atswealth.com',
+    ]);
+    expect(parseEnv(valid).SIGNUP_ALLOWLIST).toEqual([]);
   });
 });

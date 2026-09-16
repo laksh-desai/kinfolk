@@ -114,6 +114,19 @@ export async function buildApp(deps: AppDeps, options: BuildAppOptions = {}): Pr
     return reply.code(404).send({ error: { code: 'not_found', message: "We couldn't find that." } });
   });
 
+  /**
+   * What a platform polls to decide the instance is alive. Unauthenticated and cheap, but it
+   * asks the database a question, because a process that cannot reach Postgres is not healthy.
+   */
+  app.get('/api/health', async (_request, reply) => {
+    try {
+      await deps.prisma.$queryRaw`SELECT 1`;
+      return { status: 'ok' };
+    } catch {
+      return reply.code(503).send({ status: 'unavailable', error: { code: 'database_unavailable', message: 'The database is not reachable.' } });
+    }
+  });
+
   const authRateLimit = options.authRateLimit ?? { max: 10, timeWindow: '1 minute' };
   await app.register(authRoutes, { deps, rateLimit: authRateLimit });
   await app.register(accountRoutes, { deps });

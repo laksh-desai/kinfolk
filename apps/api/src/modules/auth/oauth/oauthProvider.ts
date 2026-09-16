@@ -13,7 +13,8 @@ export interface OAuthProfile {
  * exchanged differs.
  */
 export interface OAuthProvider {
-  readonly mode: 'google' | 'dev';
+  /** 'off' means no Google sign-in at all: the routes are not registered (ADR 036). */
+  readonly mode: 'google' | 'dev' | 'off';
   authorizationUrl(state: string, redirectUri: string): string;
   exchangeCode(code: string, redirectUri: string): Promise<OAuthProfile>;
 }

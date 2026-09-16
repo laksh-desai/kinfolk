@@ -46,7 +46,7 @@ export interface TestContext {
 }
 
 export async function createTestContext(
-  options: BuildAppOptions & { envOverrides?: Record<string, string> } = {},
+  options: BuildAppOptions & { envOverrides?: Record<string, string>; oauth?: AppDeps['oauth'] } = {},
 ): Promise<TestContext> {
   const databaseUrl = await createDatabase();
   const scratch = mkdtempSync(path.join(os.tmpdir(), 'kinfolk-test-'));
@@ -67,7 +67,7 @@ export async function createTestContext(
     prisma,
     mailer,
     storage,
-    oauth: new DevOAuthProvider(env.SESSION_SECRET),
+    oauth: options.oauth ?? new DevOAuthProvider(env.SESSION_SECRET),
     now: () => clock ?? new Date(),
   };
   const app = await buildApp(deps, {

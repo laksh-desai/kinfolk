@@ -9,7 +9,10 @@ import { authApi } from './authApi';
 export function GoogleButton({ returnTo }: { returnTo: string }) {
   const providers = useQuery({ queryKey: ['auth-providers'], queryFn: authApi.providers, staleTime: Infinity });
   const href = `/api/auth/oauth/google/start?${new URLSearchParams({ returnTo })}`;
-  const devMode = providers.data?.google.mode === 'dev';
+  const mode = providers.data?.google.mode;
+  const devMode = mode === 'dev';
+  // Nothing to link to when the deployment has no Google sign-in at all (ADR 036).
+  if (mode === 'off') return null;
   return (
     <a href={href} className={buttonClasses('secondary', 'w-full')}>
       <svg aria-hidden="true" viewBox="0 0 24 24" className="size-5">

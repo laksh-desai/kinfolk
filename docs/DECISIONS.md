@@ -876,3 +876,41 @@ their own. The legend explains it.
 the tree is for" means. A household with two current partners recorded would mark all of them —
 correct for the data, and rare enough to leave alone. Nothing about the graph changed: this is a
 reading of it.
+
+## 036 — A preview deployment is an explicit mode, and it has no development sign-in
+Date: 2026-09-16
+Status: accepted
+Supersedes part of ADR 007
+
+**Context.** ATS need to look at the work in progress on a URL rather than over a laptop. ADR 007
+put each external service behind a seam with two real implementations and made production
+"refuse to boot without Google, S3, and SMTP settings, so a dev adapter can never ship silently".
+That rule is right and it is also exactly what stops a preview: there is no Google project, no
+mail provider, and the whole point is that it costs nothing. Lying about `NODE_ENV` is not an
+option either — it is what turns on `Secure` cookies.
+
+**Decision.** A preview is a first-class, named state rather than a fudge.
+- **`ALLOW_DEV_ADAPTERS=true`** lets `NODE_ENV=production` boot without Google, S3 and SMTP.
+  Nothing else relaxes: cookies stay `Secure`, CSRF still checks the Origin against `WEB_URL`,
+  helmet is unchanged. The boot log names every service being stood in for and says not to put
+  real client data in it; the refusal message points at the flag, so the strict path is still
+  what a missing variable tells you about.
+- **Google sign-in is off, not stood in for.** `DevOAuthProvider` mints a session for whatever
+  address is typed into its consent form: correct on a laptop, an open door on a public URL. Off
+  a developer's machine the fallback is now `DisabledOAuthProvider` — `/api/auth/providers`
+  reports `off`, the OAuth routes are never registered (404), and the web app drops the button.
+  Password sign-in carries the preview.
+- **`SIGNUP_ALLOWLIST`** (addresses and `@domains`) decides who may register. Empty means anyone,
+  which is right for the product and wrong for a URL that has been sent to a client.
+- **`PORT`** is accepted as the platform's name for `API_PORT`, `/api/health` answers a health
+  check by asking the database a question, and `tsx` moved to dependencies because `pnpm start`
+  runs the server through it and a production install has no dev dependencies.
+- **`render.yaml`** describes the whole thing — service, database, build, health check — so the
+  deployment is reviewable in the repository rather than remembered from a dashboard.
+
+**Consequences.** The honest part of ADR 007 survives: a stand-in can still never ship *silently*.
+What changed is that it can now ship *deliberately*, saying so at boot, in one named mode that a
+reader can grep for. A preview cannot deliver email, so anything that depends on a link arriving
+by email has to be copied out of the UI; `docs/DEPLOY.md` says which flows those are. Real
+production means dropping the flag and setting the services, which the boot error then walks you
+through.

@@ -89,6 +89,9 @@ importers:
       sharp:
         specifier: 0.34.5
         version: 0.34.5
+      tsx:
+        specifier: 4.23.13
+        version: 4.23.13
       zod:
         specifier: 3.25.76
         version: 3.25.76
@@ -102,9 +105,6 @@ importers:
       prisma:
         specifier: 6.19.3
         version: 6.19.3(typescript@5.9.3)
-      tsx:
-        specifier: 4.23.13
-        version: 4.23.13
 
   apps/web:
     dependencies:

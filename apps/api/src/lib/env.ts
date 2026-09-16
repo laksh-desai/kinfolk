@@ -40,6 +40,7 @@ const envSchema = z
       (value) => value === '' || /^postgres(ql)?:\/\//.test(value),
       { message: 'must be a postgres:// connection string' },
     ),
+    // Hosts hand the port over as PORT; parseEnv falls back to it before this runs.
     API_PORT: z
       .string()
       .optional()
@@ -82,6 +83,30 @@ const envSchema = z
       .transform((value) => (value === undefined || value === '' ? 'false' : value))
       .pipe(z.enum(['true', 'false']))
       .transform((value) => value === 'true'),
+    /**
+     * Run deployed without Google, S3, or SMTP configured, using the file-backed adapters
+     * instead. For a preview a client is looking at, never for the real thing: uploads live on
+     * the host's disk and no email is delivered. Boot says so, loudly (ADR 036).
+     */
+    ALLOW_DEV_ADAPTERS: z
+      .string()
+      .optional()
+      .transform((value) => (value === undefined || value === '' ? 'false' : value))
+      .pipe(z.enum(['true', 'false']))
+      .transform((value) => value === 'true'),
+    /**
+     * Addresses and @domains that may create an account. Empty means anyone, which is right for
+     * the real product and wrong for a preview on a URL that has been sent to a client.
+     */
+    SIGNUP_ALLOWLIST: z
+      .string()
+      .optional()
+      .transform((value) =>
+        (value ?? '')
+          .split(',')
+          .map((entry) => entry.trim().toLowerCase())
+          .filter((entry) => entry.length > 0),
+      ),
   })
   .superRefine((env, ctx) => {
     const groups: Array<[boolean, string[]]> = [
@@ -91,25 +116,29 @@ const envSchema = z
         ['S3_ENDPOINT', 'S3_REGION', 'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY'],
       ],
     ];
+    const strict = env.NODE_ENV === 'production' && !env.ALLOW_DEV_ADAPTERS;
     for (const [partlySet, names] of groups) {
-      const mustBeSet = env.NODE_ENV === 'production' || partlySet;
+      const mustBeSet = strict || partlySet;
       if (!mustBeSet) continue;
       for (const name of names) {
         if (env[name as keyof typeof env] === undefined) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: [name],
-            message:
-              env.NODE_ENV === 'production'
-                ? 'is required in production'
-                : `is required when ${names[0]} is set`,
+            message: strict
+              ? 'is required in production (or set ALLOW_DEV_ADAPTERS=true for a preview deployment)'
+              : `is required when ${names[0]} is set`,
           });
         }
       }
     }
-    if (env.NODE_ENV === 'production') {
+    if (strict) {
       if (env.SMTP_URL === undefined) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['SMTP_URL'], message: 'is required in production' });
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['SMTP_URL'],
+          message: 'is required in production (or set ALLOW_DEV_ADAPTERS=true for a preview deployment)',
+        });
       }
       if (env.MAIL_FROM.endsWith('@localhost>')) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['MAIL_FROM'], message: 'is required in production' });
@@ -128,7 +157,9 @@ export class EnvValidationError extends Error {
 
 /** Validates the whole environment at once so every problem is reported together, at boot. */
 export function parseEnv(source: Record<string, string | undefined>): Env {
-  const result = envSchema.safeParse(source);
+  // Platforms assign the port through PORT; API_PORT stays the name the app uses.
+  const withPort = source.API_PORT || !source.PORT ? source : { ...source, API_PORT: source.PORT };
+  const result = envSchema.safeParse(withPort);
   if (result.success) return result.data;
   const problems = result.error.issues.map((issue) => {
     const name = issue.path.join('.') || 'environment';
@@ -136,4 +167,16 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
     return `${name} ${message}`;
   });
   throw new EnvValidationError([...new Set(problems)]);
+}
+
+/**
+ * Which services are the file-backed stand-ins rather than the real thing. Empty in a proper
+ * deployment; a deployed preview prints it at boot so nobody mistakes one for the other.
+ */
+export function devAdaptersInUse(env: Env): string[] {
+  const using: string[] = [];
+  if (!env.S3_ENDPOINT) using.push('object storage (uploads are on this host’s disk and go when it restarts)');
+  if (!env.SMTP_URL) using.push('email (messages are written to a folder, never delivered)');
+  if (!env.GOOGLE_CLIENT_ID) using.push('Google sign-in (switched off; password sign-in only)');
+  return using;
 }
