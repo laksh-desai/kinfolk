@@ -314,6 +314,41 @@ Only the token's hash is stored (Q24), so an existing link can never be displaye
   links with their status and expiry for revoking, and offers creating a fresh link when
   one is lost. The alternative — storing usable tokens — is exactly what a leak would need.
 
+## Reported from use (M11)
+
+### Q44 — "Never orphan a subtree" blocks removing the top of a tree · Recommend spec change
+§3 says both "Never orphan a subtree" and "A person may have zero parents (the graph is
+allowed to have many roots)". Read strictly, the first sentence means the only parent of a
+child can never simply be removed — so a grandfather entered by mistake at the top of a tree
+can only be deleted by deleting everyone below him. A user hit exactly that within minutes
+of using the app.
+- Alternatives: (a) keep the refusal and tell people to use the placeholder mode; (b) allow
+  the removal and name the children who will be left without a parent first.
+- Decision: (b), ADR 026. The children keep every other relationship and become roots, which
+  §3 explicitly permits, and the dialog names them before anything happens.
+- Recommend spec change: reword to "never orphan a subtree *silently*" — the guarantee worth
+  keeping is that nothing disappears unnamed, not that a tree can never be corrected from the
+  top.
+
+### Q45 — The planning questionnaire is out of scope · Recommend spec change
+§3, §5.4 and §5.7 carry five advisory questions per person, owner-and-reviewer only. The
+product owner removed them: "This app is purely to create family trees, nothing else."
+- Decision: removed in full, including the `Person.planning` column and the `standard`
+  visibility level that existed only to hide it (ADR 028). SPEC.md is not edited.
+- Recommend spec change: drop the planning field from §3, the Planning section from §5.4,
+  and the planning sentence from §5.7 and §2's role table. Review still makes sense without
+  it: a professional reads the tree and approves it or asks for changes.
+
+### Q46 — Date format and how much of a date quick add takes · Decided
+§5.4 says dates may be partial and must never be required, but does not say what order to
+show or collect them in. The build used day/month/year and quick add asked only for a year.
+- Decision: month/day/year throughout (entry fields, formatted dates, relative times), and
+  quick add takes the whole date of birth with day and month optional (ADR 031). Both came
+  from the product owner while using the app.
+- The locale is fixed, not derived from the browser: a tree read by a family in several
+  countries should not change meaning depending on who opens it. If that is wrong, the
+  formatting is in one place (`formatPartialDate`) plus three `toLocaleDateString` calls.
+
 ## Environment
 
 ### Q31 — Node version · Decided

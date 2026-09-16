@@ -4,11 +4,41 @@ Milestones are defined in `docs/SPEC.md` §10. Update at every checkpoint.
 
 ## In progress
 
-**M10 — Key events, import, export.** Plan below under "Milestone plans → M10".
+**M11 — Fixes from first use.** Two bugs reported from the running app, a sweep of every
+planner for more of the same, and three changes of scope from the product owner. Done so
+far, each test-first:
+
+- **Removing the top of a tree** (ADR 026, QUESTIONS Q44). `deletionImpact` always offers
+  `remove`; children whose last parent goes become roots and are named in the dialog first.
+- **A spouse added to a parent is a parent** (ADR 027). Adding a partner joins the anchor's
+  one-parent family instead of starting a second one, so the children gain a second parent
+  rather than a step-parent. `connectionSteps` asks when it is ambiguous; the summary says
+  what happened.
+- **Sweep** (`packages/shared/src/relatives/graphSweep.test.ts`). Every planner over the
+  whole 60-person fixture: 1,620 add-relative plans, every delete mode for every person,
+  every link-kind change, every re-parent, and merges — each checked for a valid graph and
+  an exact undo. It found two more defects, now fixed (ADR 030): merging a parent with
+  their own child dropped the link between them instead of refusing, and the "move to
+  different parents" menu listed families that could never accept the child. A third came
+  out of the web tests: two `RadioGroup`s sharing a `name` fought over the selection.
+- **Planning removed** (ADR 028, QUESTIONS Q45): schema, form section, API redaction level,
+  reviewer block, and the `Person.planning` column.
+- **Layout ordered by the family, not by entry order** (ADR 029, QUESTIONS Q46). The same
+  60-person tree entered in any order now draws identically — it previously moved every row
+  and swung 6% in width.
+- **Dates**: quick add takes a whole date of birth, and dates read and are entered
+  month/day/year (ADR 031).
+
+Still open in M11: the §12 journey re-run, and an e2e pass over the two fixed bugs.
 
 ## Up next
 
-_(M10 is the last milestone.)_
+**M10 leftovers.** Key events, GEDCOM, CSV, exports and the import screen are built and
+tested (see the M10 section below); three items are not:
+- the API serving the built web app in production (`pnpm build && pnpm start` from one
+  process);
+- re-measuring the production bundle against §9 (initial route under 200 KB gzip);
+- the last five rows of `docs/DEFECTS-VERIFIED.md`.
 
 ## Done
 
@@ -368,7 +398,7 @@ path: person ids along the chosen route (for Compare drawing)
 
 # Milestone plans
 
-## M10 — Key events, GEDCOM/CSV import, exports (in progress)
+## M10 — Key events, GEDCOM/CSV import, exports (mostly done 2026-09-16)
 
 Pure modules first, each with tests, then the screens.
 

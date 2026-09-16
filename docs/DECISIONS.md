@@ -614,3 +614,142 @@ editing during review and be consistent (QUESTIONS Q21 chose: locked).
 The owner can always withdraw, so nobody is stuck waiting on a reviewer who never opens it.
 An approved tree returns to draft on the next edit (Q21), and the banner says so before the
 first edit.
+
+## 026 — Removing the only parent leaves their children as roots, named first
+Date: 2026-09-16
+Status: accepted
+
+**Context.** §3 says "Deleting a person with descendants is blocked unless the user
+explicitly confirms a cascade that names every affected relationship. Never orphan a
+subtree." The same section also says "A person may have zero parents (the graph is allowed
+to have many roots)". The build read the first sentence strictly: `deletionImpact` withheld
+the `remove` mode whenever a child's only parent was going, so the person at the top of a
+tree could not be removed at all without deleting every descendant. A user hit this
+immediately: a grandfather entered by mistake could not be taken out without losing the
+family below him (QUESTIONS Q44).
+
+**Decision.** `remove` is always offered. A child whose last parent is removed becomes a
+root of their own — a state §3 explicitly allows — and the union that held them is removed
+along with its child links, since a family with no partners left cannot exist. `wouldOrphan`
+stays in `DeletionImpact`, now as the warning the dialog shows before confirming: "Maya
+Sharma and Leo Okonkwo will have no parent in the tree, at the top of a line of their own…
+To keep the connection instead, replace Suresh Sharma with a placeholder."
+
+**Consequences.** "Never orphan a subtree" is honoured as "never silently": nothing is
+deleted that the user was not shown by name, and the placeholder mode still keeps a line
+intact for anyone who wants that. Undo restores the parent, the union, and every child link
+in one step. The alternative — keeping the refusal — leaves no way to correct the top of a
+tree, which is the one place the product being replaced is already weakest (§6.1).
+
+## 027 — A new partner joins the one-parent family rather than starting a second one
+Date: 2026-09-16
+Status: accepted
+
+**Context.** `attachParent` has always joined an existing one-parent family when a second
+parent is added, so a child entered under a father gains a mother in the same family. The
+partner relations did the opposite: they always created a new union. Someone who entered a
+parent, then that parent's children, then the parent's spouse, got a second family and saw
+the spouse labelled "Step-mother" of children who are hers — the second bug reported from
+the running app.
+
+**Decision.** Adding a partner joins the anchor's one-parent family (the union where they
+are the only partner) by default, becoming the second parent of the children already there.
+`connectionSteps` asks when it matters — "Is this person also a parent of Maya Sharma and
+Leo Okonkwo?", answered *Yes — their other parent* (default) or *No — a separate family*
+(`NEW_UNION`) — and the plan summary says what happened: "She is also recorded as a parent
+of Maya and Leo." The same rule runs for a child-in-law and for a sibling's partner, which
+are the same situation one hop away.
+
+**Consequences.** The common case (a couple entered one at a time) now needs no correction,
+and the uncommon case (a remarriage entered after the children) is one radio away. A wrong
+guess is fixable under Relationships without deleting anyone. The kinship calculator was
+right all along — it was being fed a step-parent — so nothing in §4.2 changed.
+
+## 028 — No planning questionnaire: Kinfolk builds family trees only
+Date: 2026-09-16
+Status: accepted
+
+**Context.** SPEC §3, §5.4 and §5.7 carry five advisory questions per person (objective,
+concerns, market outlook, family relationships, rate of return), owner-and-reviewer only,
+with their own redaction path. The product owner removed them from scope: "This app is
+purely to create family trees, nothing else" (QUESTIONS Q45).
+
+**Decision.** The whole seam goes rather than being hidden: `planningSchema` and the
+`planning` field, the form section, `canSeePlanning`, the owner-only write check, the
+`standard` visibility level (which existed only to drop planning), the reviewer's planning
+block, and the `Person.planning` column (migration `20260916104500_drop_person_planning`).
+Share-link redaction is untouched — it was always an allow-list, not a planning filter.
+
+**Consequences.** Tree access is one decision now, not two: a member sees the tree, a share
+link sees the redacted allow-list. `graphForVisibility` has two modes instead of three. The
+spec is not edited, so §3, §5.4 and §5.7 describe a feature the build no longer has;
+QUESTIONS Q45 records the deviation and recommends the spec be amended. Restoring it would
+need a new column and a new form section — no data is kept.
+
+## 029 — The layout is ordered by the family, not by the order it was entered
+Date: 2026-09-16
+Status: accepted
+
+**Context.** `computeLayout` sorted its input by `createdAt` and then broke every tie with
+that order: which partner-class is numbered first (and so where `assignGenerations` starts
+its anchoring walk), which group is the "hub" of a partner row, which forest root is placed
+first, and how a person's unions are ordered. Re-stamping the same 60-person tree in a
+different entry order moved every row and changed the drawing's width by 6% — the same
+family drawn differently depending on when each person happened to be typed in.
+
+**Decision.** Structural choices break ties with `comparePeople`: birth date (oldest first,
+undated last), then name, then id — no `createdAt` anywhere. That covers class numbering for
+`assignGenerations`, the hub of each partner row, union order, the order the forest is
+walked (which decides the family each subtree hangs under), and the order roots are packed
+into the drawing (the focus person's line first, then by eldest member). The output arrays
+are sorted into reading order, so exports are byte-identical too. Sibling order keeps entry
+order as its *last* resort, after birth date: for people with no dates it is the only thing
+the user has told us, and it is local to one family row.
+
+**Consequences.** A tree built bottom-up, sideways, or by import draws exactly like the same
+tree typed top-down; `computeLayout.test.ts` asserts that for a dated family and for the
+seed tree. Layouts from before this change can shift once — a one-off, in the direction of
+elder lines to the left. Undated siblings still follow entry order, which is the one place
+two identical families can still differ.
+
+## 030 — Planners that build ops directly validate them before returning
+Date: 2026-09-16
+Status: accepted
+
+**Context.** Planners built on `PlanState` run every op through `applyChangeSet` as they go,
+so an impossible request fails while it is being planned. `planMerge` and `planReparent`
+build op arrays directly and did not, so merging a parent with their own child, or moving a
+child under their own descendant, returned a plan that only failed when it was saved. The
+merge screen previewed the merge happily and refused on the button press; the "move to
+different parents" menu listed families that could never accept the child.
+
+**Decision.** Both run their ops through `applyChangeSet` before returning, so they throw
+where the choice is made, with the message the server would have given. `planMerge` also
+refuses a parent/child pair up front with a plainer sentence than the cycle check gives
+("Ravi Sharma descends from Vikram Sharma, so they can't be the same person"), because that
+merge would otherwise silently drop the link between them rather than cycle. A new
+`reparentTargets` lists the families a child can actually move into, and the Relationships
+screen offers only those.
+
+**Consequences.** Planning costs one extra graph application, cheap next to the round trip
+it replaces. Impossible options are no longer offered, and anything that slips through (a
+stale graph, a concurrent edit) still fails safely at the server.
+
+## 031 — Quick add takes a whole date of birth
+Date: 2026-09-16
+Status: accepted
+
+**Context.** Quick add asked only for a birth year, on the reasoning that §5.3 wants entry
+to be fast and a year is enough to sort siblings and derive an age band. In use that reads
+as a limitation: someone who knows the full date has to add the person, reopen them, and
+type the day and month into the full form.
+
+**Decision.** Quick add takes day, month and year in one row, sharing `DateFields` with the
+full form, and the year alone is still enough to submit — the other two are optional and
+labelled as such. `quickAddSchema` reuses the same date parsing as the person form, so a
+partial date (year only, or month and year) stays valid and `approximate` stays available in
+the full form only.
+
+**Consequences.** One more tab stop on the fastest path, and no round trip for anyone who
+knows the date. Sibling order improves as a side effect: full dates sort exactly where year
+alone could only approximate (ADR 029).

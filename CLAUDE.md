@@ -125,9 +125,9 @@ anything true for one commit only.
 orient. Replace lines rather than stacking them.)*
 
 - Workspace: `apps/web` (React 18, RR 6.30 lazy routes), `apps/api` (Fastify 5, Prisma 6), `packages/shared` (import by subpath, e.g. `@kinfolk/shared/layout/computeLayout`).
-- Built: cookie auth (password, dev/real Google, OTP reset), account page, tree API, graph ChangeSets, layout, kinship, canvas, person editing, dashboard, list view, access + share links + invitations + linked trees, review workflow.
+- Built: cookie auth (password, dev/real Google, OTP reset), account page, tree API, graph ChangeSets, layout, kinship, canvas, person editing, dashboard, list view, access + share links + invitations + linked trees, review workflow, key events, GEDCOM/CSV import, PNG/PDF/GEDCOM/CSV export.
 - Graph edits: `POST /api/trees/:id/changes` → `commitChangeSet` (lock, pure `applyChangeSet`, persist, audit per op, returns inverse). Roles per request: `lib/treeAccess.ts` `requireTreeRole`; redaction: `lib/graphRows.ts` `graphForVisibility`.
-- Pure: `computeLayout(graph, { collapsed })`, `createKinshipResolver(graph)(ego, alter)`, `displayName(index, id)`, `lifespanLabel`.
+- Pure: `computeLayout(graph, { collapsed })` (ordering never depends on entry order — ADR 029), `createKinshipResolver(graph)(ego, alter)`, `displayName(index, id)`, `lifespanLabel`, `keyEvents`, `writeGedcom`/`parseGedcom`, `planCsvImport`, `treeSvg`.
 - Canvas: `apps/web/src/canvas/` (pure `viewport.ts`, `keyboardNav.ts`, `culling.ts`, one `CardMenu`); tree page `features/tree/TreeRoute.tsx` + `useTreeView`.
 - Review: `features/review/` (owner banner + submit dialog; reviewer screen at `/review/:token`). Editing while `in_review` is refused by `commitChangeSet` and hidden by `canEditTree`.
 - Collaboration: `features/collaboration/` (access and link-request dialogs are routes); public pages `/s/:token` (redacted, `toViewGraph`) and `/invite/:token` live outside the app shell.
@@ -135,7 +135,7 @@ orient. Replace lines rather than stacking them.)*
 - Web conventions: calls via `lib/api.ts`; forms via `lib/useForm.ts`; `test/renderApp` renders the real routes; `test/treeServer.ts` `mockTreeServer()` fakes the tree API with real `applyChangeSet` (+ `findToast`).
 - Tests: `pnpm test` (shared/api/web; API clones a per-file embedded-Postgres DB via `test/testApp.ts`). `pnpm e2e`: one-process stack `apps/api/scripts/e2eStack.ts` (web 5180/api 4180).
 - E2E helpers: `e2e/support/seedTree.ts` (`signUp`, `createSeededTree`, `createEmptyTree`), `outbox.ts`, `a11y.ts` (axe with contrast). Fixtures: `buildSeedTree({ namespace })` (60, §4.5), `buildLargeTree()` (500); `pnpm db:seed` writes both.
-- New migration without Docker: `pnpm --filter api exec tsx scripts/withEmbeddedDb.ts pnpm exec prisma migrate dev --name <x>`.
+- New migration without Docker: `pnpm --filter api exec tsx scripts/withEmbeddedDb.ts pnpm exec prisma migrate dev --name <x>`. Every planner is swept over the whole fixture in `packages/shared/src/relatives/graphSweep.test.ts` — add new planners there.
 
 ## Gotchas
 *(Cap: 20 lines. Non-obvious things that cost time. Each line: the trap, then the fix.)*
@@ -145,7 +145,6 @@ orient. Replace lines rather than stacking them.)*
 - jsdom shims in `apps/web/src/test/setup.ts` (keep them): floating-ui probes `:popover-open`/`:modal` and each throw costs seconds, hanging any test with an open Radix tooltip or menu; `PointerEvent` is missing, so fireEvent drops `button`/`clientX`.
 - Helmet's default `Referrer-Policy: no-referrer` makes Chrome send `Origin: null` on form posts → CSRF check rejects. Keep `strict-origin-when-cross-origin`.
 - Fastify `maxParamLength` defaults to 100 → signed tokens in paths 414. Set in `app.ts` `routerOptions`.
-- Windows leaves child processes alive when the parent dies → run servers in-process for e2e; if 5180/4180 are busy, kill the stale node.
 - Playwright `getByLabel` substring-matches `aria-label`s (e.g. "Show confirm new password") → use `{ exact: true }`. After a client navigation, wait for the new heading before `fill()`.
 - Hidden "(required)" in labels double-announces and breaks exact label queries; so does announcing an alert you also focus → rely on `aria-required` / focus only.
 - `.claude/settings.json` denies `Read(./.env.*)`, which also blocks the Write tool on `.env.example` → write that one file via shell.
@@ -156,7 +155,8 @@ orient. Replace lines rather than stacking them.)*
 - To eyeball a layout, render it to SVG→PNG with sharp from a scratch `.mts` script (top-level await needs ESM) and Read the PNG.
 - Memoised `PersonCard`s re-render on every pan if any prop is a fresh inline callback → keep canvas callbacks in `useCallback`.
 - Slow machine: web tests preload lazy routes (`renderApp`) and use an 8s `findBy` timeout; run long suites in the background.
-- Two `renderApp` calls in one test leave both apps mounted → queries match the stale one; call RTL `cleanup()` between them.
+- Dev stack: there is no `.env`, so the API needs `DATABASE_URL=postgres://kinfolk:kinfolk@localhost:5432/kinfolk` and a 32-char `SESSION_SECRET` inline (a new secret signs everyone out). Prisma EPERM means `tsx watch` respawned it → kill the watcher PIDs (`wmic process ... | grep server.ts`), not the listener on 4000. Windows also orphans children, so e2e runs servers in-process; if 5180/4180 are busy, kill the stale node.
+- RTL: two `renderApp` calls leave both apps mounted (call `cleanup()`); navigating away and back without letting the first navigation settle never unmounts the route, so its state survives; two `RadioGroup`s sharing a `name` would be one browser group, so `RadioGroup` scopes the name per instance — don't undo that.
 - Never run vitest (or other heavy jobs) while Playwright runs → the browser stalls (2-min `evaluate` hangs, saves stuck retrying). Run e2e alone.
 - Radix Toast items have no `role="status"` → query `listitem`s in the "Notifications" region (`findToast`). Radix `DropdownMenu.Content` names itself after its trigger and has no `onOpenAutoFocus` → set `aria-labelledby`, focus items in an effect.
 - `refetchQueries` is a no-op for a query put in the cache with `setQueryData` (no queryFn) → `fetchQuery` it first in tests.
@@ -173,4 +173,7 @@ deviation is large, open an ADR and link it here instead of explaining it twice.
 - Production: Secure cookies only when `NODE_ENV=production`, so plain-http test clients work.
 - Fit-to-content may zoom below 25% (down to 5%) so trees open whole; manual zoom stays 25–200% (QUESTIONS Q34, ADR 016).
 - Generations: BFS-anchored then push/pull-down, not pure longest path, so married-in siblings share a row (Q19, ADR 014).
+- No planning questionnaire: removed from the model, the UI, and the database (ADR 028, QUESTIONS Q45). SPEC §3/§5.4/§5.7 still describe it.
+- Removing someone's only parent is allowed; their children become roots and are named first (ADR 026, Q44) — SPEC §3 reads as a flat refusal.
+- Dates are month/day/year and quick add takes a whole date of birth (ADR 031, Q46); the locale is fixed, not the browser's.
 - Re-parenting is on the Relationships screen only, no drag onto connectors (Q35); union dates are edited at year precision there (Q36).
