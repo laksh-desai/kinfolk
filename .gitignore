@@ -16,3 +16,6 @@ test-results/
 # local runtime data: dev file outbox, fs object storage, embedded postgres
 apps/api/var/
 .pgdata/
+
+# MCP server config: written by `claude mcp add --scope project` and holds API keys
+.mcp.json

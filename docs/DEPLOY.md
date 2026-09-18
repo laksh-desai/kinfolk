@@ -58,6 +58,11 @@ Render, free plan, using the blueprint in `render.yaml`:
    wrong.
 3. Redeploy. The health check at `/api/health` should go green.
 
+> **If the build dies at `corepack enable`** with `! Corepack is about to download …pnpm…` followed
+> by `ELIFECYCLE`: corepack is waiting for a confirmation nobody can give. Add
+> `COREPACK_ENABLE_DOWNLOAD_PROMPT` = `0` to the service's environment and redeploy. The
+> blueprint sets it; a service created by hand needs it adding.
+
 ## 4. Put the sample family in it
 
 The free plan has no shell, so seed it **from your laptop against the hosted database**. Render
