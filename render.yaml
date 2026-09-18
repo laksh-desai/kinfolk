@@ -19,12 +19,12 @@ services:
     branch: main
     # The free plan has no shell and no pre-deploy hook, so migrations run here. `migrate
     # deploy` only applies what is outstanding, so repeating it on every build costs nothing.
-    # Corepack asks before downloading pnpm, and a build box has no one to answer, so it fails
-    # with ELIFECYCLE. The variable below answers it; exporting it here too keeps the command
-    # correct for a service created by hand, where that variable might not be set.
+    # pnpm comes from npm rather than corepack. Corepack wants to confirm the download before
+    # it fetches pnpm, and a build box has nobody to answer, so it exits with ELIFECYCLE; the
+    # prompt can be silenced with a variable, but installing pnpm directly removes the whole
+    # class of problem and is no slower.
     buildCommand: >-
-      export COREPACK_ENABLE_DOWNLOAD_PROMPT=0 &&
-      corepack enable &&
+      npm install -g pnpm@9.15.9 &&
       pnpm install --frozen-lockfile &&
       pnpm --filter api exec prisma generate &&
       pnpm --filter api exec prisma migrate deploy &&

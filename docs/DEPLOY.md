@@ -65,10 +65,11 @@ Render, free plan, using the blueprint in `render.yaml`:
    wrong.
 3. Redeploy. The health check at `/api/health` should go green.
 
-> **If the build dies at `corepack enable`** with `! Corepack is about to download …pnpm…` followed
-> by `ELIFECYCLE`: corepack is waiting for a confirmation nobody can give. Add
-> `COREPACK_ENABLE_DOWNLOAD_PROMPT` = `0` to the service's environment and redeploy. The
-> blueprint sets it; a service created by hand needs it adding.
+> **pnpm is installed with `npm install -g pnpm@9.15.9`, not corepack.** Corepack asks before
+> downloading pnpm and a build box has nobody to answer, so it exits with `ELIFECYCLE` after
+> printing `! Corepack is about to download …pnpm…`. A service created by hand needs the same
+> build command; `COREPACK_ENABLE_DOWNLOAD_PROMPT=0` also silences it, but not needing corepack
+> at all is one less thing to go wrong.
 
 ## 4. Put the sample family in it
 
