@@ -57,6 +57,10 @@ services:
         sync: false
       - key: SIGNUP_ALLOWLIST
         sync: false
+      # Public records ask for this before they can be opened or replaced (ADR 037). Without it
+      # records are open to every member of the tree, so a deployment should always set it.
+      - key: RECORDS_PASSPHRASE
+        sync: false
 
 databases:
   - name: kinfolk-preview-db

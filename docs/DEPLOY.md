@@ -34,8 +34,15 @@ Skipping this is fine for a first look: uploads then vanish on each deploy.
 
 Render, free plan, using the blueprint in `render.yaml`:
 
-1. Render → **New → Blueprint** → pick the repository. It creates the web service and a
-   Postgres database from that file.
+> **One or the other.** A Blueprint creates its *own* web service and database. If a service
+> already exists from doing this by hand, delete it and its database first, or the blueprint
+> makes a second of each — and the free plan allows only one free Postgres per account, so the
+> second one is refused and the deploy fails.
+
+1. Render → **Blueprints → New Blueprint Instance** → pick the repository, branch `main`. It
+   reads `render.yaml` and creates the web service and a Postgres database, then asks for the
+   values marked `sync: false`: `WEB_URL`, `API_URL`, `SIGNUP_ALLOWLIST` and
+   `RECORDS_PASSPHRASE`.
 2. First deploy will fail the health check until `WEB_URL` and `API_URL` are set — Render only
    assigns the hostname once the service exists. Take the hostname it gives you
    (`https://kinfolk-preview.onrender.com`) and set, in *Environment*:
@@ -44,8 +51,8 @@ Render, free plan, using the blueprint in `render.yaml`:
    |---|---|
    | `WEB_URL` | `https://kinfolk-preview.onrender.com` |
    | `API_URL` | the same URL |
-   | `SIGNUP_ALLOWLIST` | `@atswealth.com` (and any individual addresses, comma separated) |
-   | `SEED_EMAIL` | the demo login for ATS, e.g. `demo@atswealth.com` |
+   | `SIGNUP_ALLOWLIST` | `@atsfinancial.com` (and any individual addresses, comma separated) |
+   | `SEED_EMAIL` | the demo login for ATS, e.g. `demo@atsfinancial.com` |
    | `SEED_PASSWORD` | a passphrase you choose — set it here, never in the repository |
    | `RECORDS_PASSPHRASE` | the shared passphrase for opening public records (ADR 037) |
    | `S3_ENDPOINT` | `https://<account-id>.r2.cloudflarestorage.com` |
@@ -69,7 +76,7 @@ The free plan has no shell, so seed it **from your laptop against the hosted dat
 → the database → copy the *External Database URL*, then:
 
 ```bash
-DATABASE_URL="<external database url>" SEED_EMAIL="demo@atswealth.com" SEED_PASSWORD="<the passphrase you set>" pnpm --filter api exec tsx prisma/seed.ts
+DATABASE_URL="<external database url>" SEED_EMAIL="demo@atsfinancial.com" SEED_PASSWORD="<the passphrase you set>" pnpm --filter api exec tsx prisma/seed.ts
 ```
 
 That creates the account and gives it the 60-person sample family and the 500-person
