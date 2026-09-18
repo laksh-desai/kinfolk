@@ -34,6 +34,8 @@ export function mockTreeServer(options: { graph?: TreeGraph; tree?: Partial<Tree
   const api = mockApi({
     'GET /api/auth/me': () => ({ body: { user: testUser } }),
     'GET /api/me/inbox': () => ({ body: { accessInvites: [], linkRequests: [], invitations: [], changeRequests: [] } }),
+    // Most deployments set no records passphrase; the tests that want one override this.
+    'GET /api/records/state': () => ({ body: { required: false, unlocked: true } }),
     [`GET /api/trees/${TREE_ID}/invitations`]: () => ({ body: { invitations: [] } }),
     [`GET /api/trees/${TREE_ID}`]: () => ({ body: { tree: treeDto({ focusPersonId: graph.focusPersonId, version, ...options.tree }) } }),
     [`GET /api/trees/${TREE_ID}/graph`]: () => ({ body: { tree: treeDto({ focusPersonId: graph.focusPersonId, version, ...options.tree }), graph } }),

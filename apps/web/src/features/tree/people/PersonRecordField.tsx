@@ -7,6 +7,7 @@ import { Icon } from '../../../components/Icon';
 import { api, describeError } from '../../../lib/api';
 import { uploadToTarget } from '../../account/accountApi';
 import { commitWithUndo } from '../editing/changeQueue';
+import { RecordsUnlockDialog, useRecordsLock } from './RecordsUnlockDialog';
 
 interface PersonRecordFieldProps {
   treeId: string;
@@ -24,7 +25,22 @@ export function PersonRecordField({ treeId, person, name }: PersonRecordFieldPro
   const alertRef = useRef<HTMLDivElement>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [asking, setAsking] = useState<'open' | 'upload' | null>(null);
+  const { locked } = useRecordsLock();
   const subject = name || 'this person';
+
+  /** Everything here goes through the passphrase first, when this deployment asks for one. */
+  const guarded = (action: 'open' | 'upload', run: () => void) => {
+    if (locked) {
+      setAsking(action);
+      return;
+    }
+    run();
+  };
+  const openRecords = () => {
+    if (person.publicRecordUrl) window.open(person.publicRecordUrl, '_blank', 'noopener,noreferrer');
+  };
+  const chooseFile = () => inputRef.current?.click();
 
   const fail = (message: string) => {
     setError(message);
@@ -74,11 +90,11 @@ export function PersonRecordField({ treeId, person, name }: PersonRecordFieldPro
       <FormAlert message={error} alertRef={alertRef} />
       {person.publicRecordUrl ? (
         <p className="flex items-center gap-2 rounded-control border border-line bg-sunken px-3 py-2 text-base">
-          <Icon name="file" className="size-5 shrink-0 text-accent" />
-          <a href={person.publicRecordUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-accent underline">
+          <Icon name={locked ? 'lock' : 'file'} className="size-5 shrink-0 text-accent" />
+          <button type="button" className="font-semibold text-accent underline" onClick={() => guarded('open', openRecords)}>
             Open {subject}’s public records
-            <span className="sr-only"> (PDF, opens in a new tab)</span>
-          </a>
+            <span className="sr-only"> (PDF, opens in a new tab{locked ? ', passphrase needed' : ''})</span>
+          </button>
           <Icon name="external" className="size-4 shrink-0 text-ink-muted" />
         </p>
       ) : (
@@ -97,7 +113,7 @@ export function PersonRecordField({ treeId, person, name }: PersonRecordFieldPro
             if (file) void upload(file);
           }}
         />
-        <Button icon="upload" pending={pending} pendingLabel="Uploading…" onClick={() => inputRef.current?.click()}>
+        <Button icon="upload" pending={pending} pendingLabel="Uploading…" onClick={() => guarded('upload', chooseFile)}>
           {person.publicRecordUrl ? 'Replace the PDF' : 'Attach a PDF'}
         </Button>
         {person.publicRecordUrl ? (
@@ -107,8 +123,15 @@ export function PersonRecordField({ treeId, person, name }: PersonRecordFieldPro
         ) : null}
       </div>
       <p className="text-sm text-ink-muted">
-        A PDF up to 25 MB, pulled from public records. Everyone with access to this tree can open it; a share link never shows it. Changes save straight away.
+        A PDF up to 25 MB, pulled from public records.{' '}
+        {locked ? 'The passphrase is asked for before these can be opened or replaced. ' : ''}
+        Everyone with access to this tree and the passphrase can open it; a share link never shows it. Changes save straight away.
       </p>
+      <RecordsUnlockDialog
+        open={asking !== null}
+        onOpenChange={(open) => setAsking(open ? asking : null)}
+        onUnlocked={() => (asking === 'open' ? openRecords() : chooseFile())}
+      />
     </div>
   );
 }

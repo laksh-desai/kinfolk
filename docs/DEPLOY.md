@@ -47,6 +47,7 @@ Render, free plan, using the blueprint in `render.yaml`:
    | `SIGNUP_ALLOWLIST` | `@atswealth.com` (and any individual addresses, comma separated) |
    | `SEED_EMAIL` | the demo login for ATS, e.g. `demo@atswealth.com` |
    | `SEED_PASSWORD` | a passphrase you choose — set it here, never in the repository |
+   | `RECORDS_PASSPHRASE` | the shared passphrase for opening public records (ADR 037) |
    | `S3_ENDPOINT` | `https://<account-id>.r2.cloudflarestorage.com` |
    | `S3_REGION` | `auto` |
    | `S3_BUCKET` | `kinfolk-preview` |
@@ -78,6 +79,9 @@ Send ATS the URL, the demo email, and the password. What they can do:
 - **Sign in** with that account and use the whole product.
 - **Share a tree** — from a tree, *Share* creates a read-only link that needs no account. Copy
   it out of the dialog and send it; it is shown once.
+- **Open a person's public records** only after typing `RECORDS_PASSPHRASE`. The server checks
+  it and then trusts that browser for thirty minutes; the PDF cannot be fetched by URL without
+  it, even by a signed-in member of the tree.
 - **Not** receive any email. Invitations, password resets and review links are written to a
   folder on the server instead of being delivered. Anything that depends on a link arriving by
   email has to be copied out of the UI instead.

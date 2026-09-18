@@ -95,6 +95,12 @@ const envSchema = z
       .pipe(z.enum(['true', 'false']))
       .transform((value) => value === 'true'),
     /**
+     * Guards public records behind a shared passphrase, asked for before a PDF is uploaded or
+     * opened (ADR 037). Unset means records are open to every member of the tree, which is what
+     * a developer's machine wants. Never a literal in this repository.
+     */
+    RECORDS_PASSPHRASE: optionalString,
+    /**
      * Addresses and @domains that may create an account. Empty means anyone, which is right for
      * the real product and wrong for a preview on a URL that has been sent to a client.
      */

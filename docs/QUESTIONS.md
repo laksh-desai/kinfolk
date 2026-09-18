@@ -402,6 +402,18 @@ none of those and should cost nothing.
 - Free-plan caveats worth knowing before the link is sent: the database expires after 30 days and
   the service sleeps after 15 minutes idle, so the first visit of the day takes about a minute.
 
+### Q51 — A shared passphrase for public records · Decided
+ATS asked for the records PDF to be password protected, with one passphrase typed before
+uploading or opening it. The spec has no notion of a second factor on a document.
+- Decision: `RECORDS_PASSPHRASE` gates both upload and download, enforced by the server and by
+  the file authorizer, not by the browser (ADR 037). Unset means no gate, so development and the
+  tests are unchanged.
+- Worth the owner's eye: a shared secret proves someone knew it, not who. Attaching and removing
+  a record is audited by person; *opening* one is not. If ATS needs a read trail — likely, for
+  records pulled from a government source — say so and it becomes per-user re-authentication.
+- The passphrase lives only in the deployment's environment. Putting it in the repository would
+  publish it to everyone with access to the code, which now includes GitHub.
+
 ## Environment
 
 ### Q31 — Node version · Decided

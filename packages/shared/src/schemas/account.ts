@@ -76,4 +76,13 @@ export const documentUploadTargetRequestSchema = z.object({
 });
 export type DocumentUploadTargetRequest = z.input<typeof documentUploadTargetRequestSchema>;
 
+/** Unlocking public records: one shared passphrase, checked by the server (ADR 037). */
+export const recordsUnlockSchema = z.object({
+  passphrase: z.string().min(1, 'Enter the passphrase for public records.'),
+});
+export type RecordsUnlockRequest = z.input<typeof recordsUnlockSchema>;
+
+export const recordsStateSchema = z.object({ required: z.boolean(), unlocked: z.boolean() });
+export type RecordsStateDto = z.infer<typeof recordsStateSchema>;
+
 export const completeUploadSchema = z.object({ key: z.string().min(1) });

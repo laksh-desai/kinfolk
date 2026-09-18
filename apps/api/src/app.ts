@@ -131,7 +131,7 @@ export async function buildApp(deps: AppDeps, options: BuildAppOptions = {}): Pr
   await app.register(authRoutes, { deps, rateLimit: authRateLimit });
   await app.register(accountRoutes, { deps });
   await app.register(treeRoutes, { deps });
-  await app.register(photoRoutes, { deps });
+  await app.register(photoRoutes, { deps, rateLimit: authRateLimit });
   const inviteRateLimit = options.inviteRateLimit ?? { max: 30, timeWindow: '1 hour' };
   await app.register(accessRoutes, { deps, rateLimit: inviteRateLimit });
   await app.register(shareRoutes, { deps });

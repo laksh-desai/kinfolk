@@ -8,6 +8,7 @@ export const COOKIE = {
   csrf: 'kf_csrf',
   reset: 'kf_reset',
   oauth: 'kf_oauth',
+  records: 'kf_records',
 } as const;
 
 export function baseCookie(env: Env): Pick<CookieSerializeOptions, 'secure' | 'httpOnly' | 'sameSite'> {

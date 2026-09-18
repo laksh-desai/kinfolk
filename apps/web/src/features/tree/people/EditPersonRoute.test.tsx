@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { expectNoAxeViolations } from '../../../test/axe';
 import { renderApp } from '../../../test/renderApp';
 import { TREE_ID } from '../../../test/treeFixtures';
@@ -129,15 +129,60 @@ describe('editing a person (SPEC §5.4)', () => {
       ops: [{ op: 'person.update', id: ravi.id, patch: { publicRecordUrl } }],
     });
 
-    const link = await screen.findByRole('link', { name: /Open Ravi Sharma’s public records/ });
-    expect(link).toHaveAttribute('href', publicRecordUrl);
-    expect(link).toHaveAttribute('target', '_blank');
-    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
-    expect(link).toHaveAccessibleName(/opens in a new tab/);
+    const opened: string[] = [];
+    vi.spyOn(window, 'open').mockImplementation((url) => {
+      opened.push(String(url));
+      return null;
+    });
+    const open = await screen.findByRole('button', { name: /Open Ravi Sharma’s public records/ });
+    expect(open).toHaveAccessibleName(/opens in a new tab/);
+    await user.click(open);
+    // Nothing is locked in this deployment, so it opens straight away.
+    expect(opened).toEqual([publicRecordUrl]);
 
     await user.click(screen.getByRole('button', { name: 'Remove records' }));
     await waitFor(() => expect(server.changes).toHaveLength(2));
     expect(server.changes[1]?.ops).toEqual([{ op: 'person.update', id: ravi.id, patch: { publicRecordUrl: null } }]);
+  }, 60_000);
+
+  it('asks for the passphrase before records can be opened or replaced (ADR 037)', async () => {
+    const user = userEvent.setup();
+    const server = mockTreeServer();
+    const { ravi } = server.seed.people;
+    const publicRecordUrl = `/api/files/trees/${TREE_ID}/people/${ravi.id}/records/r1.pdf`;
+    server.graph().people.forEach((person) => {
+      if (person.id === ravi.id) person.publicRecordUrl = publicRecordUrl;
+    });
+    let unlocked = false;
+    server.api.set('GET /api/records/state', () => ({ body: { required: true, unlocked } }));
+    server.api.set('POST /api/records/unlock', (request) => {
+      const body = request.body as { passphrase?: string };
+      if (body.passphrase !== 'the shared passphrase') return { status: 403, body: { error: { code: 'records_passphrase', message: 'That passphrase is not right.' } } };
+      unlocked = true;
+      return { body: { unlockedUntil: new Date(Date.now() + 1800_000).toISOString() } };
+    });
+    const opened: string[] = [];
+    vi.spyOn(window, 'open').mockImplementation((url) => {
+      opened.push(String(url));
+      return null;
+    });
+
+    await renderApp(`/trees/${TREE_ID}/people/${ravi.id}/edit`);
+    await screen.findByRole('heading', { level: 3, name: 'Public records' });
+
+    // Opening asks first, and a wrong answer says so without opening anything.
+    await user.click(await screen.findByRole('button', { name: /Open Ravi Sharma’s public records/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Public records are protected' });
+    await user.type(within(dialog).getByLabelText('Passphrase'), 'wrong');
+    await user.click(within(dialog).getByRole('button', { name: 'Unlock' }));
+    expect(await within(dialog).findByText('That passphrase is not right.')).toBeInTheDocument();
+    expect(opened).toEqual([]);
+
+    // The right one opens the PDF in a new tab.
+    await user.clear(within(dialog).getByLabelText('Passphrase'));
+    await user.type(within(dialog).getByLabelText('Passphrase'), 'the shared passphrase');
+    await user.click(within(dialog).getByRole('button', { name: 'Unlock' }));
+    await waitFor(() => expect(opened).toEqual([publicRecordUrl]));
   }, 60_000);
 
   it('refuses a records file that isn’t a PDF, visibly', async () => {

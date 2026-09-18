@@ -914,3 +914,35 @@ reader can grep for. A preview cannot deliver email, so anything that depends on
 by email has to be copied out of the UI; `docs/DEPLOY.md` says which flows those are. Real
 production means dropping the flag and setting the services, which the boot error then walks you
 through.
+
+## 037 — Public records sit behind a shared passphrase, checked by the server
+Date: 2026-09-18
+Status: accepted
+
+**Context.** ATS asked for the public-records PDF to be password protected: the passphrase is
+typed before a record is uploaded or opened. Records already needed membership of the tree
+(ADR 034); this adds a second thing you must know, so that a laptop left signed in does not
+also expose a person's history.
+
+**Decision.** The gate is on the server, because a gate the browser enforces is not one — the
+PDF has a URL, and any signed-in member could fetch it directly.
+- `RECORDS_PASSPHRASE` configures it. **Unset means no gate**, which is what a developer's
+  machine and the test suite want; setting it turns the prompt on everywhere at once. The
+  passphrase is never a literal in this repository — it would be published with the code.
+- `POST /api/records/unlock` compares it in constant time and mints a signed, httpOnly cookie
+  good for thirty minutes. The passphrase itself never comes back to the client and is not
+  stored anywhere.
+- Both upload routes call `requireRecordsUnlock`, and `treeFileAuthorizer` refuses any key
+  containing `/records/` without the cookie. Photos are untouched.
+- A wrong passphrase is **403, not 401**: a 401 sends the web client through refresh-and-retry
+  and then bounces it to the sign-in screen, which would log someone out for a typo.
+- The UI asks in a dialog and then does what was asked — opening the PDF from inside the submit
+  handler, so the browser still counts it as the same click and allows the new tab.
+
+**Consequences.** One passphrase for everyone who works on a tree: it says *that someone knew
+it*, never *who*. The audit trail still names the person who attached or removed a record,
+because that is an ordinary tree change, but opening one is not attributable beyond the signed-in
+account. If ATS ever needs "who read this record, and when", this becomes per-user re-authentication
+rather than a shared secret, and the unlock endpoint is where that would go. Rotating the
+passphrase is an environment variable change and a restart; every open session keeps working for
+up to thirty minutes afterwards.
