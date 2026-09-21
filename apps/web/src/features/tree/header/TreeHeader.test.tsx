@@ -1,6 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { KeyEvent } from '@kinfolk/shared/events/keyEvents';
 import { describe, expect, it } from 'vitest';
+import { queryClient } from '../../../lib/queryClient';
+import { eventsQuery, type KeyEventsResponse } from '../../events/eventsApi';
 import { expectNoAxeViolations } from '../../../test/axe';
 import { renderApp } from '../../../test/renderApp';
 import { TREE_ID } from '../../../test/treeFixtures';
@@ -71,6 +74,29 @@ describe('tree management from the tree page (SPEC §6.3, §6.24)', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe('/'));
     expect(deleted).toEqual({ confirmName: 'Sharma family' });
     expect(await screen.findByRole('heading', { name: 'Start your first family tree' })).toBeInTheDocument();
+  }, 60_000);
+
+  it('drops the deleted tree’s key events instead of serving them from the cache', async () => {
+    const user = userEvent.setup();
+    const server = mockTreeServer();
+    server.api.set(`DELETE /api/trees/${TREE_ID}`, () => ({ status: 204 }));
+    server.api.set('GET /api/trees', () => ({ body: { trees: [] } }));
+    const { router } = await renderApp(`/trees/${TREE_ID}`);
+    const event = (treeId: string) => ({ id: `${treeId}-birthday`, treeId, treeName: treeId }) as unknown as KeyEvent;
+    queryClient.setQueryData<KeyEventsResponse>(eventsQuery.queryKey, {
+      events: [event(TREE_ID), event('other-tree')],
+      needDates: [{ treeId: TREE_ID, treeName: 'Sharma family', count: 2 }],
+    });
+    await user.click(await screen.findByRole('button', { name: 'Settings for Sharma family' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Delete this tree…' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Delete Sharma family?' });
+    await user.type(within(dialog).getByRole('textbox', { name: 'Type “Sharma family” to confirm' }), 'Sharma family');
+    await user.click(within(dialog).getByRole('button', { name: 'Delete this tree' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    const cached = queryClient.getQueryData<KeyEventsResponse>(eventsQuery.queryKey);
+    expect(cached?.events.map((entry) => entry.treeId)).toEqual(['other-tree']);
+    expect(cached?.needDates).toEqual([]);
+    expect(queryClient.getQueryState(eventsQuery.queryKey)?.isInvalidated).toBe(true);
   }, 60_000);
 
   it('shows no rename or delete to anyone but the owner', async () => {

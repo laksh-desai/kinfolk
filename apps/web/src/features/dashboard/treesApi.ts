@@ -2,6 +2,7 @@ import type { CreateTreeInput, TreeDto, TreeSummaryDto, UpdateTreeInput } from '
 import { queryOptions } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { queryClient } from '../../lib/queryClient';
+import { eventsQuery, type KeyEventsResponse } from '../events/eventsApi';
 import { treeGraphQuery, type TreeGraphResponse } from '../tree/treeQueries';
 
 export const treesQuery = queryOptions({
@@ -26,7 +27,14 @@ export function storeTreeDetails(tree: TreeDto): void {
   );
 }
 
+/** After a delete, nothing cached still shows the tree — its key events included. */
 export function forgetTree(treeId: string): void {
   queryClient.removeQueries({ queryKey: treeGraphQuery(treeId).queryKey });
   queryClient.setQueryData<TreeSummaryDto[]>(treesQuery.queryKey, (current) => current?.filter((summary) => summary.id !== treeId));
+  queryClient.setQueryData<KeyEventsResponse>(eventsQuery.queryKey, (current) =>
+    current
+      ? { events: current.events.filter((event) => event.treeId !== treeId), needDates: current.needDates.filter((entry) => entry.treeId !== treeId) }
+      : current,
+  );
+  void queryClient.invalidateQueries({ queryKey: eventsQuery.queryKey });
 }
