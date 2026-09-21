@@ -118,7 +118,6 @@ CSRF is still enforced, and the API prints exactly what it is standing in for at
   ⚠  Kinfolk is running as a PREVIEW deployment (ALLOW_DEV_ADAPTERS=true).
      · object storage (uploads are on this host's disk and go when it restarts)
      · email (messages are written to a folder, never delivered)
-     · Google sign-in (switched off; password sign-in only)
      Do not put real client data in it.
 ```
 
@@ -128,7 +127,7 @@ button disappears from the sign-in screen and the routes are not registered (ADR
 
 ## Going to real production later
 
-Remove `ALLOW_DEV_ADAPTERS` and set, all of them: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
-the five `S3_*`, `SMTP_URL`, and a `MAIL_FROM` that is not `@localhost`. The app will tell you
+Remove `ALLOW_DEV_ADAPTERS` and set, all of them: the five `S3_*`, `SMTP_URL`, and a `MAIL_FROM` that is not `@localhost`. The app will tell you
 at boot if any are missing. Also move off the free plans — a free database expires after 30
-days and a sleeping service takes about 50 seconds to answer the first request.
+days and a sleeping service takes about 50 seconds to answer the first request. Google sign-in stays off
+unless `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are both set (ADR 038).

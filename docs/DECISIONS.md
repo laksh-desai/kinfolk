@@ -946,3 +946,17 @@ account. If ATS ever needs "who read this record, and when", this becomes per-us
 rather than a shared secret, and the unlock endpoint is where that would go. Rotating the
 passphrase is an environment variable change and a restart; every open session keeps working for
 up to thirty minutes afterwards.
+
+## 038 — Production runs without Google sign-in
+
+**Context.** ADR 036 made every real service mandatory once `ALLOW_DEV_ADAPTERS` is off, Google
+included. ATS wants client onboarding to start with password sign-in only, and the preview flag
+cannot be kept just to skip Google, because it also lets uploads live on disk and email go
+undelivered.
+
+**Decision.** `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` are optional in production. Storage (S3)
+and email (SMTP, `MAIL_FROM`) stay required. Setting one Google variable still requires the other.
+Without them the server already uses `DisabledOAuthProvider`: no button, and the endpoints 404.
+
+**Consequences.** A production boot no longer lists Google as a stand-in, because it is off, not
+faked. Adding Google later is two environment variables and a restart.

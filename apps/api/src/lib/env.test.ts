@@ -48,18 +48,17 @@ describe('parseEnv', () => {
     expect(problems).toContain('ACCESS_TOKEN_TTL must look like 15m or 30d');
   });
 
-  it('requires Google, S3 and SMTP settings in production, and says how to run a preview instead', () => {
+  it('requires S3 and SMTP settings in production, and says how to run a preview instead', () => {
     const problems = problemsFor({ ...valid, NODE_ENV: 'production' });
     const preview = ' is required in production (or set ALLOW_DEV_ADAPTERS=true for a preview deployment)';
     expect(problems).toEqual(
-      expect.arrayContaining([
-        `GOOGLE_CLIENT_ID${preview}`,
-        `GOOGLE_CLIENT_SECRET${preview}`,
-        `S3_BUCKET${preview}`,
-        `SMTP_URL${preview}`,
-        'MAIL_FROM is required in production',
-      ]),
+      expect.arrayContaining([`S3_BUCKET${preview}`, `SMTP_URL${preview}`, 'MAIL_FROM is required in production']),
     );
+  });
+
+  it('runs production with password sign-in only when Google is not configured', () => {
+    const problems = problemsFor({ ...valid, NODE_ENV: 'production' });
+    expect(problems.filter((problem) => problem.startsWith('GOOGLE_'))).toEqual([]);
   });
 
   it('requires the rest of a group once one member is set', () => {
@@ -74,7 +73,7 @@ describe('deploying (ADR 036)', () => {
 
   it('still refuses to ship a development adapter silently', () => {
     const problems = problemsFor(production);
-    for (const name of ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'S3_ENDPOINT', 'S3_BUCKET', 'SMTP_URL']) {
+    for (const name of ['S3_ENDPOINT', 'S3_BUCKET', 'SMTP_URL']) {
       expect(problems.some((problem) => problem.startsWith(name)), name).toBe(true);
     }
     expect(problems[0]).toMatch(/ALLOW_DEV_ADAPTERS=true for a preview deployment/);
@@ -86,7 +85,6 @@ describe('deploying (ADR 036)', () => {
     expect(devAdaptersInUse(env)).toEqual([
       expect.stringContaining('object storage'),
       expect.stringContaining('email'),
-      expect.stringContaining('Google sign-in'),
     ]);
   });
 
@@ -101,8 +99,6 @@ describe('deploying (ADR 036)', () => {
       S3_SECRET_ACCESS_KEY: 'secret',
       SMTP_URL: 'smtp://user:pass@smtp.example.com:587',
       MAIL_FROM: 'Kinfolk <no-reply@example.com>',
-      GOOGLE_CLIENT_ID: 'id',
-      GOOGLE_CLIENT_SECRET: 'secret',
     });
     expect(devAdaptersInUse(env)).toEqual([]);
   });

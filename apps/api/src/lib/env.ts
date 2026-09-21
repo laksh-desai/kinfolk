@@ -115,24 +115,27 @@ const envSchema = z
       ),
   })
   .superRefine((env, ctx) => {
-    const groups: Array<[boolean, string[]]> = [
-      [env.GOOGLE_CLIENT_ID !== undefined, ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET']],
+    // Google is optional even in production: without it, Google sign-in is off and people sign
+    // in with a password (ADR 038). Storage and email have no safe "off", so they stay required.
+    const groups: Array<[boolean, boolean, string[]]> = [
+      [env.GOOGLE_CLIENT_ID !== undefined, false, ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET']],
       [
         env.S3_ENDPOINT !== undefined,
+        true,
         ['S3_ENDPOINT', 'S3_REGION', 'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY'],
       ],
     ];
     const strict = env.NODE_ENV === 'production' && !env.ALLOW_DEV_ADAPTERS;
-    for (const [partlySet, names] of groups) {
-      const mustBeSet = strict || partlySet;
+    for (const [partlySet, requiredInProduction, names] of groups) {
+      const mustBeSet = (strict && requiredInProduction) || partlySet;
       if (!mustBeSet) continue;
       for (const name of names) {
         if (env[name as keyof typeof env] === undefined) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: [name],
-            message: strict
-              ? 'is required in production (or set ALLOW_DEV_ADAPTERS=true for a preview deployment)'
+            message: !partlySet
+              ?'is required in production (or set ALLOW_DEV_ADAPTERS=true for a preview deployment)'
               : `is required when ${names[0]} is set`,
           });
         }
@@ -183,6 +186,5 @@ export function devAdaptersInUse(env: Env): string[] {
   const using: string[] = [];
   if (!env.S3_ENDPOINT) using.push('object storage (uploads are on this host’s disk and go when it restarts)');
   if (!env.SMTP_URL) using.push('email (messages are written to a folder, never delivered)');
-  if (!env.GOOGLE_CLIENT_ID) using.push('Google sign-in (switched off; password sign-in only)');
   return using;
 }
