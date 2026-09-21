@@ -56,11 +56,6 @@ export function Component() {
       <div className="flex flex-col gap-5">
         <FormAlert message={form.formError ?? oauthProblem} alertRef={form.formErrorRef} />
         <GoogleButton returnTo={returnTo} />
-        <div className="flex items-center gap-3 text-sm text-ink-muted" aria-hidden="true">
-          <span className="h-px flex-1 bg-line" />
-          or with email
-          <span className="h-px flex-1 bg-line" />
-        </div>
         <form noValidate onSubmit={form.handleSubmit} className="flex flex-col gap-5">
           <TextField field={form.field('email')} label="Email" type="email" autoComplete="email" required />
           <PasswordField field={form.field('password')} label="Password" autoComplete="current-password" required />

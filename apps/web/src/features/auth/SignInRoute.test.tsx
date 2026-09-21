@@ -78,4 +78,12 @@ describe('Sign in', () => {
     );
     await expectNoAxeViolations();
   });
+
+  it('shows neither Google nor the "or with email" divider when Google sign-in is off', async () => {
+    mockApi({ ...signedOutRoutes, 'GET /api/auth/providers': () => ({ body: { google: { mode: 'off' } } }) });
+    await renderApp('/login');
+    await screen.findByRole('button', { name: 'Sign in' });
+    await waitFor(() => expect(screen.queryByText(/or with email/)).not.toBeInTheDocument());
+    expect(screen.queryByRole('link', { name: /Continue with Google/ })).not.toBeInTheDocument();
+  });
 });

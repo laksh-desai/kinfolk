@@ -48,11 +48,6 @@ export function Component() {
       <div className="flex flex-col gap-5">
         <FormAlert message={form.formError} alertRef={form.formErrorRef} />
         <GoogleButton returnTo={returnTo} />
-        <div className="flex items-center gap-3 text-sm text-ink-muted" aria-hidden="true">
-          <span className="h-px flex-1 bg-line" />
-          or with email
-          <span className="h-px flex-1 bg-line" />
-        </div>
         <form noValidate onSubmit={form.handleSubmit} className="flex flex-col gap-5">
           <div className="grid gap-5 sm:grid-cols-2">
             <TextField field={form.field('firstName')} label="First name" autoComplete="given-name" required />
