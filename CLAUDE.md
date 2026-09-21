@@ -140,8 +140,7 @@ orient. Replace lines rather than stacking them.)*
 ## Gotchas
 *(Cap: 20 lines. Non-obvious things that cost time. Each line: the trap, then the fix.)*
 
-- `tsc --noEmit -b` errors (`-b` must come first) → lint runs `tsc -b --noEmit`; api/web `include` shared src (TS6310 forbids references + noEmit).
-- Composite projects emit declarations → exported functions with deep inferred types fail TS2742; annotate the return type.
+- `tsc --noEmit -b` errors (`-b` must come first) → lint runs `tsc -b --noEmit`; api/web `include` shared src (TS6310 forbids references + noEmit). Composite projects emit declarations, so exported functions with deep inferred types fail TS2742 → annotate the return type.
 - jsdom shims in `apps/web/src/test/setup.ts` (keep them): floating-ui probes `:popover-open`/`:modal` and each throw costs seconds, hanging any test with an open Radix tooltip or menu; `PointerEvent` is missing, so fireEvent drops `button`/`clientX`.
 - Helmet's default `Referrer-Policy: no-referrer` makes Chrome send `Origin: null` on form posts → CSRF check rejects. Keep `strict-origin-when-cross-origin`.
 - Fastify `maxParamLength` defaults to 100 → signed tokens in paths 414. Set in `app.ts` `routerOptions`.
@@ -155,6 +154,7 @@ orient. Replace lines rather than stacking them.)*
 - To eyeball a layout, render it to SVG→PNG with sharp from a scratch `.mts` script (top-level await needs ESM) and Read the PNG.
 - Memoised `PersonCard`s re-render on every pan if any prop is a fresh inline callback → keep canvas callbacks in `useCallback`.
 - Slow machine: web tests preload lazy routes (`renderApp`) and use an 8s `findBy` timeout; run long suites in the background.
+- Deploy build: `NODE_ENV=production` makes pnpm skip devDependencies (`prisma`, `vite`, `tsc` are dev deps the build needs) → install with `--prod=false`, or `apps/api`'s `postinstall: prisma generate` dies as a bare `ELIFECYCLE` with the real error swallowed; and install pnpm with npm, not corepack, which blocks on a download prompt.
 - Dev stack: outside development Google sign-in is off (404, no button) without real credentials — the dev consent page signs in as any address typed into it (ADR 036). There is no `.env`, so the API needs `DATABASE_URL=postgres://kinfolk:kinfolk@localhost:5432/kinfolk` and a 32-char `SESSION_SECRET` inline (a new secret signs everyone out). Prisma EPERM means `tsx watch` respawned it → kill the watcher PIDs (`wmic process ... | grep server.ts`), not the listener on 4000. Windows also orphans children, so e2e runs servers in-process; if 5180/4180 are busy, kill the stale node.
 - RTL: two `renderApp` calls leave both apps mounted (call `cleanup()`); navigating away and back without letting the first navigation settle never unmounts the route, so its state survives; two `RadioGroup`s sharing a `name` would be one browser group, so `RadioGroup` scopes the name per instance — don't undo that.
 - Never run vitest (or other heavy jobs) while Playwright runs → the browser stalls (2-min `evaluate` hangs, saves stuck retrying). Run e2e alone.
