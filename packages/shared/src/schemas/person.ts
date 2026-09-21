@@ -30,11 +30,11 @@ export const addressSchema = z.object({
 export type Address = z.output<typeof addressSchema>;
 
 export const detailsSchema = z.object({
-  favoriteDestination: optionalText(300, 'Favourite destination'),
+  favoriteDestination: optionalText(300, 'Favorite destination'),
   specialNeeds: optionalText(2000, 'Special needs'),
   hobbies: optionalText(1000, 'Hobbies'),
-  favoriteFood: optionalText(300, 'Favourite food'),
-  favoriteMusic: optionalText(300, 'Favourite music'),
+  favoriteFood: optionalText(300, 'Favorite food'),
+  favoriteMusic: optionalText(300, 'Favorite music'),
 });
 export type PersonDetails = z.output<typeof detailsSchema>;
 

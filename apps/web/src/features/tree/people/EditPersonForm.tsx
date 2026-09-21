@@ -50,9 +50,9 @@ export const PERSON_FORM_LABELS: Record<string, string> = {
   addressCountry: 'Country',
   profession: 'Profession',
   hobbies: 'Hobbies',
-  favoriteDestination: 'Favourite destination',
-  favoriteFood: 'Favourite food',
-  favoriteMusic: 'Favourite music',
+  favoriteDestination: 'Favorite destination',
+  favoriteFood: 'Favorite food',
+  favoriteMusic: 'Favorite music',
   specialNeeds: 'Special needs',
   facebook: 'Facebook',
   linkedin: 'LinkedIn',
@@ -208,9 +208,9 @@ export function EditPersonForm({ person }: { person: Person }) {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField field={form.field('profession')} label="Profession" optionalMark autoComplete="off" className="sm:col-span-2" />
             <TextAreaField field={form.field('hobbies')} label="Hobbies" optionalMark rows={2} className="sm:col-span-2" />
-            <TextField field={form.field('favoriteDestination')} label="Favourite destination" optionalMark autoComplete="off" />
-            <TextField field={form.field('favoriteFood')} label="Favourite food" optionalMark autoComplete="off" />
-            <TextField field={form.field('favoriteMusic')} label="Favourite music" optionalMark autoComplete="off" />
+            <TextField field={form.field('favoriteDestination')} label="Favorite destination" optionalMark autoComplete="off" />
+            <TextField field={form.field('favoriteFood')} label="Favorite food" optionalMark autoComplete="off" />
+            <TextField field={form.field('favoriteMusic')} label="Favorite music" optionalMark autoComplete="off" />
             <TextAreaField field={form.field('specialNeeds')} label="Special needs" optionalMark rows={2} className="sm:col-span-2" />
             <TextField field={form.field('facebook')} label="Facebook" optionalMark autoComplete="off" />
             <TextField field={form.field('linkedin')} label="LinkedIn" optionalMark autoComplete="off" />
