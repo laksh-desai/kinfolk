@@ -21,7 +21,7 @@ const SORTS: Array<{ value: EventSort; label: string }> = [
   { value: 'tree', label: 'Family tree' },
 ];
 
-const longDate = (on: { year: number; month: number; day: number }) => `${on.day} ${MONTHS[on.month - 1]} ${on.year}`;
+const longDate = (on: { year: number; month: number; day: number }) => `${MONTHS[on.month - 1]} ${on.day}, ${on.year}`;
 
 /**
  * Key events (SPEC §5.8, §6.4): birthdays and anniversaries derived from the trees you can see,

@@ -35,7 +35,8 @@ describe('key events screen (SPEC §5.8, §6.4)', () => {
     expect(within(first).getAllByRole('link')[0]).toHaveAttribute('href', expect.stringContaining(`/trees/${TREE_ID}/people/`));
     expect(first.textContent).toMatch(/Birthday|Anniversary/);
     expect(first).toHaveTextContent('Sharma family');
-    expect(first.textContent).toMatch(/\d{1,2} [A-Z][a-z]+ 20\d\d/);
+    // Month first, like every other date in the app (ADR 031).
+    expect(first.textContent).toMatch(/[A-Z][a-z]+ \d{1,2}, 20\d\d/);
     expect(first.textContent).toMatch(/Today|Tomorrow|In \d+ (days|weeks|months)|In a week/);
     expect(screen.getByRole('status')).toHaveTextContent(`${events.length} events in the year ahead`);
     expect(screen.getByRole('link', { name: '3 in Sharma family' })).toHaveAttribute('href', `/trees/${TREE_ID}/needs-detail`);
