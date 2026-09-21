@@ -65,6 +65,12 @@ Render, free plan, using the blueprint in `render.yaml`:
    wrong.
 3. Redeploy. The health check at `/api/health` should go green.
 
+> **`--prod=false` is not optional.** The service sets `NODE_ENV=production`, and pnpm reads
+> that as "install no devDependencies". `prisma`, `vite` and `typescript` are dev dependencies
+> that the build needs. Without the flag the install fails with a bare ` ELIFECYCLE  Command
+> failed.` and no explanation — the real error, `Command "prisma" not found`, is swallowed
+> because it happened inside `apps/api`'s `postinstall` script.
+>
 > **pnpm is installed with `npm install -g pnpm@9.15.9`, not corepack.** Corepack asks before
 > downloading pnpm and a build box has nobody to answer, so it exits with `ELIFECYCLE` after
 > printing `! Corepack is about to download …pnpm…`. A service created by hand needs the same

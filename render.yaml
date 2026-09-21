@@ -19,13 +19,16 @@ services:
     branch: main
     # The free plan has no shell and no pre-deploy hook, so migrations run here. `migrate
     # deploy` only applies what is outstanding, so repeating it on every build costs nothing.
-    # pnpm comes from npm rather than corepack. Corepack wants to confirm the download before
-    # it fetches pnpm, and a build box has nobody to answer, so it exits with ELIFECYCLE; the
-    # prompt can be silenced with a variable, but installing pnpm directly removes the whole
-    # class of problem and is no slower.
+    # Two things this command has to get right, both learned the hard way:
+    #  - pnpm comes from npm, not corepack: corepack asks before downloading pnpm and a build
+    #    box has nobody to answer, so it exits with a bare ELIFECYCLE.
+    #  - `--prod=false` is required because NODE_ENV=production is set here, and pnpm reads that
+    #    as "skip devDependencies". prisma, vite and typescript are dev dependencies and the
+    #    build needs all three; without the flag, apps/api's `postinstall: prisma generate`
+    #    fails with "Command prisma not found" and pnpm hides the reason.
     buildCommand: >-
       npm install -g pnpm@9.15.9 &&
-      pnpm install --frozen-lockfile &&
+      pnpm install --frozen-lockfile --prod=false &&
       pnpm --filter api exec prisma generate &&
       pnpm --filter api exec prisma migrate deploy &&
       pnpm --filter web build
