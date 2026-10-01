@@ -3,6 +3,7 @@ import { SearchBox, type SearchCandidate } from '../../../canvas/SearchBox';
 import { useCanvasStore } from '../../../canvas/useCanvasStore';
 import { IconButton } from '../../../components/IconButton';
 import { announce } from '../../../lib/announcer';
+import { ShortcutHelpDialog } from '../ShortcutHelpDialog';
 import type { TreeView } from '../useTreeView';
 import { useTreeShortcuts } from '../useTreeShortcuts';
 
@@ -55,17 +56,18 @@ export function TreeSearch({ view, onChoose, showTrigger = false }: TreeSearchPr
     (card ?? triggerRef.current)?.focus();
   };
 
-  if (searchOpen) {
-    return (
-      <div data-canvas-overlay className="absolute right-3 top-3 z-20">
-        <SearchBox candidates={candidates} query={query} onQueryChange={setSearchQuery} onChoose={choose} onClose={dismiss} />
-      </div>
-    );
-  }
-  if (!showTrigger) return null;
   return (
-    <div className="absolute right-3 top-3 z-20">
-      <IconButton ref={triggerRef} icon="search" label="Find a person" shortcut="/" variant="secondary" onClick={() => setSearchOpen(true)} />
-    </div>
+    <>
+      {searchOpen ? (
+        <div data-canvas-overlay className="absolute right-3 top-3 z-20">
+          <SearchBox candidates={candidates} query={query} onQueryChange={setSearchQuery} onChoose={choose} onClose={dismiss} />
+        </div>
+      ) : showTrigger ? (
+        <div className="absolute right-3 top-3 z-20">
+          <IconButton ref={triggerRef} icon="search" label="Find a person" shortcut="/" variant="secondary" onClick={() => setSearchOpen(true)} />
+        </div>
+      ) : null}
+      <ShortcutHelpDialog />
+    </>
   );
 }
