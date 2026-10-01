@@ -121,7 +121,11 @@ describe('tree page editing affordances', () => {
     const user = userEvent.setup();
     const server = mockTreeServer();
     const { router } = await renderApp(`/trees/${TREE_ID}`);
-    await user.click(await screen.findByRole('link', { name: /^Needs detail \(\d+\)$/ }));
+    // The occasional jobs live under Tools: needs detail, compare, import, the shortcut list.
+    await user.click(await screen.findByRole('button', { name: 'Tools' }));
+    const tools = await screen.findByRole('menu', { name: 'Tools' });
+    expect(within(tools).getAllByRole('menuitem').map((item) => item.textContent)).toEqual([expect.stringMatching(/^Needs detail \(\d+\)$/), 'Compare two people', 'Import from a file', 'Keyboard shortcuts']);
+    await user.click(within(tools).getByRole('menuitem', { name: /^Needs detail/ }));
     const panel = await screen.findByRole('complementary', { name: 'Needs detail' });
     expect(within(panel).getByRole('heading', { name: 'Unnamed placeholders (2)' })).toBeInTheDocument();
     await user.click(within(panel).getByRole('link', { name: 'Radha’s parent — unnamed' }));

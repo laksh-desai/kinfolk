@@ -1,19 +1,19 @@
 import { directRelatives } from '@kinfolk/shared/relatives/directRelatives';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { EmptyState } from '../../components/EmptyState';
-import { Icon } from '../../components/Icon';
 import { LoadingRegion } from '../../components/LoadingRegion';
 import { Skeleton } from '../../components/Skeleton';
-import { StatusBadge } from '../../components/StatusBadge';
 import { Wordmark } from '../../components/Brand';
 import { ApiError, describeError } from '../../lib/api';
-import { cx } from '../../lib/cx';
 import { TreeCanvas } from '../../canvas/TreeCanvas';
 import { useCollapsed } from '../../canvas/useCanvasStore';
 import { sharedTreeQuery } from '../collaboration/collaborationApi';
+import { Pill } from '../../components/Pill';
+import { TreePageHeader } from '../tree/header/TreePageHeader';
 import { TreeSearch } from '../tree/header/TreeSearch';
+import { ViewSwitch } from '../tree/header/ViewSwitch';
 import { TreeOutline } from '../tree/list/TreeOutline';
 import { useTreeView } from '../tree/useTreeView';
 import { SharedPersonPanel } from './SharedPersonPanel';
@@ -91,34 +91,15 @@ export function Component() {
   const { tree } = shared.data;
   return (
     <div className="flex h-screen min-h-0 flex-col bg-ground">
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-surface px-4 py-2 sm:px-6">
-        <Wordmark />
-        <h1 className="min-w-0 truncate font-serif text-2xl font-semibold">{tree.name}</h1>
-        <StatusBadge status={tree.status} />
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-0.5 text-sm font-semibold text-ink-muted">
-          <Icon name="eye" className="size-4" />
-          Shared view · read-only
-        </span>
-        {graph.people.length > 0 ? (
-          <nav aria-label="Tree view" className="ml-auto inline-flex overflow-hidden rounded-control border border-line-strong">
-            {[
-              { list: false, label: 'Tree', icon: 'tree' as const },
-              { list: true, label: 'List', icon: 'list' as const },
-            ].map((option) => (
-              <Link
-                key={option.label}
-                to={hrefFor(selectedId, option.list)}
-                replace
-                aria-current={listView === option.list ? 'page' : undefined}
-                className={cx('inline-flex min-h-11 items-center gap-2 px-3 text-base font-semibold', listView === option.list ? 'bg-accent text-on-accent' : 'bg-surface text-ink hover:bg-sunken')}
-              >
-                <Icon name={option.icon} />
-                {option.label}
-              </Link>
-            ))}
-          </nav>
-        ) : null}
-      </header>
+      <TreePageHeader
+        as="header"
+        leading={<Wordmark />}
+        title={<h1 className="min-w-0 truncate font-serif text-2xl font-semibold">{tree.name}</h1>}
+        status={tree.status}
+        pills={<Pill icon="eye">Shared view · read-only</Pill>}
+      >
+        {graph.people.length > 0 ? <ViewSwitch view={listView ? 'list' : 'canvas'} hrefFor={(target) => hrefFor(selectedId, target === 'list')} /> : null}
+      </TreePageHeader>
       <main id="main" tabIndex={-1} className="flex min-h-0 flex-1 outline-none">
         <div className="relative min-h-0 min-w-0 flex-1">
           {graph.people.length > 0 ? <TreeSearch view={view} onChoose={onSelect} showTrigger={listView} /> : null}

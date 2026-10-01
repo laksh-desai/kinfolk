@@ -5,7 +5,8 @@ import { Link, Outlet, useLoaderData, useMatch, useNavigate, useSearchParams, ty
 import { buttonClasses } from '../../components/Button';
 import { EmptyState } from '../../components/EmptyState';
 import { Icon } from '../../components/Icon';
-import { StatusBadge } from '../../components/StatusBadge';
+import { Menu, MenuItem } from '../../components/Menu';
+import { Pill } from '../../components/Pill';
 import { getTreeViewPreference, setTreeViewPreference, type TreeViewPreference } from '../../lib/preferences';
 import { queryClient } from '../../lib/queryClient';
 import type { CardMenuItem } from '../../canvas/CardMenu';
@@ -18,6 +19,7 @@ import { setFocusPerson } from './editing/focusPerson';
 import { SaveIndicator } from './editing/SaveIndicator';
 import { UndoRedoButtons } from './editing/UndoRedoButtons';
 import { DeleteTreeDialog } from './header/DeleteTreeDialog';
+import { TreePageHeader } from './header/TreePageHeader';
 import { TreeSearch } from './header/TreeSearch';
 import { TreeSettingsMenu } from './header/TreeSettingsMenu';
 import { TreeTitle } from './header/TreeTitle';
@@ -45,6 +47,7 @@ export function Component() {
   const { data } = useQuery({ ...treeGraphQuery(treeId), initialData: initial });
   const collapsed = useCollapsed(treeId);
   const toggleCollapsed = useCanvasStore((state) => state.toggleCollapsed);
+  const setHelpOpen = useCanvasStore((state) => state.setHelpOpen);
   const view = useTreeView(data.graph, collapsed);
   const navigate = useNavigate();
   const personMatch = useMatch('/trees/:treeId/people/:personId/*');
@@ -144,67 +147,77 @@ export function Component() {
     // Exactly the viewport below the shell's 4rem header, so the canvas gets whatever the tree
     // header, the breadcrumb, and the review banner leave — however many rows they wrap to.
     <main id="main" tabIndex={-1} className="flex h-[calc(100dvh-4rem)] min-h-0 flex-col outline-none">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-surface px-4 py-2 sm:px-6">
-        <TreeTitle tree={tree} editing={renaming} onEditingChange={setRenaming} />
-        {tree.role === 'owner' && !renaming ? (
-          <TreeSettingsMenu
-            treeName={tree.name}
-            onRename={() => setRenaming(true)}
-            onDelete={() => setDeletingTree(true)}
-            onLinkRequests={() => navigate(`/trees/${treeId}/link-requests`)}
-          />
-        ) : null}
-        <StatusBadge status={tree.status} />
-        {roleLabel ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-0.5 text-sm font-semibold text-ink-muted">
-            <Icon name={tree.role === 'viewer' ? 'eye' : 'users'} className="size-4" />
-            {roleLabel}
-          </span>
-        ) : null}
-        <span className="text-base text-ink-muted">
-          {count} {count === 1 ? 'person' : 'people'}
-        </span>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          {count > 0 ? <ViewSwitch view={viewMode} /> : null}
-          {editable ? <SaveIndicator treeId={treeId} /> : null}
-          {editable ? <UndoRedoButtons treeId={treeId} /> : null}
-          {count > 0 ? (
-            <>
-              <Link to={`/trees/${treeId}/needs-detail`} className={buttonClasses('ghost', 'px-3')}>
-                <Icon name="list" />
-                Needs detail{needsDetail > 0 ? ` (${needsDetail})` : ''}
-              </Link>
-              <Link to={`/trees/${treeId}/compare${selectedId ? `?a=${selectedId}` : ''}`} className={buttonClasses('ghost', 'px-3')}>
-                <Icon name="compare" />
-                Compare
-              </Link>
-            </>
-          ) : null}
-          {tree.role === 'owner' && (tree.status === 'draft' || tree.status === 'approved') && count > 0 ? (
-            <Link to={`/trees/${treeId}/review`} className={buttonClasses('secondary', 'px-3')}>
-              <Icon name="shield" />
-              Send for review
-            </Link>
-          ) : null}
-          <Link to={`/trees/${treeId}/access`} className={buttonClasses('secondary', 'px-3')}>
-            <Icon name="share" />
-            {tree.role === 'owner' ? 'Share' : 'People with access'}
+      <TreePageHeader
+        title={<TreeTitle tree={tree} editing={renaming} onEditingChange={setRenaming} />}
+        afterTitle={
+          tree.role === 'owner' && !renaming ? (
+            <TreeSettingsMenu
+              treeName={tree.name}
+              onRename={() => setRenaming(true)}
+              onDelete={() => setDeletingTree(true)}
+              onLinkRequests={() => navigate(`/trees/${treeId}/link-requests`)}
+            />
+          ) : null
+        }
+        status={tree.status}
+        pills={roleLabel ? <Pill icon={tree.role === 'viewer' ? 'eye' : 'users'}>{roleLabel}</Pill> : null}
+        peopleCount={count}
+      >
+        {count > 0 ? <ViewSwitch view={viewMode} /> : null}
+        {editable ? <SaveIndicator treeId={treeId} /> : null}
+        {editable ? <UndoRedoButtons treeId={treeId} /> : null}
+        {editable && count > 0 ? (
+          <Link to={`/trees/${treeId}/add`} className={buttonClasses('primary', 'px-3')}>
+            <Icon name="user-plus" />
+            Add person
           </Link>
-          {count > 0 ? <ExportMenu input={{ graph: view.graph, layout: view.layout, treeName: tree.name, relationOf: (personId) => view.relationToFocus.get(personId)?.label ?? null }} /> : null}
-          {editable ? (
-            <Link to={`/trees/${treeId}/import`} className={buttonClasses('secondary', 'px-3')}>
-              <Icon name="import" />
-              Import
-            </Link>
-          ) : null}
-          {editable && count > 0 ? (
-            <Link to={`/trees/${treeId}/add`} className={buttonClasses('secondary', 'px-3')}>
-              <Icon name="user-plus" />
-              Add person
-            </Link>
-          ) : null}
-        </div>
-      </div>
+        ) : null}
+        <Link to={`/trees/${treeId}/access`} className={buttonClasses('secondary', 'px-3')}>
+          <Icon name="share" />
+          {tree.role === 'owner' ? 'Share' : 'People with access'}
+        </Link>
+        {tree.role === 'owner' && (tree.status === 'draft' || tree.status === 'approved') && count > 0 ? (
+          <Link to={`/trees/${treeId}/review`} className={buttonClasses('secondary', 'px-3')}>
+            <Icon name="shield" />
+            Send for review
+          </Link>
+        ) : null}
+        {count > 0 ? <ExportMenu input={{ graph: view.graph, layout: view.layout, treeName: tree.name, relationOf: (personId) => view.relationToFocus.get(personId)?.label ?? null }} /> : null}
+        {count > 0 || editable ? (
+          // The occasional jobs, out of the way of the everyday ones.
+          <Menu
+            trigger={
+              <button type="button" className={buttonClasses('secondary', 'px-3')}>
+                <Icon name="more" />
+                Tools
+              </button>
+            }
+            label="Tools"
+            labelHidden
+          >
+            {count > 0 ? (
+              <MenuItem icon="list" onSelect={() => navigate(`/trees/${treeId}/needs-detail`)}>
+                Needs detail{needsDetail > 0 ? ` (${needsDetail})` : ''}
+              </MenuItem>
+            ) : null}
+            {count > 0 ? (
+              <MenuItem icon="compare" onSelect={() => navigate(`/trees/${treeId}/compare${selectedId ? `?a=${selectedId}` : ''}`)}>
+                Compare two people
+              </MenuItem>
+            ) : null}
+            {editable ? (
+              <MenuItem icon="import" onSelect={() => navigate(`/trees/${treeId}/import`)}>
+                Import from a file
+              </MenuItem>
+            ) : null}
+            {count > 0 ? (
+              <MenuItem icon="keyboard" onSelect={() => setHelpOpen(true)}>
+                Keyboard shortcuts
+              </MenuItem>
+            ) : null}
+          </Menu>
+        ) : null}
+      </TreePageHeader>
       {fromTreeId ? <LinkedTreeBreadcrumb fromTreeId={fromTreeId} personId={searchParams.get('person')} /> : null}
       <ReviewBanner tree={tree} />
       <div className="flex min-h-0 flex-1">

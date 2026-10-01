@@ -1,7 +1,7 @@
 import type { TreeSummaryDto } from '@kinfolk/shared/schemas/tree';
 import { Link } from 'react-router-dom';
 import { Avatar } from '../../components/Avatar';
-import { Icon } from '../../components/Icon';
+import { Pill } from '../../components/Pill';
 import { StatusBadge } from '../../components/StatusBadge';
 import { relativeTime } from '../../lib/relativeTime';
 
@@ -29,10 +29,9 @@ export function TreeCard({ tree }: { tree: TreeSummaryDto }) {
       <div className="mt-auto flex flex-wrap items-center gap-2 text-sm">
         <StatusBadge status={tree.status} />
         {role ? (
-          <span className="inline-flex items-center gap-1 rounded-full border border-line px-2.5 py-0.5 font-semibold text-ink-muted">
-            <Icon name="users" className="size-4" />
+          <Pill icon="users">
             {role} · shared by {tree.owner.name}
-          </span>
+          </Pill>
         ) : null}
         <span className="text-ink-muted">Edited {relativeTime(tree.updatedAt)}</span>
       </div>

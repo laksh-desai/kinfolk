@@ -3,10 +3,17 @@ import { Icon } from '../../../components/Icon';
 import { cx } from '../../../lib/cx';
 import type { TreeViewPreference } from '../../../lib/preferences';
 
+interface ViewSwitchProps {
+  view: TreeViewPreference;
+  /** Where each option leads. By default the current URL with `view` set; public screens pass their own. */
+  hrefFor?: (view: TreeViewPreference) => string;
+}
+
 /** Tree or list: the same people and actions either way (SPEC §5.3). The choice lives in the URL. */
-export function ViewSwitch({ view }: { view: TreeViewPreference }) {
+export function ViewSwitch({ view, hrefFor }: ViewSwitchProps) {
   const location = useLocation();
   const linkFor = (target: TreeViewPreference) => {
+    if (hrefFor) return hrefFor(target);
     const params = new URLSearchParams(location.search);
     params.set('view', target);
     return `${location.pathname}?${params}`;
