@@ -38,6 +38,27 @@ describe('AppShell', () => {
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
   });
 
+  it('switches the theme from the account menu, and the account page agrees', async () => {
+    mockApi({
+      'GET /api/auth/me': () => ({ body: { user: testUser } }),
+      'GET /api/auth/providers': () => ({ body: { google: { mode: 'dev' } } }),
+    });
+    const user = userEvent.setup();
+    await renderApp('/account');
+    await screen.findByRole('heading', { level: 1, name: 'Account' });
+    // Dark is the default, so the menu offers light.
+    await user.click(screen.getByRole('button', { name: 'Account menu for Asha Rao' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Switch to light theme' }));
+    await waitFor(() => expect(document.documentElement.dataset.theme).toBe('light'));
+    expect(screen.getByRole('radio', { name: /^Light/ })).toBeChecked();
+    await user.click(screen.getByRole('button', { name: 'Account menu for Asha Rao' }));
+    expect(await screen.findByRole('menuitem', { name: 'Switch to dark theme' })).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    // Back to the default, so the next test starts where every other one does.
+    await user.click(screen.getByRole('radio', { name: /^Dark/ }));
+    await waitFor(() => expect(document.documentElement.dataset.theme).toBe('dark'));
+  });
+
   it('signs out straight to the sign-in page without flashing an error screen', async () => {
     let signedIn = true;
     mockApi({

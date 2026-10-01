@@ -1,5 +1,5 @@
-import { useId, useState } from 'react';
-import { getThemePreference, setThemePreference, type ThemePreference } from '../../lib/preferences';
+import { useId } from 'react';
+import { setThemePreference, useThemePreference, type ThemePreference } from '../../lib/preferences';
 import { AccountSection } from './AccountSection';
 
 const OPTIONS: Array<{ value: ThemePreference; label: string; description: string }> = [
@@ -9,7 +9,7 @@ const OPTIONS: Array<{ value: ThemePreference; label: string; description: strin
 ];
 
 export function AppearanceSection() {
-  const [theme, setTheme] = useState<ThemePreference>(getThemePreference);
+  const theme = useThemePreference();
   const name = useId();
   return (
     <AccountSection title="Appearance">
@@ -25,10 +25,7 @@ export function AppearanceSection() {
               name={name}
               value={option.value}
               checked={theme === option.value}
-              onChange={() => {
-                setTheme(option.value);
-                setThemePreference(option.value);
-              }}
+              onChange={() => setThemePreference(option.value)}
               className="mt-1 size-5 accent-[var(--kf-accent)]"
             />
             <span>

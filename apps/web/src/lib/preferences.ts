@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from 'react';
+
 /**
  * The only module allowed to touch browser storage (lint-enforced). It stores display
  * preferences only — never anything auth-related.
@@ -39,9 +41,29 @@ export function applyTheme(preference: ThemePreference = getThemePreference()): 
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
 }
 
+const themeListeners = new Set<() => void>();
+
 export function setThemePreference(preference: ThemePreference): void {
   write(THEME_KEY, preference);
   applyTheme(preference);
+  for (const listener of themeListeners) listener();
+}
+
+/** Re-renders whatever shows the theme (the account page, the account menu) when it changes anywhere. */
+export function useThemePreference(): ThemePreference {
+  return useSyncExternalStore(
+    (listener) => {
+      themeListeners.add(listener);
+      return () => themeListeners.delete(listener);
+    },
+    getThemePreference,
+    () => DEFAULT_THEME,
+  );
+}
+
+/** Whether the screen is dark right now, for a toggle that offers the other one. */
+export function isDarkTheme(preference: ThemePreference = getThemePreference()): boolean {
+  return preference === 'dark' || (preference === 'system' && systemPrefersDark());
 }
 
 export function watchSystemTheme(): () => void {

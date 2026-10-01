@@ -1,11 +1,12 @@
-import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
+import { Menu, MenuItem, MenuNote, MenuSeparator } from '../components/Menu';
 import { authApi } from '../features/auth/authApi';
 import { sessionQuery, useCurrentUser } from '../features/auth/sessionQuery';
 import { Wordmark } from '../components/Brand';
 import { cx } from '../lib/cx';
+import { isDarkTheme, setThemePreference, useThemePreference } from '../lib/preferences';
 import { queryClient } from '../lib/queryClient';
 import { toast } from '../lib/toast';
 
@@ -14,13 +15,12 @@ const NAV_ITEMS = [
   { to: '/events', label: 'Key events', icon: 'calendar' as const, end: false },
 ];
 
-const menuItemClass =
-  'flex min-h-11 cursor-pointer select-none items-center gap-3 rounded-md px-3 text-base text-ink outline-none data-[highlighted]:bg-sunken';
-
 export function AppShell() {
   const user = useCurrentUser();
   const navigate = useNavigate();
   const fullName = `${user.firstName} ${user.lastName}`.trim();
+  // The quick toggle offers whichever theme is not showing; "match this device" stays on /account.
+  const dark = isDarkTheme(useThemePreference());
 
   const signOut = async () => {
     try {
@@ -62,41 +62,37 @@ export function AppShell() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-2">
-            <DropdownMenu.Root>
-              <DropdownMenu.Trigger
-                aria-label={`Account menu for ${fullName}`}
-                className="inline-flex min-h-11 items-center gap-2 rounded-control px-2 hover:bg-sunken"
-              >
-                <Avatar name={fullName} src={user.avatarUrl} size="sm" />
-                <span className="hidden max-w-40 truncate font-semibold sm:inline">{user.firstName}</span>
-                <Icon name="chevron-down" className="size-4" />
-              </DropdownMenu.Trigger>
-              <DropdownMenu.Portal>
-                <DropdownMenu.Content
-                  align="end"
-                  sideOffset={6}
-                  collisionPadding={12}
-                  className="z-50 min-w-56 max-w-[calc(100vw-1.5rem)] rounded-card border border-line bg-surface p-1.5 shadow-card"
-                >
-                  <div className="px-3 py-2 text-sm text-ink-muted">
-                    Signed in as <span className="block truncate font-semibold text-ink">{user.email}</span>
-                  </div>
-                  <DropdownMenu.Separator className="my-1 h-px bg-line" />
-                  <DropdownMenu.Item className={cx(menuItemClass, 'md:hidden')} onSelect={() => navigate('/')}>
-                    <Icon name="tree" /> Family trees
-                  </DropdownMenu.Item>
-                  <DropdownMenu.Item className={cx(menuItemClass, 'md:hidden')} onSelect={() => navigate('/events')}>
-                    <Icon name="calendar" /> Key events
-                  </DropdownMenu.Item>
-                  <DropdownMenu.Item className={menuItemClass} onSelect={() => navigate('/account')}>
-                    <Icon name="user" /> Account
-                  </DropdownMenu.Item>
-                  <DropdownMenu.Item className={menuItemClass} onSelect={() => void signOut()}>
-                    <Icon name="log-out" /> Sign out
-                  </DropdownMenu.Item>
-                </DropdownMenu.Content>
-              </DropdownMenu.Portal>
-            </DropdownMenu.Root>
+            <Menu
+              trigger={
+                <button type="button" aria-label={`Account menu for ${fullName}`} className="inline-flex min-h-11 items-center gap-2 rounded-control px-2 hover:bg-sunken">
+                  <Avatar name={fullName} src={user.avatarUrl} size="sm" />
+                  <span className="hidden max-w-40 truncate font-semibold sm:inline">{user.firstName}</span>
+                  <Icon name="chevron-down" className="size-4" />
+                </button>
+              }
+              label={`Account menu for ${fullName}`}
+              labelHidden
+            >
+              <MenuNote>
+                Signed in as <span className="block truncate font-semibold text-ink">{user.email}</span>
+              </MenuNote>
+              <MenuSeparator />
+              <MenuItem icon="tree" className="md:hidden" onSelect={() => navigate('/')}>
+                Family trees
+              </MenuItem>
+              <MenuItem icon="calendar" className="md:hidden" onSelect={() => navigate('/events')}>
+                Key events
+              </MenuItem>
+              <MenuItem icon="user" onSelect={() => navigate('/account')}>
+                Account
+              </MenuItem>
+              <MenuItem icon={dark ? 'sun' : 'moon'} onSelect={() => setThemePreference(dark ? 'light' : 'dark')}>
+                {dark ? 'Switch to light theme' : 'Switch to dark theme'}
+              </MenuItem>
+              <MenuItem icon="log-out" onSelect={() => void signOut()}>
+                Sign out
+              </MenuItem>
+            </Menu>
           </div>
         </div>
       </header>
