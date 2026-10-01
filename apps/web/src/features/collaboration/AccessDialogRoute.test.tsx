@@ -13,8 +13,9 @@ const member = (overrides: Partial<AccessListDto['members'][number]> = {}) => ({
   name: 'Kiran Rao',
   role: 'viewer' as const,
   status: 'active' as const,
-  invitedAt: '2026-09-01T10:00:00.000Z',
-  acceptedAt: '2026-09-02T10:00:00.000Z',
+  // Relative to now: the list says "Invited 2 weeks ago", and a fixed date would drift past it.
+  invitedAt: new Date(Date.now() - 15 * 86_400_000).toISOString(),
+  acceptedAt: new Date(Date.now() - 14 * 86_400_000).toISOString(),
   ...overrides,
 });
 
