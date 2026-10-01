@@ -68,6 +68,24 @@ describe('tree page editing affordances', () => {
     await expectNoAxeViolations();
   }, 60_000);
 
+  it('opens search with "/" from anywhere on the page, but not while typing', async () => {
+    const user = userEvent.setup();
+    mockTreeServer();
+    await renderApp(`/trees/${TREE_ID}`);
+    await screen.findByRole('button', { name: /^Ravi Sharma/ });
+    // Focus is on the page body, outside the canvas: the shortcut still works.
+    (document.activeElement as HTMLElement | null)?.blur();
+    await user.keyboard('/');
+    const input = await screen.findByRole('combobox', { name: 'Find a person by name' });
+    expect(input).toHaveFocus();
+    // Inside a field a slash is just a slash.
+    await user.keyboard('/');
+    expect(input).toHaveValue('/');
+    expect(screen.getAllByRole('combobox')).toHaveLength(1);
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('combobox')).not.toBeInTheDocument());
+  }, 60_000);
+
   it('lists placeholders and missing birth dates under Needs detail', async () => {
     const user = userEvent.setup();
     const server = mockTreeServer();

@@ -18,6 +18,7 @@ import { commitWithUndo } from './editing/changeQueue';
 import { SaveIndicator } from './editing/SaveIndicator';
 import { UndoRedoButtons } from './editing/UndoRedoButtons';
 import { DeleteTreeDialog } from './header/DeleteTreeDialog';
+import { TreeSearch } from './header/TreeSearch';
 import { TreeSettingsMenu } from './header/TreeSettingsMenu';
 import { TreeTitle } from './header/TreeTitle';
 import { ViewSwitch } from './header/ViewSwitch';
@@ -208,6 +209,7 @@ export function Component() {
       <ReviewBanner tree={tree} />
       <div className="flex min-h-0 flex-1">
         <div className="relative min-h-0 min-w-0 flex-1">
+          {count > 0 ? <TreeSearch view={view} onChoose={onSelect} showTrigger={viewMode === 'list'} /> : null}
           {count === 0 ? (
             <EmptyState
               icon="tree"

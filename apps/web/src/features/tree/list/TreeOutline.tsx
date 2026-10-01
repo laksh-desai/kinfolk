@@ -1,6 +1,8 @@
 import { cardLabel, toCalendarDay } from '@kinfolk/shared/dates/partialDate';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { matchesQuery } from '../../../canvas/SearchBox';
+import { useCanvasStore } from '../../../canvas/useCanvasStore';
 import { Button, buttonClasses } from '../../../components/Button';
 import { cx } from '../../../lib/cx';
 import { usePersonDialogs } from '../people/personDialogStore';
@@ -19,14 +21,33 @@ interface TreeOutlineProps {
 /**
  * The list/outline view (SPEC §5.3): the same tree grouped by generation and family, with the
  * same actions as the canvas. It is the screen-reader and small-screen path, so everything is
- * plain headings, lists, and links.
+ * plain headings, lists, and links. The page's search narrows it to the people who match.
  */
 export function TreeOutline({ view, selectedId, personHref, editTreeId }: TreeOutlineProps) {
   const generations = useMemo(() => outlineTree(view.index, view.layout), [view.index, view.layout]);
   const today = useMemo(() => toCalendarDay(new Date()), []);
   const openDelete = usePersonDialogs((state) => state.openDelete);
+  const query = useCanvasStore((state) => state.searchQuery);
+  const reveal = useCanvasStore((state) => state.reveal);
+  const containerRef = useRef<HTMLDivElement>(null);
   const nameOf = (id: string) => view.names.get(id) ?? 'Unnamed person';
   const hiddenCount = view.graph.people.length - view.layout.nodes.length;
+
+  // Null when nothing is typed: the whole list. Otherwise the people the search would offer.
+  const matching = useMemo(() => {
+    if (!query.trim()) return null;
+    const ids = view.layout.nodes.map((node) => node.personId);
+    return new Set(ids.filter((id) => matchesQuery({ name: view.names.get(id) ?? '', detail: view.relationToFocus.get(id)?.label ?? null }, query)));
+  }, [query, view.layout.nodes, view.names, view.relationToFocus]);
+  const shows = (personId: string) => !matching || matching.has(personId);
+
+  // A search result: scroll their row into view and put focus on their name.
+  useEffect(() => {
+    if (!reveal) return;
+    const row = containerRef.current?.querySelector<HTMLElement>(`[data-person-row="${reveal.personId}"]`);
+    row?.scrollIntoView?.({ block: 'center' });
+    row?.querySelector<HTMLElement>('a')?.focus({ preventScroll: true });
+  }, [reveal]);
 
   const personRow = (personId: string) => {
     const person = view.index.person(personId);
@@ -38,7 +59,7 @@ export function TreeOutline({ view, selectedId, personHref, editTreeId }: TreeOu
       person?.isPlaceholder ? 'Unnamed placeholder' : null,
     ].filter(Boolean);
     return (
-      <li key={personId} className={cx('flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2', personId === selectedId && 'rounded-control bg-accent-soft/40 px-2')}>
+      <li key={personId} data-person-row={personId} className={cx('flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2', personId === selectedId && 'rounded-control bg-accent-soft/40 px-2')}>
         <div className="min-w-0">
           <Link
             to={personHref(personId)}
@@ -68,49 +89,59 @@ export function TreeOutline({ view, selectedId, personHref, editTreeId }: TreeOu
   };
 
   return (
-    <div role="region" aria-label="Family tree list" className="h-full overflow-y-auto bg-ground px-4 py-4 sm:px-6">
-      {hiddenCount > 0 ? (
+    <div ref={containerRef} role="region" aria-label="Family tree list" className="h-full overflow-y-auto bg-ground px-4 py-4 sm:px-6">
+      {matching ? (
+        <p role="status" aria-label="Search results" className="mb-3 text-base text-ink-muted">
+          {matching.size} of {view.layout.nodes.length} people match
+        </p>
+      ) : null}
+      {hiddenCount > 0 && !matching ? (
         <p className="mb-3 rounded-control bg-sunken px-3 py-2 text-base">
           {hiddenCount} {hiddenCount === 1 ? 'person is' : 'people are'} in hidden branches. Use “Show descendants” on their relative to list them.
         </p>
       ) : null}
       <div className="flex max-w-4xl flex-col gap-8">
-        {generations.map((generation) => (
-          <section key={generation.number} aria-labelledby={`generation-${generation.number}`}>
-            <h2 id={`generation-${generation.number}`} className="mb-2 text-lg font-semibold">
-              Generation {generation.number}
-              {generation.number === 1 ? <span className="font-normal text-ink-muted"> — oldest</span> : null}
-            </h2>
-            <ul className="flex flex-col gap-3">
-              {generation.families.map((family) => {
-                const partners = [...family.memberIds, ...family.alsoIn];
-                const heading = family.unionId ? partners.map(nameOf).join(' and ') : nameOf(family.memberIds[0] ?? '');
-                return (
-                  <li key={family.unionId ?? family.memberIds[0]} className="rounded-card border border-line bg-surface px-4 py-3">
-                    <h3 className="sr-only">{family.unionId ? `Family of ${heading}` : heading}</h3>
-                    <ul className="divide-y divide-line">{family.memberIds.map(personRow)}</ul>
-                    {family.alsoIn.length > 0 ? (
-                      <p className="text-sm text-ink-muted">With {family.alsoIn.map(nameOf).join(' and ')}, listed above.</p>
-                    ) : null}
-                    {family.childIds.length > 0 ? (
-                      <p className="mt-1 text-sm">
-                        <span className="font-semibold text-ink-muted">Children: </span>
-                        {family.childIds.map((childId, position) => (
-                          <span key={childId}>
-                            {position > 0 ? ', ' : null}
-                            <Link to={personHref(childId)} className="text-accent underline-offset-2 hover:underline">
-                              {nameOf(childId)}
-                            </Link>
-                          </span>
-                        ))}
-                      </p>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        ))}
+        {generations.map((generation) => {
+          const families = generation.families.filter((family) => family.memberIds.some(shows));
+          if (families.length === 0) return null;
+          return (
+            <section key={generation.number} aria-labelledby={`generation-${generation.number}`}>
+              <h2 id={`generation-${generation.number}`} className="mb-2 text-lg font-semibold">
+                Generation {generation.number}
+                {generation.number === 1 ? <span className="font-normal text-ink-muted"> — oldest</span> : null}
+              </h2>
+              <ul className="flex flex-col gap-3">
+                {families.map((family) => {
+                  const partners = [...family.memberIds, ...family.alsoIn];
+                  const heading = family.unionId ? partners.map(nameOf).join(' and ') : nameOf(family.memberIds[0] ?? '');
+                  const children = family.childIds.filter(shows);
+                  return (
+                    <li key={family.unionId ?? family.memberIds[0]} className="rounded-card border border-line bg-surface px-4 py-3">
+                      <h3 className="sr-only">{family.unionId ? `Family of ${heading}` : heading}</h3>
+                      <ul className="divide-y divide-line">{family.memberIds.filter(shows).map(personRow)}</ul>
+                      {family.alsoIn.length > 0 && !matching ? (
+                        <p className="text-sm text-ink-muted">With {family.alsoIn.map(nameOf).join(' and ')}, listed above.</p>
+                      ) : null}
+                      {children.length > 0 ? (
+                        <p className="mt-1 text-sm">
+                          <span className="font-semibold text-ink-muted">Children: </span>
+                          {children.map((childId, position) => (
+                            <span key={childId}>
+                              {position > 0 ? ', ' : null}
+                              <Link to={personHref(childId)} className="text-accent underline-offset-2 hover:underline">
+                                {nameOf(childId)}
+                              </Link>
+                            </span>
+                          ))}
+                        </p>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          );
+        })}
       </div>
     </div>
   );

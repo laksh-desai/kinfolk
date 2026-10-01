@@ -46,6 +46,34 @@ describe('list view (SPEC §5.3 accessible parallel view)', () => {
     expect((await screen.findAllByRole('region', { name: 'Family tree canvas' })).length).toBeGreaterThan(0);
   }, 60_000);
 
+  it('searches the list: matching people stay, the rest go, and choosing one lands on their row', async () => {
+    const user = userEvent.setup();
+    const server = mockTreeServer();
+    const { router } = await renderApp(`/trees/${TREE_ID}?view=list`);
+    const list = await screen.findByRole('region', { name: 'Family tree list' });
+    await user.click(screen.getByRole('button', { name: 'Find a person' }));
+    const input = await screen.findByRole('combobox', { name: 'Find a person by name' });
+    await user.type(input, 'pillai');
+    expect(await screen.findByRole('status', { name: 'Search results' })).toHaveTextContent(/^\d+ of \d+ people match$/);
+    expect(within(list).getAllByRole('link', { name: /Pillai/ }).length).toBeGreaterThan(0);
+    expect(within(list).queryByRole('link', { name: 'Ravi Sharma' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('option', { name: /Ishaan Pillai/ }));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/trees/${TREE_ID}/people/${server.seed.people.ishaan.id}`));
+    // The search is done: the whole list is back and the chosen person is the current row.
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    // His own row is current (he is also listed as a child under his parents) and holds focus.
+    const after = await screen.findByRole('region', { name: 'Family tree list' });
+    await waitFor(() => {
+      const row = within(after)
+        .getAllByRole('link', { name: 'Ishaan Pillai' })
+        .find((link) => link.getAttribute('aria-current') === 'true');
+      expect(row).toBeDefined();
+      expect(row).toHaveFocus();
+    });
+    expect(within(after).getAllByRole('link', { name: 'Ravi Sharma' }).length).toBeGreaterThan(0);
+    await expectNoAxeViolations();
+  }, 60_000);
+
   it('offers viewers the list without edit actions', async () => {
     mockTreeServer({ tree: { role: 'viewer' } });
     await renderApp(`/trees/${TREE_ID}?view=list`);

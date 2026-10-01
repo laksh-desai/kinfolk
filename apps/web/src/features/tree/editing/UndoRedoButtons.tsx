@@ -1,11 +1,8 @@
 import { useEffect } from 'react';
 import { IconButton } from '../../../components/IconButton';
+import { isEditableTarget } from '../../../lib/isEditableTarget';
 import { redoLast, undoLast } from './changeQueue';
 import { useTreeEditingState } from './editingStore';
-
-function isTyping(target: EventTarget | null): boolean {
-  return Boolean((target as HTMLElement | null)?.closest('input, textarea, select, [contenteditable="true"]'));
-}
 
 /** Undo and redo, named with what they will do, plus ⌘Z / ⌘⇧Z (Ctrl+Z / Ctrl+Y on Windows). */
 export function UndoRedoButtons({ treeId }: { treeId: string }) {
@@ -15,7 +12,7 @@ export function UndoRedoButtons({ treeId }: { treeId: string }) {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!(event.metaKey || event.ctrlKey) || event.altKey || isTyping(event.target)) return;
+      if (!(event.metaKey || event.ctrlKey) || event.altKey || isEditableTarget(event.target)) return;
       const key = event.key.toLowerCase();
       if (key === 'z' && !event.shiftKey) {
         event.preventDefault();

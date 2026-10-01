@@ -15,6 +15,7 @@ import { relativeTime } from '../../lib/relativeTime';
 import { TreeCanvas } from '../../canvas/TreeCanvas';
 import { useCollapsed } from '../../canvas/useCanvasStore';
 import { sessionQuery } from '../auth/sessionQuery';
+import { TreeSearch } from '../tree/header/TreeSearch';
 import { TreeOutline } from '../tree/list/TreeOutline';
 import { useTreeView } from '../tree/useTreeView';
 import { ReviewDecisionForm, notifyDecision } from './ReviewDecisionForm';
@@ -134,6 +135,7 @@ export function Component() {
       </header>
       <main id="main" tabIndex={-1} className="flex min-h-0 flex-1 outline-none">
         <div className="relative min-h-0 min-w-0 flex-1">
+          {graph.people.length > 0 ? <TreeSearch view={view} onChoose={onSelect} showTrigger={listView} /> : null}
           {graph.people.length === 0 ? (
             <EmptyState icon="tree" title="This family tree is empty" className="py-16">
               There’s nobody in it yet, so there’s nothing to review. Let the owner know.

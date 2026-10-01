@@ -13,6 +13,7 @@ import { cx } from '../../lib/cx';
 import { TreeCanvas } from '../../canvas/TreeCanvas';
 import { useCollapsed } from '../../canvas/useCanvasStore';
 import { sharedTreeQuery } from '../collaboration/collaborationApi';
+import { TreeSearch } from '../tree/header/TreeSearch';
 import { TreeOutline } from '../tree/list/TreeOutline';
 import { useTreeView } from '../tree/useTreeView';
 import { SharedPersonPanel } from './SharedPersonPanel';
@@ -120,6 +121,7 @@ export function Component() {
       </header>
       <main id="main" tabIndex={-1} className="flex min-h-0 flex-1 outline-none">
         <div className="relative min-h-0 min-w-0 flex-1">
+          {graph.people.length > 0 ? <TreeSearch view={view} onChoose={onSelect} showTrigger={listView} /> : null}
           {graph.people.length === 0 ? (
             <EmptyState icon="tree" title="No one in this family tree yet" className="py-16">
               The owner hasn’t added anyone yet. People will appear here once they do.

@@ -3,6 +3,7 @@ import type { LayoutBranch } from '@kinfolk/shared/layout/layoutTypes';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
 import type { TreeView } from '../features/tree/useTreeView';
 import { announce } from '../lib/announcer';
+import { isEditableTarget } from '../lib/isEditableTarget';
 import { BranchBrackets } from './BranchBrackets';
 import { CardMenu, type CardMenuItem } from './CardMenu';
 import { CanvasToolbar } from './CanvasToolbar';
@@ -11,7 +12,7 @@ import { EdgeLayer } from './EdgeLayer';
 import { nextSelection, NAV_KEYS, type NavKey } from './keyboardNav';
 import { Minimap } from './Minimap';
 import { PersonCard } from './PersonCard';
-import { matchesQuery, SearchBox } from './SearchBox';
+import { matchesQuery } from './SearchBox';
 import { useCanvasStore } from './useCanvasStore';
 import {
   centreOn,
@@ -43,11 +44,6 @@ interface TreeCanvasProps {
 
 const FALLBACK_SIZE: Size = { width: 1024, height: 700 };
 
-function isEditableTarget(target: EventTarget | null): boolean {
-  const element = target as HTMLElement | null;
-  return Boolean(element?.closest('input, textarea, select, [contenteditable="true"]'));
-}
-
 /**
  * The tree canvas: absolutely positioned cards over one SVG edge layer, inside a single
  * CSS-transformed pan/zoom layer. There is no fixed stage; the canvas fills its container
@@ -59,7 +55,6 @@ export function TreeCanvas({ treeId, view, selectedId, onSelect, highlightPath =
   const [size, setSize] = useState<Size | null>(null);
   const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, scale: 1 });
   const [fitNotice, setFitNotice] = useState<string | null>(null);
-  const [query, setQuery] = useState('');
   const [menu, setMenu] = useState<{ personId: string; x: number; y: number } | null>(null);
   const fittedFor = useRef<string | null>(null);
   const drag = useRef<{ pointerId: number; x: number; y: number; moved: boolean } | null>(null);
@@ -68,6 +63,8 @@ export function TreeCanvas({ treeId, view, selectedId, onSelect, highlightPath =
   const setShowBranches = useCanvasStore((state) => state.setShowBranches);
   const searchOpen = useCanvasStore((state) => state.searchOpen);
   const setSearchOpen = useCanvasStore((state) => state.setSearchOpen);
+  const query = useCanvasStore((state) => state.searchQuery);
+  const reveal = useCanvasStore((state) => state.reveal);
   const toggleCollapsed = useCanvasStore((state) => state.toggleCollapsed);
 
   const people = useMemo(() => new Map(graph.people.map((person) => [person.id, person])), [graph]);
@@ -152,6 +149,15 @@ export function TreeCanvas({ treeId, view, selectedId, onSelect, highlightPath =
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reveal only when the selection itself changes
   }, [selectedId]);
 
+  // A search result: centre on them, zoomed in enough to read, and move focus to the card.
+  useEffect(() => {
+    if (!reveal) return;
+    const node = nodeById.get(reveal.personId);
+    if (node) setViewport((current) => centreOn({ ...current, scale: Math.max(current.scale, 0.8) }, node, effectiveSize));
+    focusCard(reveal.personId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per request, not whenever the layout moves
+  }, [reveal?.nonce]);
+
   // Wheel: ctrl/⌘ (and trackpad pinch) zooms at the cursor; otherwise two-finger scroll pans.
   useEffect(() => {
     const element = containerRef.current;
@@ -207,15 +213,6 @@ export function TreeCanvas({ treeId, view, selectedId, onSelect, highlightPath =
   // Stable identity matters: PersonCard is memoised, and a new callback per frame would
   // re-render every card on every pan.
   const onToggleCollapsed = useCallback((personId: string) => toggleCollapsed(treeId, personId), [toggleCollapsed, treeId]);
-
-  const chooseFromSearch = (personId: string) => {
-    const node = nodeById.get(personId);
-    setSearchOpen(false);
-    setQuery('');
-    if (node) setViewport((current) => centreOn({ ...current, scale: Math.max(current.scale, 0.8) }, node, effectiveSize));
-    select(personId);
-    announce(`Found ${names.get(personId) ?? 'person'}`);
-  };
 
   const openMenuFor = (personId: string, x: number, y: number) => {
     if (!cardMenuItems) return;
@@ -288,10 +285,6 @@ export function TreeCanvas({ treeId, view, selectedId, onSelect, highlightPath =
         event.preventDefault();
         fit(true);
         break;
-      case '/':
-        event.preventDefault();
-        setSearchOpen(true);
-        break;
       case 'Escape':
         if (searchOpen) {
           setSearchOpen(false);
@@ -330,10 +323,6 @@ export function TreeCanvas({ treeId, view, selectedId, onSelect, highlightPath =
   );
   const tabStop = (selectedId && nodeById.has(selectedId) ? selectedId : null) ?? (focusId && nodeById.has(focusId) ? focusId : null) ?? layout.nodes[0]?.personId ?? null;
 
-  const candidates = useMemo(
-    () => graph.people.filter((person) => nodeById.has(person.id)).map((person) => ({ id: person.id, name: names.get(person.id) ?? '', detail: relationToFocus.get(person.id)?.label ?? null })),
-    [graph.people, names, relationToFocus, nodeById],
-  );
   const branchLabel = useCallback(
     (branch: LayoutBranch) => {
       const surname = branch.personIds.map((id) => people.get(id)?.lastName).find(Boolean);
@@ -368,7 +357,7 @@ export function TreeCanvas({ treeId, view, selectedId, onSelect, highlightPath =
       <p id={helpId} className="sr-only">
         Use the arrow keys to move between relatives: up to a parent, down to a child, left and right along a generation. Press Enter to open
         details, Shift+F10 or the Menu key for a person’s actions, slash to search, plus and minus to zoom, F to fit the whole tree, Escape to clear
-        the selection.
+        the selection, question mark for the full list of shortcuts.
       </p>
 
       <div
@@ -417,21 +406,6 @@ export function TreeCanvas({ treeId, view, selectedId, onSelect, highlightPath =
             onToggleBranches={() => setShowBranches(!showBranches)}
           />
         </div>
-        {searchOpen ? (
-          <div data-canvas-overlay>
-            <SearchBox
-              candidates={candidates}
-              query={query}
-              onQueryChange={setQuery}
-              onChoose={chooseFromSearch}
-              onClose={() => {
-                setSearchOpen(false);
-                setQuery('');
-                if (tabStop) focusCard(tabStop);
-              }}
-            />
-          </div>
-        ) : null}
       </div>
 
       {fitNotice ? (
