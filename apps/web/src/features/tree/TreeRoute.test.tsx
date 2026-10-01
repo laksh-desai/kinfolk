@@ -86,6 +86,37 @@ describe('tree page editing affordances', () => {
     await waitFor(() => expect(screen.queryByRole('combobox')).not.toBeInTheDocument());
   }, 60_000);
 
+  it('picks the two people to compare by typing their names', async () => {
+    const user = userEvent.setup();
+    const server = mockTreeServer();
+    const { emma, ravi } = server.seed.people;
+    const { router } = await renderApp(`/trees/${TREE_ID}/compare`);
+    const first = await screen.findByRole('combobox', { name: 'First person' });
+    await user.type(first, 'emma');
+    await user.click(await screen.findByRole('option', { name: /Emma Becker/ }));
+    expect(first).toHaveValue('Emma Becker');
+    await waitFor(() => expect(router.state.location.search).toBe(`?a=${emma.id}`));
+    const second = screen.getByRole('combobox', { name: 'Second person' });
+    await user.type(second, 'ravi sh');
+    await user.keyboard('{Enter}');
+    await waitFor(() => expect(router.state.location.search).toBe(`?a=${emma.id}&b=${ravi.id}`));
+    expect(await screen.findByText('Emma Becker is Ravi Sharma’s first cousin.')).toBeInTheDocument();
+    await expectNoAxeViolations();
+  }, 60_000);
+
+  it('lists every keyboard shortcut in a dialog opened with "?"', async () => {
+    const user = userEvent.setup();
+    mockTreeServer();
+    await renderApp(`/trees/${TREE_ID}`);
+    await screen.findByRole('button', { name: /^Ravi Sharma/ });
+    await user.keyboard('?');
+    const dialog = await screen.findByRole('dialog', { name: 'Keyboard shortcuts' });
+    for (const key of ['/', 'F', 'Enter', '⌘Z']) expect(within(dialog).getAllByText(key).length).toBeGreaterThan(0);
+    await expectNoAxeViolations();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  }, 60_000);
+
   it('lists placeholders and missing birth dates under Needs detail', async () => {
     const user = userEvent.setup();
     const server = mockTreeServer();
