@@ -133,7 +133,7 @@ orient. Replace lines rather than stacking them.)*
 - Canvas: `apps/web/src/canvas/` (pure `viewport.ts`, `keyboardNav.ts`, `culling.ts`, one `CardMenu`); tree page `features/tree/TreeRoute.tsx` + `useTreeView`.
 - Brand: `components/Brand.tsx` (`Wordmark`, `BrandMark`, `BrandLockup`, `BrandFooter`, `COMPANY`); two navy PNGs in `public/brand/` painted through a CSS mask; rebuild with `node apps/web/scripts/buildBrandAssets.mjs`.
 - Web conventions: calls via `lib/api.ts`; forms via `lib/useForm.ts`; `test/renderApp` renders the real routes; `test/treeServer.ts` `mockTreeServer()` fakes the tree API with real `applyChangeSet` (+ `findToast`).
-- Tests: `pnpm test` (shared/api/web; API clones a per-file embedded-Postgres DB via `test/testApp.ts`). `pnpm e2e`: one-process stack `apps/api/scripts/e2eStack.ts` (web 5180/api 4180).
+- Tests: `pnpm test` (shared/api/web; API clones a per-file embedded-Postgres DB via `test/testApp.ts`). `pnpm e2e`: one-process stack `apps/api/scripts/e2eStack.ts` (web 5180/api 4180). CI: `.github/workflows/ci.yml` (vitest and Playwright on separate runners) gates Render deploys; `pnpm --filter web budget` holds the 200 KB route budget from Vite's manifest (ADR 040).
 - E2E helpers: `e2e/support/seedTree.ts` (`signUp`, `createSeededTree`, `createEmptyTree`), `outbox.ts`, `a11y.ts` (axe with contrast). Fixtures: `buildSeedTree({ namespace })` (60, §4.5), `buildLargeTree()` (500); `pnpm db:seed` writes both.
 - New migration without Docker: `pnpm --filter api exec tsx scripts/withEmbeddedDb.ts pnpm exec prisma migrate dev --name <x>`. Deploying: `render.yaml` + `docs/DEPLOY.md`; a preview runs `NODE_ENV=production ALLOW_DEV_ADAPTERS=true` (ADR 036). Every planner is swept over the whole fixture in `packages/shared/src/relatives/graphSweep.test.ts` — add new planners there.
 
@@ -167,17 +167,15 @@ deviation is large, open an ADR and link it here instead of explaining it twice.
 
 - Toolchain pinned to older, known majors (TS 5.9, Vite 6, Vitest 3, Prisma 6, Zod 3) — ADR 002.
 - Root `lint` script is `eslint . && tsc -b --noEmit`; the spec's argument order doesn't run (QUESTIONS Q33).
-- `.env.example` adds `NODE_ENV`, `LOCAL_STORAGE_DIR`, `MAIL_OUTBOX_DIR` for the dev adapters (ADR 007).
-- Extra tables beyond §3: `Session`, `OAuthAccount`, `PasswordReset`, `ReviewAssignment`; extra columns `Tree.version`, invitation stage timestamps (QUESTIONS Q1, Q22, Q28).
+- `.env.example` adds `NODE_ENV`, `LOCAL_STORAGE_DIR`, `MAIL_OUTBOX_DIR` for the dev adapters (ADR 007), plus the deployment knobs `ALLOW_DEV_ADAPTERS`, `SIGNUP_ALLOWLIST`, `RECORDS_PASSPHRASE`, `SEED_EMAIL`/`SEED_PASSWORD`. Extra tables beyond §3: `Session`, `OAuthAccount`, `PasswordReset`, `ReviewAssignment`; extra columns `Tree.version`, invitation stage timestamps (Q1, Q22, Q28).
 - No email reminders (§5.8's last sentence): table, flag, and all; dropped by the owner (ADR 039, Q52). Key Events itself stays.
 - `Person.linkedTreeId` is server-managed and `photoUrl` must be under the tree's file prefix; undo restores them via audit tokens (ADR 012).
-- Production: Secure cookies only when `NODE_ENV=production`, so plain-http test clients work.
+- Production: Secure cookies only when `NODE_ENV=production`, so plain-http test clients work. Google sign-in is off unless both Google variables are set (ADR 038); a preview may boot with `ALLOW_DEV_ADAPTERS=true` on disk storage and a file mail outbox, loudly (ADR 036) — §5.1/§7 assume all three services.
 - Fit-to-content may zoom below 25% (down to 5%) so trees open whole; manual zoom stays 25–200% (QUESTIONS Q34, ADR 016).
 - Generations: BFS-anchored then push/pull-down, not pure longest path, so married-in siblings share a row (Q19, ADR 014).
 - No planning questionnaire: removed from the model, the UI, and the database (ADR 028, QUESTIONS Q45). SPEC §3/§5.4/§5.7 still describe it.
 - Removing someone's only parent is allowed; their children become roots and are named first (ADR 026, Q44) — SPEC §3 reads as a flat refusal.
-- Dates are month/day/year and quick add takes a whole date of birth (ADR 031, Q46); the locale is fixed, not the browser's.
-- Cards and list rows show a living person's age, not their birth year; the deceased keep a lifespan (ADR 032, Q47) — §5 and §6.17 ask for years.
+- Dates are month/day/year, quick add takes a whole date of birth, and the locale is fixed (ADR 031, Q46); cards and list rows show a living person's age, the deceased a lifespan (ADR 032, Q47) — §5 and §6.17 ask for years.
 - The product is ATS-branded and dark by default, with blue/pink gender accents and a signed, watermarked export (ADR 033, Q48); §5 describes an unbranded warm surface.
 - Extra to §3/§5: `Person.publicRecordUrl` (one PDF per person, ADR 034), gated by `RECORDS_PASSPHRASE` when set (ADR 037, Q51), and the client-household marking on the canvas (ADR 035) — all asked for by ATS (Q49).
 - Re-parenting is on the Relationships screen only, no drag onto connectors (Q35); union dates are edited at year precision there (Q36).

@@ -60,11 +60,6 @@ export const PERSON_FORM_LABELS: Record<string, string> = {
   youtube: 'YouTube',
   tiktok: 'TikTok',
   notes: 'Notes',
-  overallObjective: 'Overall objective',
-  areasOfConcern: 'Areas of concern',
-  marketOutlook: 'Market outlook',
-  familyRelationships: 'Family relationships',
-  rateOfReturnView: 'Rate of return',
 };
 
 /** The person form itself; EditPersonRoute renders it once the person and permissions check out. */

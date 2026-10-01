@@ -138,6 +138,25 @@ Google sign-in is **off**, not stood in for: the development consent page signs 
 whatever address you type, which is right on a laptop and an open door on a public URL. The
 button disappears from the sign-in screen and the routes are not registered (ADR 036).
 
+## Backups and restore
+
+Everything a client has entered is in the one Postgres instance; the uploads (photos, record
+PDFs) are in R2, which Render does not back up.
+
+- **What Render keeps.** On the paid plan the database has point-in-time recovery and daily
+  logical backups; the retention window is shown on the database's **Recovery** page in the
+  dashboard (seven days at the time of writing — check the page, not this sentence). A restore
+  never overwrites: Render creates a *new* database at the chosen moment, which you check and then
+  point the service at by changing `DATABASE_URL` and redeploying.
+- **Before every migration**, take a copy you own: Render → the database → *External Database
+  URL*, then `pg_dump "$URL" -Fc -f kinfolk-$(date +%F).dump` from a laptop. Restore with
+  `pg_restore --clean --no-owner -d "$URL" kinfolk-….dump`. The Recovery page's **Create export**
+  does the same from the dashboard.
+- **Uploads.** R2 has no versioning unless it is turned on for the bucket; a deleted photo is
+  gone. Turn on object versioning in the bucket's settings once real client files are in it.
+- **Drill it once.** Restore a dump into a fresh local database (`pnpm --filter api exec tsx
+  scripts/withEmbeddedDb.ts …`) and open it with the app before you need to do it at 2 a.m.
+
 ## Going to real production later
 
 Remove `ALLOW_DEV_ADAPTERS` and set, all of them: the five `S3_*`, `SMTP_URL`, and a `MAIL_FROM` that is not `@localhost`. The app will tell you

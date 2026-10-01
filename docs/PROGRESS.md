@@ -4,42 +4,28 @@ Milestones are defined in `docs/SPEC.md` §10. Update at every checkpoint.
 
 ## In progress
 
-**M11 — Fixes from first use.** Two bugs reported from the running app, a sweep of every
-planner for more of the same, and three changes of scope from the product owner. Done so
-far, each test-first:
+**M13 — Faster entry.** The owner's brief for this pass: "efficient and quick to produce a
+clean, visually appealing family tree". No new feature modules. Planned, each test-first:
 
-- **Removing the top of a tree** (ADR 026, QUESTIONS Q44). `deletionImpact` always offers
-  `remove`; children whose last parent goes become roots and are named in the dialog first.
-- **A spouse added to a parent is a parent** (ADR 027). Adding a partner joins the anchor's
-  one-parent family instead of starting a second one, so the children gain a second parent
-  rather than a step-parent. `connectionSteps` asks when it is ambiguous; the summary says
-  what happened.
-- **Sweep** (`packages/shared/src/relatives/graphSweep.test.ts`). Every planner over the
-  whole 60-person fixture: 1,620 add-relative plans, every delete mode for every person,
-  every link-kind change, every re-parent, and merges — each checked for a valid graph and
-  an exact undo. It found two more defects, now fixed (ADR 030): merging a parent with
-  their own child dropped the link between them instead of refusing, and the "move to
-  different parents" menu listed families that could never accept the child. A third came
-  out of the web tests: two `RadioGroup`s sharing a `name` fought over the selection.
-- **Planning removed** (ADR 028, QUESTIONS Q45): schema, form section, API redaction level,
-  reviewer block, and the `Person.planning` column.
-- **Layout ordered by the family, not by entry order** (ADR 029, QUESTIONS Q46). The same
-  60-person tree entered in any order now draws identically — it previously moved every row
-  and swung 6% in width.
-- **Dates**: quick add takes a whole date of birth, and dates read and are entered
-  month/day/year (ADR 031).
+- One `isEditableTarget`; `/` opens search and `?` opens a shortcut help dialog from anywhere
+  on the tree page (window-level, like undo), in the review and shared views too.
+- Search lifted to the tree page and shared by the canvas and the list view (the list, the
+  screen-reader and small-screen path, has no search at all today); choosing a result reveals
+  the card or scrolls the row.
+- Compare picks people with the combobox instead of two 500-option native selects.
+- "Set as focus" from list rows; one needs-detail helper instead of two predicates.
+- Quick-add chains by default for siblings and children: five siblings are five Enters, with
+  an "Added so far" list under the form.
+- Union dates take a full month/day/year date, so hand-entered marriages finally produce
+  anniversaries on Key Events (today only a year can be entered, Q36).
 
-Then, from the product owner and from ATS:
-- **ATS livery** (ADR 033): two logo assets built from the supplied artwork and painted through a
-  CSS mask, a navy palette that is dark by default, the wordmark in the header, the lockup at the
-  foot of the screens outsiders see, and exports carrying the tree behind the family with the
-  date, CONFIDENTIAL, and the lockup along the bottom.
-- **Public records** (ADR 034): a PDF per person, PDF-checked by its bytes, stored under the tree,
-  opened in a new tab, attached through an ordinary undoable change.
-- **The client household** (ADR 035): the focus person and their current partner marked together
-  on the canvas, in the accessible name as well as the badge.
-
-M11 is done bar the §12 journey re-run end to end.
+Then **M14 — A cleaner tree**: one `Menu` wrapper over Radix (four copies of the skin today),
+`ViewSwitch`/`Pill`/`TreePageHeader` shared by the tree, review and shared pages, the ten-control
+tree header grouped behind a Tools menu, a theme toggle in the account menu, the three missing
+loading states, a paginated PDF export on a real paper size showing years rather than ages, and
+restrained card and connector polish. Deferred: a tablet drawer for the panel, the `TreeCanvas`
+hook extraction, an esbuild bundle for `pnpm start`, list pagination, an audit-history endpoint,
+session management.
 
 ## Up next
 
@@ -48,7 +34,8 @@ the API process, hashed assets immutable for a year, index.html never cached, an
 URL someone pastes or refreshes returns the app while `/api/*` keeps answering JSON
 (`webServing.test.ts`, plus `scripts/serveCheck.mts` against the real build). The bundle was
 re-measured (initial route 158.4 KB gzip, heaviest route 191.4 KB, budget 200 KB) and
-`docs/DEFECTS-VERIFIED.md` is complete: 24 of 25 verified, the 25th unprovable here.
+`docs/DEFECTS-VERIFIED.md` is complete: 23 of 25 verified, two partly (#17 by product decision,
+#23's Places path unprovable here).
 
 Two things a future session should know about that path:
 - `tsc --outDir` emitted extensionless ESM imports, so `node dist/server.js` never booted —
@@ -59,6 +46,28 @@ Two things a future session should know about that path:
 
 ## Done
 
+- **M12 — Fixes and operations** (2026-09-30). Three audits (web, API/ops, spec-vs-build) after
+  the owner declared the product done; this milestone took the broken and risky items. Photo
+  uploads failed on the live site: the records passphrase check sat on the photo completion
+  route instead of the record one (`recordsPassphrase.test.ts` now covers both ends). The canvas
+  was a fixed `calc(100vh − 8.5rem)` and ran 140 px past a laptop window with a breadcrumb up
+  (`canvas.spec.ts` › "the canvas fills the window…"). Password checks on the account routes
+  were unlimited; every route now has a per-address ceiling and the health check is exempt.
+  Responses are compressed. Shutdown is bounded. Avatars are served only to their owner. Email
+  reminders dropped (ADR 039). The bundle budget is a script run in CI (`pnpm --filter web
+  budget`) — it found the tree route at 208 KB, over budget since the ATS work; exporters and
+  the delete dialog now load on demand (197 KB). CI on GitHub Actions gates every deploy (ADR
+  040). Docs: backups and restore in DEPLOY.md, five dead planning labels removed, the
+  deviations list caught up with ADRs 036/038. Gate: lint clean, API/web suites green on the
+  touched files, 17/17 e2e.
+- **M11 — Fixes from first use** (2026-09-21). Removing the top of a tree (ADR 026), a spouse
+  added to a parent joins the family (ADR 027), the planner sweep over the whole fixture and
+  the two defects it found (ADR 030), planning questionnaire removed (ADR 028), layout ordered
+  by family not entry order (ADR 029), month/day/year dates with a whole date of birth on quick
+  add (ADR 031), ages on cards (ADR 032); then for ATS: the livery (ADR 033), public-record PDFs
+  (ADR 034) behind a shared passphrase (ADR 037), the client household on the canvas (ADR 035),
+  a preview deployment on Render (ADR 036) and production without Google sign-in (ADR 038). The
+  §12 journey was not re-run as one flow; it is covered as three specs.
 - **M9 — Review workflow** (2026-09-15). Owner sends a tree to a reviewer by email with a
   note; the tree locks (`in_review`) for everyone and the banner says who has it, since when,
   and that editing is paused, with Withdraw beside it. The reviewer opens `/review/:token`,
