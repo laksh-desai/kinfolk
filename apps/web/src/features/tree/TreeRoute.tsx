@@ -12,9 +12,7 @@ import { queryClient } from '../../lib/queryClient';
 import type { CardMenuItem } from '../../canvas/CardMenu';
 import { TreeCanvas } from '../../canvas/TreeCanvas';
 import { useCanvasStore, useCollapsed } from '../../canvas/useCanvasStore';
-import { LinkedTreeBreadcrumb } from '../collaboration/LinkedTreeBreadcrumb';
 import { ExportMenu } from '../export/ExportMenu';
-import { ReviewBanner } from '../review/ReviewBanner';
 import { setFocusPerson } from './editing/focusPerson';
 import { SaveIndicator } from './editing/SaveIndicator';
 import { UndoRedoButtons } from './editing/UndoRedoButtons';
@@ -37,9 +35,12 @@ export async function loader({ params }: LoaderFunctionArgs) {
 
 const ROLE_LABEL = { owner: null, editor: 'You can edit', viewer: 'View only', reviewer: 'Reviewing' } as const;
 
-// Deleting a person needs the impact planner and the dialog; neither belongs in the tree page's
-// first load (SPEC §9 budget), and the dialog is only ever mounted while open.
+// What most visits never show stays out of the tree page's first load (SPEC §9 budget): the
+// delete dialog is only mounted while open, the breadcrumb only when a linked tree led here,
+// and the review banner only once a tree has left draft.
 const DeletePersonDialog = lazy(() => import('./people/DeletePersonDialog').then((module) => ({ default: module.DeletePersonDialog })));
+const LinkedTreeBreadcrumb = lazy(() => import('../collaboration/LinkedTreeBreadcrumb').then((module) => ({ default: module.LinkedTreeBreadcrumb })));
+const ReviewBanner = lazy(() => import('../review/ReviewBanner').then((module) => ({ default: module.ReviewBanner })));
 
 export function Component() {
   const initial = useLoaderData() as TreeGraphResponse;
@@ -218,8 +219,16 @@ export function Component() {
           </Menu>
         ) : null}
       </TreePageHeader>
-      {fromTreeId ? <LinkedTreeBreadcrumb fromTreeId={fromTreeId} personId={searchParams.get('person')} /> : null}
-      <ReviewBanner tree={tree} />
+      {fromTreeId ? (
+        <Suspense fallback={null}>
+          <LinkedTreeBreadcrumb fromTreeId={fromTreeId} personId={searchParams.get('person')} />
+        </Suspense>
+      ) : null}
+      {tree.status !== 'draft' ? (
+        <Suspense fallback={null}>
+          <ReviewBanner tree={tree} />
+        </Suspense>
+      ) : null}
       <div className="flex min-h-0 flex-1">
         <div className="relative min-h-0 min-w-0 flex-1">
           {count > 0 ? <TreeSearch view={view} onChoose={onSelect} showTrigger={viewMode === 'list'} /> : null}

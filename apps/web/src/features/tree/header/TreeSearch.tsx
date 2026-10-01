@@ -1,11 +1,13 @@
-import { useMemo, useRef } from 'react';
+import { lazy, Suspense, useMemo, useRef } from 'react';
 import { SearchBox, type SearchCandidate } from '../../../canvas/SearchBox';
 import { useCanvasStore } from '../../../canvas/useCanvasStore';
 import { IconButton } from '../../../components/IconButton';
 import { announce } from '../../../lib/announcer';
-import { ShortcutHelpDialog } from '../ShortcutHelpDialog';
 import type { TreeView } from '../useTreeView';
 import { useTreeShortcuts } from '../useTreeShortcuts';
+
+// Fetched the first time someone asks for it; most visits never do.
+const ShortcutHelpDialog = lazy(() => import('../ShortcutHelpDialog').then((module) => ({ default: module.ShortcutHelpDialog })));
 
 interface TreeSearchProps {
   view: TreeView;
@@ -28,6 +30,7 @@ export function TreeSearch({ view, onChoose, showTrigger = false }: TreeSearchPr
   const query = useCanvasStore((state) => state.searchQuery);
   const setSearchQuery = useCanvasStore((state) => state.setSearchQuery);
   const requestReveal = useCanvasStore((state) => state.requestReveal);
+  const helpOpen = useCanvasStore((state) => state.helpOpen);
 
   // Only people the view can show: a collapsed branch is not findable until it is opened.
   const candidates = useMemo<SearchCandidate[]>(() => {
@@ -67,7 +70,11 @@ export function TreeSearch({ view, onChoose, showTrigger = false }: TreeSearchPr
           <IconButton ref={triggerRef} icon="search" label="Find a person" shortcut="/" variant="secondary" onClick={() => setSearchOpen(true)} />
         </div>
       ) : null}
-      <ShortcutHelpDialog />
+      {helpOpen ? (
+        <Suspense fallback={null}>
+          <ShortcutHelpDialog />
+        </Suspense>
+      ) : null}
     </>
   );
 }
