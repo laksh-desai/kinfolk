@@ -88,15 +88,18 @@ export const PersonCard = memo(function PersonCard({
         aria-current={isSelected ? 'true' : undefined}
         onClick={() => onSelect(person.id)}
         className={cx(
-          'group relative flex h-full w-full items-start gap-3 overflow-hidden rounded-card border-2 p-3 text-left shadow-card transition-[opacity,box-shadow] duration-150',
-          deceased ? 'bg-sunken' : 'bg-surface',
-          person.isPlaceholder ? 'border-dashed border-line-strong' : isSelected || isClient ? 'border-accent' : 'border-line',
-          // The client household stands out from sixty relatives without shouting.
-          isClient && 'ring-2 ring-accent/45',
+          'group relative flex h-full w-full items-start gap-3 overflow-hidden rounded-card border-2 py-3 pl-4 pr-3 text-left shadow-card transition-[opacity,box-shadow] duration-150',
+          person.isPlaceholder ? 'bg-surface/60' : deceased ? 'bg-sunken' : 'bg-surface',
+          // The client household is told by its border; selection by the ring, so the two never read alike.
+          person.isPlaceholder ? 'border-dashed border-line-strong' : isSelected || isClient ? 'border-accent' : deceased ? 'border-line-strong' : 'border-line',
           isSelected && 'ring-4 ring-accent/30',
           dimmed && 'opacity-40',
         )}
       >
+        {/* A slim rule in the person's colour on the card's edge — the same mark the export prints (ADR 033). */}
+        {person.gender === 'male' || person.gender === 'female' ? (
+          <span aria-hidden="true" className={cx('absolute bottom-3 left-0 top-3 w-1 rounded-r', person.gender === 'male' ? 'bg-male' : 'bg-female', deceased && 'opacity-60')} />
+        ) : null}
         {person.photoUrl ? (
           <img src={person.photoUrl} alt="" className={cx('size-12 shrink-0 rounded-full object-cover', deceased && 'grayscale')} />
         ) : (
@@ -113,9 +116,9 @@ export const PersonCard = memo(function PersonCard({
         )}
         <span className="flex min-w-0 flex-1 flex-col">
           <span className={cx('truncate text-base font-semibold leading-snug', person.isPlaceholder ? 'italic text-ink-muted' : 'text-ink')}>{name}</span>
-          <span id={detailsId} className="flex min-w-0 flex-col text-sm leading-snug text-ink-muted">
+          <span id={detailsId} className="flex min-w-0 flex-col text-sm leading-tight text-ink-muted">
             {deceased ? <span className="sr-only">Deceased. </span> : null}
-            {years ? <span className="truncate">{years}</span> : null}
+            {years ? <span className={cx('truncate', deceased && 'text-ink')}>{years}</span> : null}
             {place ? <span className="truncate">{place}</span> : null}
             {relation && !isFocus ? <span className="truncate font-medium text-accent">{relation}</span> : null}
             {gender ? <span className="sr-only">, {gender.label}</span> : null}

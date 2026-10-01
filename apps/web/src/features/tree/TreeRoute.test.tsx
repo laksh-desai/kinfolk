@@ -62,9 +62,12 @@ describe('tree page editing affordances', () => {
     const steps = within(screen.getByRole('list', { name: 'How they connect' })).getAllByRole('listitem');
     expect(steps.map((step) => step.textContent)).toEqual(['1Emma Becker', '2Anita Becker', '3Mohan Sharma', '4Vikram Sharma', '5Ravi Sharma']);
     await waitFor(() => expect(document.title).toBe('Compare two people · Sharma family · Kinfolk'));
-    // Everyone off the path is dimmed; the path is not.
+    // Everyone off the path is dimmed; the path is not — and so are the connectors.
     expect(screen.getByRole('button', { name: /^Mohan Sharma/ })).not.toHaveClass('opacity-40');
     expect(screen.getByRole('button', { name: /^Priya Sharma/ })).toHaveClass('opacity-40');
+    const connectors = [...document.querySelectorAll('svg[aria-hidden="true"] path')];
+    expect(connectors.filter((path) => path.getAttribute('opacity') === '0.35').length).toBeGreaterThan(0);
+    expect(connectors.filter((path) => path.getAttribute('stroke') === 'var(--kf-accent)').length).toBeGreaterThan(0);
     await expectNoAxeViolations();
   }, 60_000);
 

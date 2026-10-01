@@ -52,8 +52,21 @@ describe('tree canvas', () => {
     expect(within(canvas).getByRole('button', { name: 'Priya Sharma, Wife, client' })).toBeInTheDocument();
     // A former spouse is not: that marriage has ended.
     expect(within(canvas).getByRole('button', { name: /^Priti Kapoor/ }).getAttribute('aria-label')).not.toMatch(/client/);
+    // The household is told by its border and selection by a ring, so the two never look alike.
+    const priya = within(canvas).getByRole('button', { name: 'Priya Sharma, Wife, client' });
+    expect(priya).toHaveClass('border-accent');
+    expect(priya.className).not.toMatch(/ring-/);
     expect(seed.people.priya.id).toBeTruthy();
   }, 60_000);
+
+  it('marks men and women with a rule on the card’s edge, and nobody else', async () => {
+    await openSeedTree();
+    const canvas = screen.getByRole('region', { name: 'Family tree canvas' });
+    const rule = (name: RegExp) => within(canvas).getByRole('button', { name }).querySelector('.bg-male, .bg-female');
+    expect(rule(/^Ravi Sharma/)).toHaveClass('bg-male');
+    expect(rule(/^Priya Sharma/)).toHaveClass('bg-female');
+    expect(rule(/^Radha’s parent — unnamed/)).toBeNull();
+  });
 
   it('names every toolbar control and shows the zoom level', async () => {
     await openSeedTree();
