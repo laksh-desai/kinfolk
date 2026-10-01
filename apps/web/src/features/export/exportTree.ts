@@ -5,15 +5,7 @@ import { writeGedcom } from '@kinfolk/shared/gedcom/gedcom';
 import { writeCsv } from '@kinfolk/shared/import/csv';
 import type { LayoutResult } from '@kinfolk/shared/layout/layoutTypes';
 import type { TreeGraph } from '@kinfolk/shared/schemas/graph';
-
-export type ExportFormat = 'png' | 'pdf' | 'gedcom' | 'csv';
-
-export const EXPORT_LABELS: Record<ExportFormat, string> = {
-  png: 'Picture (PNG)',
-  pdf: 'Document (PDF)',
-  gedcom: 'GEDCOM (.ged)',
-  csv: 'Spreadsheet (CSV)',
-};
+import type { ExportFormat } from './exportFormats';
 
 /** A filename someone can find again: "sharma-family-2026-09-15.png". */
 export function exportFilename(treeName: string, extension: string, now = new Date()): string {

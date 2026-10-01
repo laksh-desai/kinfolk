@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { planSetFocus } from '@kinfolk/shared/relatives/planRelationshipEdits';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Outlet, useLoaderData, useMatch, useNavigate, useSearchParams, type LoaderFunctionArgs } from 'react-router-dom';
 import { buttonClasses } from '../../components/Button';
 import { EmptyState } from '../../components/EmptyState';
@@ -22,7 +22,6 @@ import { TreeSettingsMenu } from './header/TreeSettingsMenu';
 import { TreeTitle } from './header/TreeTitle';
 import { ViewSwitch } from './header/ViewSwitch';
 import { TreeOutline } from './list/TreeOutline';
-import { DeletePersonDialog } from './people/DeletePersonDialog';
 import { PRIMITIVES } from './people/PersonActions';
 import { usePersonDialogs } from './people/personDialogStore';
 import { canEditTree } from './treePermissions';
@@ -34,6 +33,10 @@ export async function loader({ params }: LoaderFunctionArgs) {
 }
 
 const ROLE_LABEL = { owner: null, editor: 'You can edit', viewer: 'View only', reviewer: 'Reviewing' } as const;
+
+// Deleting a person needs the impact planner and the dialog; neither belongs in the tree page's
+// first load (SPEC §9 budget), and the dialog is only ever mounted while open.
+const DeletePersonDialog = lazy(() => import('./people/DeletePersonDialog').then((module) => ({ default: module.DeletePersonDialog })));
 
 export function Component() {
   const initial = useLoaderData() as TreeGraphResponse;
@@ -236,7 +239,11 @@ export function Component() {
         <Outlet context={{ view, tree, onSelect }} />
       </div>
       {tree.role === 'owner' ? <DeleteTreeDialog tree={tree} peopleCount={count} open={deletingTree} onOpenChange={setDeletingTree} /> : null}
-      {deletingId && editable ? <DeletePersonDialog tree={tree} view={view} personId={deletingId} onClose={closeDelete} /> : null}
+      {deletingId && editable ? (
+        <Suspense fallback={null}>
+          <DeletePersonDialog tree={tree} view={view} personId={deletingId} onClose={closeDelete} />
+        </Suspense>
+      ) : null}
     </main>
   );
 }

@@ -5,7 +5,8 @@ import { announce } from '../../lib/announcer';
 import { describeError } from '../../lib/api';
 import { cx } from '../../lib/cx';
 import { toast } from '../../lib/toast';
-import { EXPORT_LABELS, exportTree, type ExportFormat, type ExportInput } from './exportTree';
+import { EXPORT_LABELS, type ExportFormat } from './exportFormats';
+import type { ExportInput } from './exportTree';
 
 const itemClass = 'flex min-h-11 cursor-pointer select-none items-center gap-3 rounded-md px-3 text-base text-ink outline-none data-[highlighted]:bg-sunken';
 
@@ -19,6 +20,8 @@ export function ExportMenu({ input }: { input: ExportInput }) {
     setBusy(format);
     announce(`Preparing your ${EXPORT_LABELS[format]} download…`);
     try {
+      // The exporters are their own chunk, fetched the first time someone exports.
+      const { exportTree } = await import('./exportTree');
       await exportTree(format, input);
       announce(`${EXPORT_LABELS[format]} downloaded.`);
     } catch (error) {
