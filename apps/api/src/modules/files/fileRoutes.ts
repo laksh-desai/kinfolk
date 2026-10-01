@@ -61,4 +61,10 @@ export async function fileRoutes(
   }
 }
 
-export const avatarAuthorizer: FileAuthorizer = async (request) => request.auth !== null;
+/**
+ * An avatar is keyed `avatars/<user id>/<uuid>.webp` and is shown only to that user — on the
+ * account screen and in the header — so only that user may fetch it. Widen this if a screen
+ * ever shows other members' avatars; until then a tree member is as much a stranger as anyone.
+ */
+export const avatarAuthorizer: FileAuthorizer = async (request, key) =>
+  request.auth !== null && key.startsWith(`avatars/${request.auth.user.id}/`);

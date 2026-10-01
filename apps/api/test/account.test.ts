@@ -100,6 +100,14 @@ describe('avatar upload', () => {
     expect([meta.width, meta.height]).toEqual([512, 512]);
 
     expect((await ctx.app.inject({ method: 'GET', url: avatarUrl })).statusCode).toBe(404);
+
+    // Nothing shows anyone else's avatar, so nobody else gets it — not even a member of your tree.
+    const tree = (await client.post('/api/trees', { name: 'Shared' })).json().tree;
+    const member = ctx.client();
+    const { email } = await signUpUser(member);
+    const accessId = (await client.post(`/api/trees/${tree.id}/access`, { email, role: 'editor', name: 'M' })).json().access.id;
+    await member.post(`/api/me/access-invites/${accessId}/accept`, {});
+    expect((await member.get(avatarUrl)).statusCode).toBe(404);
   });
 
   it('rejects a file whose bytes are not an image even if it claims to be one', async () => {
