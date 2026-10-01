@@ -1,5 +1,6 @@
 import { graphToOps } from '@kinfolk/shared/fixtures/fixtureBuilder';
 import { buildSeedTree } from '@kinfolk/shared/fixtures/seedTree';
+import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestContext, signUpUser, type TestContext } from './testApp';
 
@@ -70,8 +71,34 @@ describe('public records behind a passphrase', () => {
 
   it('leaves photos alone — only records are gated', async () => {
     const { owner, tree, person } = await ownerWithTree();
-    const target = await owner.post(`/api/trees/${tree.id}/people/${person}/photo/upload-target`, { contentType: 'image/png', size: 100 });
+    const jpeg = await sharp({ create: { width: 40, height: 40, channels: 3, background: '#a88' } }).jpeg().toBuffer();
+    const target = await owner.post(`/api/trees/${tree.id}/people/${person}/photo/upload-target`, { contentType: 'image/jpeg', size: jpeg.length });
     expect(target.statusCode).toBe(200);
+    await owner.put(target.json().url, jpeg, { headers: { 'content-type': 'image/jpeg' } });
+    // The whole upload, not just the first step: a photo never asks for the passphrase.
+    const done = await owner.post(`/api/trees/${tree.id}/people/${person}/photo`, { key: target.json().key });
+    expect(done.statusCode, done.body).toBe(200);
+    expect(done.json().photoUrl).toMatch(/\.webp$/);
+  });
+
+  it('refuses to finish a record upload from a browser that never gave the passphrase', async () => {
+    const owner = ctx.client();
+    const { email, password } = await signUpUser(owner);
+    const tree = (await owner.post('/api/trees', { name: 'Records' })).json().tree;
+    const seed = buildSeedTree({ namespace: (namespace += 1) });
+    await owner.post(`/api/trees/${tree.id}/changes`, { ops: graphToOps(seed.graph) });
+    const person = seed.people.ravi.id;
+    await owner.post('/api/records/unlock', { passphrase: PASSPHRASE });
+    const file = pdf();
+    const target = (await owner.post(`/api/trees/${tree.id}/people/${person}/record/upload-target`, { contentType: 'application/pdf', size: file.length })).json();
+    await owner.put(target.url, file, { headers: { 'content-type': 'application/pdf' } });
+
+    // The same account on another device: the grant is theirs, but every step of a record asks.
+    const elsewhere = ctx.client();
+    expect((await elsewhere.post('/api/auth/login', { email, password })).statusCode).toBe(200);
+    const locked = await elsewhere.post(`/api/trees/${tree.id}/people/${person}/record`, { key: target.key });
+    expect(locked.statusCode).toBe(403);
+    expect(locked.json().error.code).toBe('records_locked');
   });
 });
 

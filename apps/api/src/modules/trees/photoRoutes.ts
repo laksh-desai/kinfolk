@@ -41,7 +41,6 @@ export async function photoRoutes(app: FastifyInstance, opts: { deps: AppDeps; r
   app.post('/api/trees/:treeId/people/:personId/photo', async (request) => {
     const { treeId, personId } = request.params as { treeId: string; personId: string };
     const { user } = await requireTreeRole(deps, request, treeId, ['owner', 'editor'], 'You can view this family tree but not change it.');
-    requireRecordsUnlock(deps, request);
     await personInTree(treeId, personId);
     const { key } = parseInput(completeUploadSchema, request.body);
     if (!key.startsWith(`uploads/raw/${user.id}/`) || key.includes('..')) throw new ValidationError("That upload doesn't belong to you.");
@@ -79,6 +78,8 @@ export async function photoRoutes(app: FastifyInstance, opts: { deps: AppDeps; r
   app.post('/api/trees/:treeId/people/:personId/record', async (request) => {
     const { treeId, personId } = request.params as { treeId: string; personId: string };
     const { user } = await requireTreeRole(deps, request, treeId, ['owner', 'editor'], 'You can view this family tree but not change it.');
+    // Both steps ask, so a grant taken on one device cannot finish a record on another.
+    requireRecordsUnlock(deps, request);
     await personInTree(treeId, personId);
     const { key } = parseInput(completeUploadSchema, request.body);
     if (!key.startsWith(`uploads/raw/${user.id}/`) || key.includes('..')) throw new ValidationError("That upload doesn't belong to you.");
