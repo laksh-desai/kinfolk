@@ -4,28 +4,29 @@ Milestones are defined in `docs/SPEC.md` §10. Update at every checkpoint.
 
 ## In progress
 
-**M13 — Faster entry.** The owner's brief for this pass: "efficient and quick to produce a
-clean, visually appealing family tree". No new feature modules. Planned, each test-first:
+**M14 — A cleaner tree.** The second half of the owner's brief ("clean, visually appealing").
+Planned, each test-first:
 
-- One `isEditableTarget`; `/` opens search and `?` opens a shortcut help dialog from anywhere
-  on the tree page (window-level, like undo), in the review and shared views too.
-- Search lifted to the tree page and shared by the canvas and the list view (the list, the
-  screen-reader and small-screen path, has no search at all today); choosing a result reveals
-  the card or scrolls the row.
-- Compare picks people with the combobox instead of two 500-option native selects.
-- "Set as focus" from list rows; one needs-detail helper instead of two predicates.
-- Quick-add chains by default for siblings and children: five siblings are five Enters, with
-  an "Added so far" list under the form.
-- Union dates take a full month/day/year date, so hand-entered marriages finally produce
-  anniversaries on Key Events (today only a year can be entered, Q36).
+- One `Menu`/`MenuItem` wrapper over Radix (the same skin is copied in the card menu, the
+  export menu, the tree settings menu and the account menu), handling the trigger-name and
+  focus-first-item gotchas once.
+- `ViewSwitch` with an `hrefFor` prop, a `Pill`, and a `TreePageHeader` shared by the tree,
+  review and shared pages, which each hand-roll the header and the status pill today.
+- The tree header's ten controls grouped: Add person stays primary; Share, Send for review and
+  Export stay visible; Needs detail, Compare, Import and Keyboard shortcuts go under Tools.
+- A theme toggle in the account menu (light mode exists and is only reachable on /account).
+- The three missing loading states (access dialog, dashboard inbox, an unreachable block on
+  Key Events).
+- Export as a printed document: a real paper size (Letter/A4, landscape), tiled across sheets
+  with labels and crop marks, drawn from the SVG rather than the capped raster, showing years
+  rather than an age (ADR 043).
+- Card and connector polish within the existing tokens: a gender rule on the card edge,
+  client and selected told apart, deceased and placeholder treatments that survive dark mode,
+  heavier union connectors, and connectors that dim with the cards on Compare.
 
-Then **M14 — A cleaner tree**: one `Menu` wrapper over Radix (four copies of the skin today),
-`ViewSwitch`/`Pill`/`TreePageHeader` shared by the tree, review and shared pages, the ten-control
-tree header grouped behind a Tools menu, a theme toggle in the account menu, the three missing
-loading states, a paginated PDF export on a real paper size showing years rather than ages, and
-restrained card and connector polish. Deferred: a tablet drawer for the panel, the `TreeCanvas`
-hook extraction, an esbuild bundle for `pnpm start`, list pagination, an audit-history endpoint,
-session management.
+Deferred: a tablet drawer for the panel, the `TreeCanvas` hook extraction, an esbuild bundle
+for `pnpm start`, list pagination, an audit-history endpoint, session management, the
+`.env.example` guard test (the file is written by the owner; the test lands once it is).
 
 ## Up next
 
@@ -46,6 +47,15 @@ Two things a future session should know about that path:
 
 ## Done
 
+- **M13 — Faster entry** (2026-10-01). Search is one page-level control (`TreeSearch`) shared
+  by the canvas, the list, the reviewer's screen and the shared view: the list keeps only the
+  people who match and lands on the chosen row; `/` and `?` work from anywhere on the page
+  (`useTreeShortcuts`, one `isEditableTarget`). `PersonCombobox` replaces Compare's two
+  500-option selects. A "?" dialog lists every shortcut from `canvas/shortcuts.ts`. "Set as
+  focus" on list rows through one `setFocusPerson`; one `needsDetail` rule in shared. Siblings
+  and children chain by default with an "Added so far" list, so five siblings are five Enters.
+  Union dates are whole dates, so hand-entered marriages finally have anniversaries (ADR 042).
+  Tests: 8 new web, 2 shared files; the relatives e2e journey closes the chained form.
 - **M12 — Fixes and operations** (2026-09-30). Three audits (web, API/ops, spec-vs-build) after
   the owner declared the product done; this milestone took the broken and risky items. Photo
   uploads failed on the live site: the records passphrase check sat on the photo completion
