@@ -321,4 +321,17 @@ describe('rate limiting', () => {
       await limited.close();
     }
   });
+
+  it('caps every other route per address, except the health check', async () => {
+    const limited = await createTestContext({ globalRateLimit: { max: 3, timeWindow: '1 minute' } });
+    try {
+      const client = limited.client();
+      let last = await client.get('/api/auth/csrf');
+      for (let i = 0; i < 3; i += 1) last = await client.get('/api/auth/csrf');
+      expect(last.statusCode).toBe(429);
+      expect((await client.get('/api/health')).statusCode).toBe(200);
+    } finally {
+      await limited.close();
+    }
+  });
 });

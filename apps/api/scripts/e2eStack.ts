@@ -96,6 +96,7 @@ const api = await buildApp(deps, {
   logger: false,
   authRateLimit: { max: 10_000, timeWindow: '1 minute' },
   inviteRateLimit: { max: 10_000, timeWindow: '1 minute' },
+  globalRateLimit: { max: 1_000_000, timeWindow: '1 minute' },
 });
 await api.listen({ port: API_PORT, host: '127.0.0.1' });
 

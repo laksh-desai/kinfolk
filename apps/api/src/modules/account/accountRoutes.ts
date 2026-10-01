@@ -15,6 +15,7 @@ import { ConflictError, ValidationError } from '../../lib/errors';
 import { finalizeImageUpload } from '../../lib/images';
 import { parseInput } from '../../lib/validate';
 import { requireAuth } from '../auth/authenticate';
+import type { AuthRateLimits } from '../auth/authRoutes';
 import { revokeAllSessions, toUserDto } from '../auth/sessionService';
 import { buildAccountExport, deleteAccount, deletionSummary } from './accountService';
 
@@ -26,10 +27,12 @@ export function keyFromFileUrl(url: string | null): string | null {
   return url?.startsWith('/api/files/') ? url.slice('/api/files/'.length) : null;
 }
 
-export async function accountRoutes(app: FastifyInstance, opts: { deps: AppDeps }) {
+export async function accountRoutes(app: FastifyInstance, opts: { deps: AppDeps; rateLimit: AuthRateLimits }) {
   const { deps } = opts;
+  // Both routes verify a password, so a stolen cookie gets as few guesses here as at sign-in.
+  const guarded = { config: { rateLimit: opts.rateLimit } };
 
-  app.patch('/api/account', async (request) => {
+  app.patch('/api/account', guarded, async (request) => {
     const { user } = requireAuth(request);
     const input = parseInput(updateProfileSchema, request.body);
     if (input.email !== user.email) {
@@ -53,7 +56,7 @@ export async function accountRoutes(app: FastifyInstance, opts: { deps: AppDeps 
     return { user: toUserDto(updated) };
   });
 
-  app.post('/api/account/password', async (request) => {
+  app.post('/api/account/password', guarded, async (request) => {
     const { user, sessionId } = requireAuth(request);
     const input = parseInput(changePasswordSchema, request.body);
     if (user.passwordHash) {

@@ -22,6 +22,12 @@ import { webRoutes } from './modules/web/webRoutes';
 export interface BuildAppOptions {
   logger?: boolean;
   authRateLimit?: AuthRateLimits;
+  /**
+   * The ceiling on everything else, per address. Generous enough that a person never meets it
+   * (a tree page is a handful of requests), low enough that a leaked share link or a stolen
+   * cookie cannot pull a graph in a loop. Routes with their own limit keep it.
+   */
+  globalRateLimit?: AuthRateLimits;
   /** Sharing and invitation emails: a few per hour is plenty for a person, and stops mail abuse. */
   inviteRateLimit?: InviteRateLimits;
   /** Path to the built web app. Given it, this process serves the whole product (SPEC §9). */
@@ -69,7 +75,7 @@ export async function buildApp(deps: AppDeps, options: BuildAppOptions = {}): Pr
     // check. URLs carry no PII, and cross-site requests still get only the origin.
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
   });
-  await app.register(rateLimit, { global: false });
+  await app.register(rateLimit, { global: true, ...(options.globalRateLimit ?? { max: 600, timeWindow: '1 minute' }) });
 
   app.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, (_request, body, done) => {
     done(null, Object.fromEntries(new URLSearchParams(body as string)));
@@ -118,7 +124,7 @@ export async function buildApp(deps: AppDeps, options: BuildAppOptions = {}): Pr
    * What a platform polls to decide the instance is alive. Unauthenticated and cheap, but it
    * asks the database a question, because a process that cannot reach Postgres is not healthy.
    */
-  app.get('/api/health', async (_request, reply) => {
+  app.get('/api/health', { config: { rateLimit: false } }, async (_request, reply) => {
     try {
       await deps.prisma.$queryRaw`SELECT 1`;
       return { status: 'ok' };
@@ -129,7 +135,7 @@ export async function buildApp(deps: AppDeps, options: BuildAppOptions = {}): Pr
 
   const authRateLimit = options.authRateLimit ?? { max: 10, timeWindow: '1 minute' };
   await app.register(authRoutes, { deps, rateLimit: authRateLimit });
-  await app.register(accountRoutes, { deps });
+  await app.register(accountRoutes, { deps, rateLimit: authRateLimit });
   await app.register(treeRoutes, { deps });
   await app.register(photoRoutes, { deps, rateLimit: authRateLimit });
   const inviteRateLimit = options.inviteRateLimit ?? { max: 30, timeWindow: '1 hour' };

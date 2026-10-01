@@ -54,6 +54,25 @@ describe('profile', () => {
     expect((await first.get('/api/auth/me')).statusCode).toBe(200);
     expect((await other.get('/api/auth/me')).statusCode).toBe(401);
   });
+
+  it('limits password guesses on the account routes like it does on sign-in', async () => {
+    const limited = await createTestContext({ authRateLimit: { max: 3, timeWindow: '1 minute' } });
+    try {
+      const client = limited.client();
+      await signUpUser(client);
+      const guess = { currentPassword: 'nope', newPassword: 'another long password', confirmPassword: 'another long password' };
+      let last = await client.post('/api/account/password', guess);
+      for (let i = 0; i < 3; i += 1) last = await client.post('/api/account/password', guess);
+      expect(last.statusCode).toBe(429);
+      // Changing the email verifies the password too, so it has a limit of its own.
+      const move = { firstName: 'A', lastName: 'B', email: uniqueEmail('moved'), currentPassword: 'nope' };
+      last = await client.patch('/api/account', move);
+      for (let i = 0; i < 3; i += 1) last = await client.patch('/api/account', move);
+      expect(last.statusCode).toBe(429);
+    } finally {
+      await limited.close();
+    }
+  });
 });
 
 describe('avatar upload', () => {
