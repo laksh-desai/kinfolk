@@ -35,7 +35,8 @@ services:
       pnpm --filter web build
     startCommand: pnpm --filter api start
     healthCheckPath: /api/health
-    autoDeploy: true
+    # A push to main deploys only once GitHub's CI workflow (.github/workflows/ci.yml) is green.
+    autoDeployTrigger: checksPass
     envVars:
       - key: NODE_ENV
         value: production

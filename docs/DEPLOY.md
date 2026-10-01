@@ -78,6 +78,18 @@ the same settings and is not linked to a blueprint.
 > build command; `COREPACK_ENABLE_DOWNLOAD_PROMPT=0` also silences it, but not needing corepack
 > at all is one less thing to go wrong.
 
+## 3a. Let CI gate the deploy
+
+`.github/workflows/ci.yml` runs lint, every test suite, the production build with its bundle
+budget, and Playwright on every push to `main` and every pull request. `render.yaml` sets
+`autoDeployTrigger: checksPass`, so a blueprint-made service waits for it. The live service was
+made by hand, so set the same thing once in the dashboard: the service → **Settings → Build &
+Deploy → Auto-Deploy → "After CI Checks Pass"**. Render needs its GitHub app to see the checks;
+if the setting is missing, reinstall the Render GitHub app on the repository.
+
+A commit that fails CI never reaches the site. To ship a documentation-only change without a
+deploy, put `[skip render]` in the commit message.
+
 ## 4. Put the sample family in it
 
 Seed it **from your laptop against the hosted database**. Render

@@ -978,3 +978,19 @@ CLAUDE.md.
 variable in `.env.example`. If reminders are ever wanted, they are a subscription table, a daily
 job with a lock (the service can run more than one instance), and outbound email — a milestone,
 not a flag.
+
+## 040 — CI on GitHub Actions gates every deploy
+
+**Context.** `main` auto-deployed on every push and nothing ran the gate but the author's
+laptop; the evidence of the last full run was a log file in the working tree. The bundle budget
+had been exceeded for five days without anything noticing (the tree route reached 208 KB).
+
+**Decision.** A GitHub Actions workflow runs `pnpm lint`, `pnpm test`, the web build with
+`scripts/bundleBudget.mjs`, and Playwright, on every push to `main` and every pull request.
+Vitest and Playwright run as two jobs on two runners, because sharing a machine stalls the
+browser. Render deploys only after the checks pass (`autoDeployTrigger: checksPass`; the same
+switch set by hand on the live service).
+
+**Consequences.** A failing commit never reaches the site, and the budget is a build failure,
+not a note. Deploys lag a push by the length of the slower job (Playwright, under ten minutes).
+The embedded Postgres the API tests use is in the lockfile for Linux, so CI provisions nothing.
