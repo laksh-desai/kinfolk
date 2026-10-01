@@ -25,6 +25,8 @@ export default defineConfig({
     target: 'es2022',
     sourcemap: true,
     assetsInlineLimit: 0,
+    // scripts/bundleBudget.mjs reads the chunk graph from it to hold the §9 size budget.
+    manifest: true,
   },
   test: {
     name: 'web',
