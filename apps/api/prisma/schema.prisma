@@ -36,7 +36,6 @@ model User {
   shareLinks          ShareLink[]
   reviewsCreated      ReviewAssignment[]     @relation("ReviewCreator")
   reviewsClaimed      ReviewAssignment[]     @relation("ReviewReviewer")
-  reminders           ReminderSubscription[]
 }
 
 /// One row per refresh-token family. The refresh token rotates on every use; presenting a
@@ -158,7 +157,6 @@ model Tree {
   changeRequests   ChangeRequest[]
   shareLinks       ShareLink[]
   reviews          ReviewAssignment[]
-  reminders        ReminderSubscription[]
   auditEvents      AuditEvent[]
   linkedFrom       Person[]               @relation("LinkedTree")
 
@@ -417,16 +415,6 @@ model ReviewAssignment {
 }
 
 /// Not in SPEC §3 — opt-in key-event emails per tree (QUESTIONS Q28).
-model ReminderSubscription {
-  userId    String   @db.Uuid
-  treeId    String   @db.Uuid
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tree Tree @relation(fields: [treeId], references: [id], onDelete: Cascade)
-
-  @@id([userId, treeId])
-}
 
 model AuditEvent {
   id         String   @id @default(uuid()) @db.Uuid

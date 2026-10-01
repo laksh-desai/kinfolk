@@ -414,6 +414,16 @@ uploading or opening it. The spec has no notion of a second factor on a document
 - The passphrase lives only in the deployment's environment. Putting it in the repository would
   publish it to everyone with access to the code, which now includes GitHub.
 
+## Reported from use (M12)
+
+### Q52 — Email reminders are dropped · Recommend spec change
+§5.8 ends with "optional opt-in email reminders per tree". Nothing was ever built behind it — a
+table and a flag existed from M2 and nothing read them — and when email delivery was finally
+being set up the owner was asked whether to build it: "drop it entirely". The Key Events table
+itself stays.
+- Decision: removed from the schema and the environment (ADR 039). Recommend striking the
+  sentence from §5.8.
+
 ## Environment
 
 ### Q31 — Node version · Decided

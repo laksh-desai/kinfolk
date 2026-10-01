@@ -38,7 +38,6 @@ describe('parseEnv', () => {
     expect(env.WEB_URL).toBe('http://localhost:5173');
     expect(env.ACCESS_TOKEN_TTL).toBe(15 * 60_000);
     expect(env.REFRESH_TOKEN_TTL).toBe(30 * 86_400_000);
-    expect(env.ENABLE_EMAIL_REMINDERS).toBe(false);
     expect(env.GOOGLE_CLIENT_ID).toBeUndefined();
   });
 

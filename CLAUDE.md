@@ -168,7 +168,8 @@ deviation is large, open an ADR and link it here instead of explaining it twice.
 - Toolchain pinned to older, known majors (TS 5.9, Vite 6, Vitest 3, Prisma 6, Zod 3) — ADR 002.
 - Root `lint` script is `eslint . && tsc -b --noEmit`; the spec's argument order doesn't run (QUESTIONS Q33).
 - `.env.example` adds `NODE_ENV`, `LOCAL_STORAGE_DIR`, `MAIL_OUTBOX_DIR` for the dev adapters (ADR 007).
-- Extra tables beyond §3: `Session`, `OAuthAccount`, `PasswordReset`, `ReviewAssignment`, `ReminderSubscription`; extra columns `Tree.version`, invitation stage timestamps (QUESTIONS Q1, Q22, Q28).
+- Extra tables beyond §3: `Session`, `OAuthAccount`, `PasswordReset`, `ReviewAssignment`; extra columns `Tree.version`, invitation stage timestamps (QUESTIONS Q1, Q22, Q28).
+- No email reminders (§5.8's last sentence): table, flag, and all; dropped by the owner (ADR 039, Q52). Key Events itself stays.
 - `Person.linkedTreeId` is server-managed and `photoUrl` must be under the tree's file prefix; undo restores them via audit tokens (ADR 012).
 - Production: Secure cookies only when `NODE_ENV=production`, so plain-http test clients work.
 - Fit-to-content may zoom below 25% (down to 5%) so trees open whole; manual zoom stays 25–200% (QUESTIONS Q34, ADR 016).

@@ -77,12 +77,6 @@ const envSchema = z
       .string()
       .optional()
       .transform((value) => (value === undefined || value === '' ? './var/mail' : value)),
-    ENABLE_EMAIL_REMINDERS: z
-      .string()
-      .optional()
-      .transform((value) => (value === undefined || value === '' ? 'false' : value))
-      .pipe(z.enum(['true', 'false']))
-      .transform((value) => value === 'true'),
     /**
      * Run deployed without Google, S3, or SMTP configured, using the file-backed adapters
      * instead. For a preview a client is looking at, never for the real thing: uploads live on

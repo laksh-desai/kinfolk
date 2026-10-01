@@ -960,3 +960,21 @@ Without them the server already uses `DisabledOAuthProvider`: no button, and the
 
 **Consequences.** A production boot no longer lists Google as a stand-in, because it is off, not
 faked. Adding Google later is two environment variables and a restart.
+
+## 039 — No email reminders
+
+**Context.** SPEC §5.8 ends with "optional opt-in email reminders per tree". The schema carried a
+`ReminderSubscription` table and the environment an `ENABLE_EMAIL_REMINDERS` flag from M2, and
+nothing ever read either: no scheduler, no subscribe control, no email. The product owner, asked
+whether to build it now that email delivery is being set up, dropped it: the app is for building
+the tree, and the Key Events screen already shows the dates.
+
+**Decision.** Remove the feature from the model and the configuration: migration
+`drop_reminder_subscription`, no flag, no relation on `User` or `Tree`. The Key Events screen
+(§5.8's table) stays. SPEC.md is not edited; the deviation is recorded in QUESTIONS Q52 and
+CLAUDE.md.
+
+**Consequences.** One fewer table that promised something the API never delivered, and one fewer
+variable in `.env.example`. If reminders are ever wanted, they are a subscription table, a daily
+job with a lock (the service can run more than one instance), and outbound email — a milestone,
+not a flag.
