@@ -28,16 +28,17 @@ this is configuration, not code.
 2. *Manage R2 API tokens* → create a token with **Object Read & Write** on that bucket.
 3. Keep the account ID, access key ID and secret. They become `S3_*` below.
 
-Skipping this is fine for a first look: uploads then vanish on each deploy.
+Skipping this is fine for a first look: uploads then vanish on each deploy, and every push to
+`main` is a deploy. A commit whose message contains `[skip render]` does not deploy.
 
 ## 3. Create the service
 
-Render, free plan, using the blueprint in `render.yaml`:
+Render, using the blueprint in `render.yaml`. The live service, `kinfolk`, was made by hand to
+the same settings and is not linked to a blueprint.
 
 > **One or the other.** A Blueprint creates its *own* web service and database. If a service
 > already exists from doing this by hand, delete it and its database first, or the blueprint
-> makes a second of each — and the free plan allows only one free Postgres per account, so the
-> second one is refused and the deploy fails.
+> makes a second of each.
 
 1. Render → **Blueprints → New Blueprint Instance** → pick the repository, branch `main`. It
    reads `render.yaml` and creates the web service and a Postgres database, then asks for the
@@ -45,16 +46,16 @@ Render, free plan, using the blueprint in `render.yaml`:
    `RECORDS_PASSPHRASE`.
 2. First deploy will fail the health check until `WEB_URL` and `API_URL` are set — Render only
    assigns the hostname once the service exists. Take the hostname it gives you
-   (`https://kinfolk-preview.onrender.com`) and set, in *Environment*:
+   (the live one is `https://kinfolk-rc34.onrender.com`) and set, in *Environment*:
 
    | Variable | Value |
    |---|---|
-   | `WEB_URL` | `https://kinfolk-preview.onrender.com` |
+   | `WEB_URL` | `https://kinfolk-rc34.onrender.com` |
    | `API_URL` | the same URL |
    | `SIGNUP_ALLOWLIST` | `@atsfinancial.com` (and any individual addresses, comma separated) |
    | `SEED_EMAIL` | the demo login for ATS, e.g. `demo@atsfinancial.com` |
    | `SEED_PASSWORD` | a passphrase you choose — set it here, never in the repository |
-   | `RECORDS_PASSPHRASE` | the shared passphrase for opening public records (ADR 037) |
+   | `RECORDS_PASSPHRASE` | the shared passphrase for opening public records (ADR 037) — never the same as `SEED_PASSWORD`, or the demo login opens records too |
    | `S3_ENDPOINT` | `https://<account-id>.r2.cloudflarestorage.com` |
    | `S3_REGION` | `auto` |
    | `S3_BUCKET` | `kinfolk-preview` |
@@ -79,7 +80,7 @@ Render, free plan, using the blueprint in `render.yaml`:
 
 ## 4. Put the sample family in it
 
-The free plan has no shell, so seed it **from your laptop against the hosted database**. Render
+Seed it **from your laptop against the hosted database**. Render
 → the database → copy the *External Database URL*, then:
 
 ```bash
@@ -128,6 +129,6 @@ button disappears from the sign-in screen and the routes are not registered (ADR
 ## Going to real production later
 
 Remove `ALLOW_DEV_ADAPTERS` and set, all of them: the five `S3_*`, `SMTP_URL`, and a `MAIL_FROM` that is not `@localhost`. The app will tell you
-at boot if any are missing. Also move off the free plans — a free database expires after 30
-days and a sleeping service takes about 50 seconds to answer the first request. Google sign-in stays off
-unless `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are both set (ADR 038).
+at boot if any are missing. The service and database are already on paid plans (since
+2026-09-21), so neither sleeps nor expires. Google sign-in stays off by decision: it is only on
+when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are both set (ADR 038), and they are not.

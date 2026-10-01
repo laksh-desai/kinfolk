@@ -1,9 +1,10 @@
 # Pre-production preview of Kinfolk, for ATS to look at while it is being built.
 #
 # Render reads this file when you create a Blueprint from the repository, and makes both the
-# web service and the database. Everything here is the free plan: the database expires after
-# 30 days and the service sleeps after 15 minutes idle (about 50 seconds to wake), which is
-# the trade for costing nothing. Move both to "starter" to stop the sleeping.
+# web service and the database. The live service (kinfolk-rc34.onrender.com) was made by hand
+# to these settings, not from this file, so editing it changes nothing on Render: it records
+# what runs, and rebuilds it if the service ever has to be recreated. Both are on the lowest
+# paid plans, so the service never sleeps and the database never expires.
 #
 # Set these by hand in the Render dashboard after the first deploy (see docs/DEPLOY.md):
 #   SIGNUP_ALLOWLIST   who may create an account, e.g. "@atswealth.com"
@@ -12,12 +13,12 @@
 #   S3_*               Cloudflare R2, so uploads survive a redeploy
 services:
   - type: web
-    name: kinfolk-preview
+    name: kinfolk
     runtime: node
-    plan: free
+    plan: starter
     region: oregon
     branch: main
-    # The free plan has no shell and no pre-deploy hook, so migrations run here. `migrate
+    # Migrations run in the build (the free plan this began on had no pre-deploy hook). `migrate
     # deploy` only applies what is outstanding, so repeating it on every build costs nothing.
     # Two things this command has to get right, both learned the hard way:
     #  - pnpm comes from npm, not corepack: corepack asks before downloading pnpm and a build
@@ -67,5 +68,5 @@ services:
 
 databases:
   - name: kinfolk-preview-db
-    plan: free
+    plan: basic-256mb
     region: oregon
