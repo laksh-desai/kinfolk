@@ -1,3 +1,4 @@
+import compress from '@fastify/compress';
 import cookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
@@ -76,6 +77,10 @@ export async function buildApp(deps: AppDeps, options: BuildAppOptions = {}): Pr
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
   });
   await app.register(rateLimit, { global: true, ...(options.globalRateLimit ?? { max: 600, timeWindow: '1 minute' }) });
+  // A graph is hundreds of kilobytes of very repetitive JSON, and the app's chunks are served
+  // from here too. Images and PDFs are already compressed and are left alone by the default
+  // type filter; anything under a kilobyte is not worth the round trip.
+  await app.register(compress, { global: true, threshold: 1024, encodings: ['br', 'gzip'] });
 
   app.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, (_request, body, done) => {
     done(null, Object.fromEntries(new URLSearchParams(body as string)));

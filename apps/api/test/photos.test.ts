@@ -35,9 +35,11 @@ describe('person photos', () => {
     expect(attach.statusCode).toBe(200);
     expect(attach.json().inverse).toEqual([{ op: 'person.update', id: sita, patch: { photoUrl: null } }]);
 
-    const image = await owner.get(photoUrl);
+    const image = await owner.get(photoUrl, { headers: { 'accept-encoding': 'gzip, br' } });
     expect(image.statusCode).toBe(200);
     expect(image.headers['content-type']).toBe('image/webp');
+    // Already compressed; gzipping it again would only cost CPU.
+    expect(image.headers['content-encoding']).toBeUndefined();
 
     const stranger = ctx.client();
     await signUpUser(stranger);

@@ -15,7 +15,8 @@ describe('serving the built web app', () => {
   beforeAll(async () => {
     mkdirSync(path.join(dist, 'assets'), { recursive: true });
     writeFileSync(path.join(dist, 'index.html'), '<!doctype html><title>Kinfolk</title><div id="root"></div>');
-    writeFileSync(path.join(dist, 'assets', 'index-abc123.js'), 'console.log("app")');
+    // Big enough to be worth compressing: the real chunks are hundreds of kilobytes.
+    writeFileSync(path.join(dist, 'assets', 'index-abc123.js'), `console.log("app");\n${'// padding\n'.repeat(200)}`);
     writeFileSync(path.join(dist, 'favicon.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>');
     ctx = await createTestContext({ webDist: dist });
   });
@@ -43,6 +44,16 @@ describe('serving the built web app', () => {
     const favicon = await client.get('/favicon.svg');
     expect(favicon.statusCode).toBe(200);
     expect(favicon.headers['cache-control']).toBe('no-store');
+  });
+
+  it('compresses the app and its chunks for a browser that asks', async () => {
+    const client = ctx.client();
+    const asset = await client.get('/assets/index-abc123.js', { headers: { 'accept-encoding': 'gzip' } });
+    expect(asset.statusCode).toBe(200);
+    expect(asset.headers['content-encoding']).toBe('gzip');
+    expect(asset.headers['cache-control']).toBe('public, max-age=31536000, immutable');
+    // Plain for a client that did not ask.
+    expect((await client.get('/assets/index-abc123.js')).headers['content-encoding']).toBeUndefined();
   });
 
   it('still answers unknown API routes and non-GET requests with JSON, not the app', async () => {
