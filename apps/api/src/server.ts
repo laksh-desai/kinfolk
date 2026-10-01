@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { buildApp } from './app';
 import { createDeps } from './lib/deps';
 import { devAdaptersInUse, EnvValidationError, parseEnv, type Env } from './lib/env';
+import { createShutdown } from './lib/shutdown';
 
 const apiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repoEnv = path.resolve(apiRoot, '../../.env');
@@ -40,11 +41,12 @@ const app = await buildApp(deps, {
   ...(env.NODE_ENV === 'production' && existsSync(path.join(webDist, 'index.html')) ? { webDist } : {}),
 });
 
-const shutdown = async () => {
-  await app.close();
-  await deps.prisma.$disconnect();
-  process.exit(0);
-};
+const shutdown = createShutdown({
+  close: () => app.close(),
+  disconnect: () => deps.prisma.$disconnect(),
+  exit: (code) => process.exit(code),
+  log: (message) => console.error(message),
+});
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
