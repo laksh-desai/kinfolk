@@ -3,11 +3,12 @@ import { blankPerson, PlanError } from '@kinfolk/shared/relatives/planState';
 import type { ParentChildKind } from '@kinfolk/shared/schemas/parentChild';
 import { quickAddSchema, quickAddToFields, type QuickAddValues } from '@kinfolk/shared/schemas/personForm';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../../../components/Button';
 import { CheckboxField } from '../../../components/CheckboxField';
 import { FormAlert } from '../../../components/FormAlert';
 import { RadioGroup } from '../../../components/RadioGroup';
+import { announce } from '../../../lib/announcer';
 import { useForm } from '../../../lib/useForm';
 import { commitWithUndo } from '../editing/changeQueue';
 import { useTreeOutlet } from '../treeOutlet';
@@ -20,6 +21,10 @@ import { ReadOnlyPanel } from './ReadOnlyPanel';
 import { resolveConnection, type ConnectionAnswers } from './resolveConnection';
 
 const INHERITS_LAST_NAME = new Set<RelationKey>(['child', 'son', 'daughter', 'adopted-child', 'sibling', 'brother', 'sister', 'father', 'grandchild']);
+
+// Relations that come in batches — five siblings, four children — keep the form open by default,
+// so each is one name and one Enter (SPEC §5.3: "enter five siblings in a row without reopening").
+const CHAINS_BY_DEFAULT = new Set<RelationKey>(['sibling', 'brother', 'sister', 'child', 'son', 'daughter', 'adopted-child']);
 
 const PARENT_KINDS: Array<{ value: ParentChildKind; label: string }> = [
   { value: 'adopted', label: 'Adoptive parent' },
@@ -53,7 +58,9 @@ export function Component() {
   const [answers, setAnswers] = useState<ConnectionAnswers>({});
   const [siblingInLawVia, setSiblingInLawVia] = useState<'partner' | 'sibling'>('partner');
   const [kind, setKind] = useState<ParentChildKind>('adopted');
-  const [addAnother, setAddAnother] = useState(false);
+  const [addAnother, setAddAnother] = useState(() => Boolean(requested && CHAINS_BY_DEFAULT.has(requested)));
+  /** Everyone added since the form opened, so a run of entries can be checked and revisited. */
+  const [added, setAdded] = useState<Array<{ id: string; name: string }>>([]);
   const next = useRef<'panel' | 'details'>('panel');
 
   const connection = useMemo(
@@ -108,6 +115,9 @@ export function Component() {
       if (next.current === 'details') {
         navigate(`/trees/${tree.id}/people/${plan.personId}/edit`);
       } else if (addAnother) {
+        const name = [values.firstName, values.lastName].filter(Boolean).join(' ').trim();
+        setAdded((list) => [...list, { id: plan.personId, name }]);
+        announce(`Added ${name}. Ready for the next ${spec?.label.toLowerCase() ?? 'person'}.`);
         form.reset(initialValues);
         requestAnimationFrame(() => document.getElementById('quick-add-firstName')?.focus());
       } else {
@@ -121,7 +131,8 @@ export function Component() {
   // connection questions above it already have sensible answers, and entry speed matters (SPEC §5.3).
   useEffect(() => {
     setAnswers({});
-    setAddAnother(false);
+    setAddAnother(Boolean(requested && CHAINS_BY_DEFAULT.has(requested)));
+    setAdded([]);
     form.reset(initialValues);
     document.getElementById('quick-add-firstName')?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset only when the URL names a different person or relation
@@ -142,14 +153,16 @@ export function Component() {
   const word = spec.label.toLowerCase();
   const phrase = preview?.plan ? placeholderPhrase(preview.plan.summary) : null;
   const onAnswer = (key: keyof Via, value: string) => setAnswers((current) => ({ ...current, [key]: value }));
+  // After a run of entries, closing lands on the last person added rather than back on the anchor.
+  const last = added[added.length - 1];
 
   return (
     <PanelShell
       title={`Add ${article(word)} ${word}`}
       subtitle={`Related to ${anchorName}`}
       back={back}
-      closeTo={`/trees/${tree.id}/people/${anchor.id}`}
-      closeLabel={`Close and return to ${anchorName}`}
+      closeTo={`/trees/${tree.id}/people/${last ? last.id : anchor.id}`}
+      closeLabel={`Close and return to ${last ? last.name : anchorName}`}
       focusKey={null}
       wide
     >
@@ -209,6 +222,22 @@ export function Component() {
             Add and fill in more details
           </Button>
         </div>
+        {added.length > 0 ? (
+          <section aria-labelledby="quick-add-added" className="rounded-control bg-sunken px-3 py-2">
+            <h3 id="quick-add-added" className="text-sm font-semibold text-ink-muted">
+              Added so far
+            </h3>
+            <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+              {added.map((person) => (
+                <li key={person.id}>
+                  <Link to={`/trees/${tree.id}/people/${person.id}`} className="text-base text-accent underline-offset-2 hover:underline">
+                    {person.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
       </form>
     </PanelShell>
   );

@@ -38,6 +38,11 @@ async function addRelative(page: Page, anchor: string, relation: string, firstNa
   await page.getByRole('textbox', { name: 'First name' }).fill(firstName);
   if (options.gender) await page.getByRole('combobox', { name: 'Gender' }).selectOption(options.gender);
   await page.getByRole('textbox', { name: 'First name' }).press('Enter');
+  if (['Child', 'Sibling'].includes(relation)) {
+    // These come in batches, so the form stays open; closing it lands on the person just added.
+    await expect(page.getByRole('region', { name: 'Added so far' })).toContainText(firstName);
+    await page.getByRole('button', { name: new RegExp(`^Close and return to ${firstName}`) }).click();
+  }
   await expect(page.getByRole('complementary', { name: new RegExp(`^${firstName}`) })).toBeVisible();
   await waitForSave(page);
 }

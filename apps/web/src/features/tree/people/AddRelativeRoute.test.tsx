@@ -117,7 +117,8 @@ describe('adding relatives (SPEC §4.1, §4.2)', () => {
     const user = userEvent.setup();
     const server = mockTreeServer();
     const { router } = await renderApp(`/trees/${TREE_ID}/people/${server.seed.people.samuel.id}/add/sibling`);
-    await user.click(await screen.findByRole('checkbox', { name: 'Add another sibling after this' }));
+    // Siblings come in batches, so the form stays open by default: each one is a name and Enter.
+    expect(await screen.findByRole('checkbox', { name: 'Add another sibling after this' })).toBeChecked();
     for (const name of ['Ama', 'Kojo', 'Esi']) {
       const field = screen.getByRole('textbox', { name: 'First name' });
       await user.type(field, name);
@@ -126,6 +127,12 @@ describe('adding relatives (SPEC §4.1, §4.2)', () => {
       await waitFor(() => expect(screen.getByRole('textbox', { name: 'First name' })).toHaveFocus());
     }
     expect(router.state.location.pathname).toBe(`/trees/${TREE_ID}/people/${server.seed.people.samuel.id}/add/sibling`);
+    const addedSoFar = screen.getByRole('region', { name: 'Added so far' });
+    expect(within(addedSoFar).getAllByRole('link').map((link) => link.textContent)).toEqual(['Ama Osei', 'Kojo Osei', 'Esi Osei']);
+    // Closing now lands on the last person added, not back on Samuel.
+    await user.click(screen.getByRole('button', { name: 'Close and return to Esi Osei' }));
+    const esi = server.graph().people.find((person) => person.firstName === 'Esi');
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/trees/${TREE_ID}/people/${esi?.id}`));
     await waitFor(() => expect(server.changes).toHaveLength(3));
     for (const name of ['Ama', 'Kojo', 'Esi']) {
       const sibling = server.graph().people.find((person) => person.firstName === name);
