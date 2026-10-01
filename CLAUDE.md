@@ -178,4 +178,4 @@ deviation is large, open an ADR and link it here instead of explaining it twice.
 - Dates are month/day/year, quick add takes a whole date of birth, and the locale is fixed (ADR 031, Q46); cards and list rows show a living person's age, the deceased a lifespan (ADR 032, Q47) — §5 and §6.17 ask for years.
 - The product is ATS-branded and dark by default, with blue/pink gender accents and a signed, watermarked export (ADR 033, Q48); §5 describes an unbranded warm surface.
 - Extra to §3/§5: `Person.publicRecordUrl` (one PDF per person, ADR 034), gated by `RECORDS_PASSPHRASE` when set (ADR 037, Q51), and the client-household marking on the canvas (ADR 035) — all asked for by ATS (Q49).
-- Re-parenting is on the Relationships screen only, no drag onto connectors (Q35); union dates are edited at year precision there (Q36).
+- Re-parenting is on the Relationships screen only, no drag onto connectors (Q35). Union dates are whole month/day/year dates there (ADR 042), as §5.8's anniversaries need.

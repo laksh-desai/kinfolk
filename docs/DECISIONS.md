@@ -994,3 +994,33 @@ switch set by hand on the live service).
 **Consequences.** A failing commit never reaches the site, and the budget is a build failure,
 not a note. Deploys lag a push by the length of the slower job (Playwright, under ten minutes).
 The embedded Postgres the API tests use is in the lockfile for Linux, so CI provisions nothing.
+
+## 041 — An avatar is served only to the account it belongs to
+
+**Context.** `/api/files/avatars/<user id>/<uuid>.webp` was readable by any signed-in account.
+User ids are visible to tree members, so the key was one unguessable segment from public. The
+alternatives were to allow the people who share a tree with you, or only you.
+
+**Decision.** Only you. Nothing in the product shows another person's avatar — it appears on
+the account screen and in the header, both yours — so there is nobody else to serve it to. The
+authorizer compares the key's user segment with the session's user.
+
+**Consequences.** If a screen ever shows members' avatars (an access list, a reviewer's name), the
+authorizer widens to "shares a tree with the owner" with one query; until then a fellow member is
+refused like a stranger, and the test says so.
+
+## 042 — Union dates are whole dates
+
+**Context.** The Relationships screen took a partnership's start and end as years only (Q36),
+and the anniversary logic (Q28) needs a month and a day. So a tree built by hand could never put
+a single anniversary on Key Events: the screen that §6.4 says "must actually populate" was only
+half-populated unless the dates came in through import.
+
+**Decision.** The union dates form uses the same month/day/year fields as a person's dates
+(`DateFields`, now generic over its field prefix), validated by `unionDatesSchema` in
+`packages/shared/src/schemas/unionForm.ts` — the same rules as birth and death dates, plus "the
+end is not before the start" down to the day. A year alone is still fine, and "approximate" is kept.
+
+**Consequences.** Anniversaries appear for hand-entered marriages. The form is taller (two date
+groups instead of two year boxes); it sits in a panel that scrolls. The change description reads
+"Changed the dates for …". Supersedes the year-only part of Q36.

@@ -7,7 +7,10 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 export const MONTH_OPTIONS = [{ value: '', label: 'Month not known' }, ...MONTHS.map((label, index) => ({ value: String(index + 1), label }))];
 
 interface DateFieldsProps {
-  prefix: 'birth' | 'death';
+  /** Names the fields: `${prefix}Month`, `${prefix}Day`, `${prefix}Year`. */
+  prefix: string;
+  /** Keeps the checkbox id unique when several date groups share a screen (one per partnership). */
+  idPrefix?: string;
   legend: string;
   field: (name: string) => FieldProps;
   approximate: boolean;
@@ -15,7 +18,7 @@ interface DateFieldsProps {
 }
 
 /** A partial date: year alone is enough; month and day are optional; "approximate" is a flag. */
-export function DateFields({ prefix, legend, field, approximate, onApproximateChange }: DateFieldsProps) {
+export function DateFields({ prefix, idPrefix = 'person', legend, field, approximate, onApproximateChange }: DateFieldsProps) {
   return (
     <fieldset className="flex min-w-0 flex-col gap-3">
       <legend className="mb-1 text-base font-semibold">{legend}</legend>
@@ -24,7 +27,7 @@ export function DateFields({ prefix, legend, field, approximate, onApproximateCh
         <TextField field={field(`${prefix}Day`)} label="Day" inputMode="numeric" maxLength={2} autoComplete="off" />
         <TextField field={field(`${prefix}Year`)} label="Year" inputMode="numeric" maxLength={4} autoComplete="off" />
       </div>
-      <CheckboxField id={`person-${prefix}Approximate`} label="This date is approximate" checked={approximate} onChange={onApproximateChange} />
+      <CheckboxField id={`${idPrefix}-${prefix}Approximate`} label="This date is approximate" checked={approximate} onChange={onApproximateChange} />
     </fieldset>
   );
 }

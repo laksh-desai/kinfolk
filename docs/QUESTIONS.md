@@ -259,12 +259,12 @@ Lighthouse claims will be marked "not verified" unless I can run them for real.
 - **Recommend spec change** if drag is wanted: make it additive and keep the panel as the
   accessible path.
 
-### Q36 — How precise are union dates in the relationship editor? · Decided
+### Q36 — How precise are union dates in the relationship editor? · Superseded (ADR 042)
 §4.6 says "change a union's type or status and its dates".
-- Decision: the Relationships screen edits start and end **years**. A known month and day
-  are kept when the year is unchanged. Unions keep full partial dates in the model, so a
-  finer editor can come later. Anniversaries need a month and day (Q28), so until then
-  those come from data entered elsewhere, such as import.
+- Originally: the Relationships screen edited start and end **years** only, so anniversaries
+  (which need a month and day, Q28) could only come from import.
+- Now (M13, ADR 042): whole month/day/year dates, with the same fields and rules as a person's
+  dates. A year alone is still accepted.
 
 ### Q37 — Does a photo change wait for the form's Save? · Decided
 - Alternatives: stage the upload and attach on Save; attach immediately.

@@ -179,7 +179,12 @@ export function Component() {
                     }
                   />
                 </div>
-                <UnionDatesForm key={`${union.id}-${union.startDate?.year}-${union.endDate?.year}`} union={union} idPrefix={`union-${union.id}`} onSave={(patch) => apply(() => planUpdateUnion(union.id, patch), `Changed the years for ${name} and ${partnerName}`)} />
+                <UnionDatesForm
+                  key={`${union.id}-${JSON.stringify(union.startDate)}-${JSON.stringify(union.endDate)}`}
+                  union={union}
+                  idPrefix={`union-${union.id}`}
+                  onSave={(patch) => apply(() => planUpdateUnion(union.id, patch), `Changed the dates for ${name} and ${partnerName}`)}
+                />
                 <Button
                   variant="danger-quiet"
                   icon="unlink"

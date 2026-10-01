@@ -19,7 +19,7 @@ import {
 
 const text = (max: number, label: string) => z.string().trim().max(max, `${label} must be ${max} characters or fewer.`);
 
-const yearText = (label: string) =>
+export const yearText = (label: string) =>
   z
     .string()
     .trim()
@@ -27,10 +27,12 @@ const yearText = (label: string) =>
       message: `Enter the ${label} as a four-digit year, like 1962.`,
     });
 
-/** Day, month and year are all optional, but they have to make sense together. */
-function checkDate(ctx: z.RefinementCtx, prefix: 'birth' | 'death', parts: { day: string; month: string; year: string }): void {
+/**
+ * Day, month and year are all optional, but they have to make sense together. `prefix` names
+ * the fields (`${prefix}Day` …) and `label` the date in messages ("birth", "start").
+ */
+export function checkDate(ctx: z.RefinementCtx, prefix: string, label: string, parts: { day: string; month: string; year: string }): void {
   const { day, month, year } = parts;
-  const label = prefix === 'birth' ? 'birth' : 'death';
   if ((day || month) && !year) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [`${prefix}Year`], message: `Enter the ${label} year too, or clear the day and month.` });
   if (day && !month) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [`${prefix}Month`], message: 'Choose a month to go with the day.' });
   if (day && !/^\d{1,2}$/.test(day)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: [`${prefix}Day`], message: 'Enter the day as a number from 1 to 31.' });
@@ -54,7 +56,7 @@ const quickAddFields = z.object({
 
 /** Quick add (SPEC §5.3): a name and as much of the date of birth as the person knows. */
 export const quickAddSchema = quickAddFields.superRefine((values, ctx) =>
-  checkDate(ctx, 'birth', { day: values.birthDay, month: values.birthMonth, year: values.birthYear }),
+  checkDate(ctx, 'birth', 'birth', { day: values.birthDay, month: values.birthMonth, year: values.birthYear }),
 );
 export type QuickAddValues = z.input<typeof quickAddSchema>;
 
@@ -115,7 +117,7 @@ export const personFormSchema = z
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['firstName'], message: 'Enter a first name.' });
     }
     for (const prefix of ['birth', 'death'] as const) {
-      checkDate(ctx, prefix, { day: values[`${prefix}Day`], month: values[`${prefix}Month`], year: values[`${prefix}Year`] });
+      checkDate(ctx, prefix, prefix, { day: values[`${prefix}Day`], month: values[`${prefix}Month`], year: values[`${prefix}Year`] });
     }
     const hasDeath = Boolean(values.deathYear || values.deathMonth || values.deathDay);
     if (hasDeath && values.lifeStatus === 'living') {
@@ -129,7 +131,7 @@ export type PersonFormValues = z.input<typeof personFormSchema>;
 
 const orEmpty = (value: string | null | undefined) => value ?? '';
 
-function dateToParts(date: PartialDate | null) {
+export function dateToParts(date: PartialDate | null) {
   return {
     day: date?.day ? String(date.day) : '',
     month: date?.month ? String(date.month) : '',
@@ -185,7 +187,7 @@ export function personToFormValues(person: Person): PersonFormValues {
 
 const nullIfEmpty = (value: string) => (value.trim() === '' ? null : value.trim());
 
-function partsToDate(day: string, month: string, year: string, approximate: boolean): PartialDate | null {
+export function partsToDate(day: string, month: string, year: string, approximate: boolean): PartialDate | null {
   if (!year) return null;
   return { year: Number(year), month: month ? Number(month) : null, day: month && day ? Number(day) : null, approximate };
 }

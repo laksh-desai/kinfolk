@@ -22,18 +22,24 @@ describe('correcting relationships (SPEC §4.6)', () => {
     expect(resolveKinship(server.graph(), vikram.id, priti.id).label).not.toMatch(/Former/);
     expect(await screen.findByRole('button', { name: 'Undo: Marked Vikram Sharma and Priti Kapoor as widowed' })).toBeInTheDocument();
 
-    const married = screen.getAllByRole('textbox', { name: 'Year married' })[0] as HTMLElement;
-    await user.clear(married);
-    await user.type(married, '81');
-    await user.click(screen.getAllByRole('button', { name: 'Save years' })[0] as HTMLElement);
-    await waitFor(() => expect(married).toHaveFocus());
-    expect(married).toHaveAccessibleDescription('Enter the start year as a four-digit year, like 1985.');
-    await user.type(married, '19');
-    await user.clear(married);
-    await user.type(married, '1981');
-    await user.click(screen.getAllByRole('button', { name: 'Save years' })[0] as HTMLElement);
+    // A whole wedding date, not just a year: the month and day are what make an anniversary.
+    const married = screen.getAllByRole('group', { name: 'Married on' })[0] as HTMLElement;
+    const year = within(married).getByRole('textbox', { name: 'Year' });
+    await user.clear(year);
+    await user.type(year, '81');
+    await user.click(screen.getAllByRole('button', { name: 'Save dates' })[0] as HTMLElement);
+    await waitFor(() => expect(year).toHaveFocus());
+    expect(year).toHaveAccessibleDescription('Enter the start year as a four-digit year, like 1962.');
+    await user.clear(year);
+    await user.type(year, '1981');
+    await user.selectOptions(within(married).getByRole('combobox', { name: 'Month' }), '6');
+    const day = within(married).getByRole('textbox', { name: 'Day' });
+    await user.clear(day);
+    await user.type(day, '14');
+    await user.click(screen.getAllByRole('button', { name: 'Save dates' })[0] as HTMLElement);
     await waitFor(() => expect(server.changes).toHaveLength(2));
-    expect(server.graph().unions.find((union) => union.id === server.seed.unions.vikramPriti.id)?.startDate).toEqual({ year: 1981, month: null, day: null, approximate: false });
+    expect(server.changes[1]?.description).toBe('Changed the dates for Vikram Sharma and Priti Kapoor');
+    expect(server.graph().unions.find((union) => union.id === server.seed.unions.vikramPriti.id)?.startDate).toEqual({ year: 1981, month: 6, day: 14, approximate: false });
     await expectNoAxeViolations();
   }, 60_000);
 
