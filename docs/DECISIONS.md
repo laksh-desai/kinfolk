@@ -1024,3 +1024,29 @@ end is not before the start" down to the day. A year alone is still fine, and "a
 **Consequences.** Anniversaries appear for hand-entered marriages. The form is taller (two date
 groups instead of two year boxes); it sits in a panel that scrolls. The change description reads
 "Changed the dates for …". Supersedes the year-only part of Q36.
+
+## 043 — The PDF is a printed document: tiled sheets, and years rather than ages
+
+**Context.** The PDF export was one A4 page wrapping one bitmap of the whole tree, downscaled to
+fit; at sixty people the names were illegible, and at five hundred the picture was a smear. It
+also printed each living person's age (ADR 032), which is wrong by the next birthday on a
+document an advisor files for years. The alternatives were a vector PDF (embedding fonts and
+re-drawing the layout in PDF operators — a second renderer to keep in step with the SVG) or
+tiling the SVG raster across sheets.
+
+**Decision.** Tiling. `planPages` (pure, `packages/shared/src/export/paginate.ts`) cuts the
+picture into landscape Letter or A4 sheets at a scale where a card is at least 110 pt wide,
+neighbouring sheets overlapping by half an inch so a card cut by an edge is whole on one of them;
+a tree that fits one sheet gets one sheet. `buildPdf` writes any number of pages with Helvetica
+labels and boxes — no library, as before — so a multi-sheet document opens with an overview page
+showing where each numbered sheet goes, and every sheet carries the tree's name and its row and
+column. Sheets are painted from the decoded SVG image region by region, not from the capped
+8000 px raster, so each is sharp at about 200 dpi. The export menu offers Letter and A4. Exports
+(PNG and PDF) no longer pass `today`, so cards show birth and death years; the screen keeps the
+age. The PNG stays one picture.
+
+**Consequences.** A 60-person tree is 14 Letter sheets plus an overview; a 500-person tree is
+many more, which is the honest size of it — the overview page is what makes that usable. The
+top-row sheets of a wide tree carry empty paper where the oldest generations are sparse. Vector
+output (selectable text, smaller files) remains possible later by giving `buildPdf` text and line
+operators for cards, with the same `planPages`.

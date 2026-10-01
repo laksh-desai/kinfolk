@@ -4,29 +4,20 @@ Milestones are defined in `docs/SPEC.md` §10. Update at every checkpoint.
 
 ## In progress
 
-**M14 — A cleaner tree.** The second half of the owner's brief ("clean, visually appealing").
-Planned, each test-first:
+Nothing is in progress. The owner's pass ("efficient and quick to produce a clean, visually
+appealing family tree") closed with M14. Candidates for the next milestone, in the order they
+would pay off:
 
-- One `Menu`/`MenuItem` wrapper over Radix (the same skin is copied in the card menu, the
-  export menu, the tree settings menu and the account menu), handling the trigger-name and
-  focus-first-item gotchas once.
-- `ViewSwitch` with an `hrefFor` prop, a `Pill`, and a `TreePageHeader` shared by the tree,
-  review and shared pages, which each hand-roll the header and the status pill today.
-- The tree header's ten controls grouped: Add person stays primary; Share, Send for review and
-  Export stay visible; Needs detail, Compare, Import and Keyboard shortcuts go under Tools.
-- A theme toggle in the account menu (light mode exists and is only reachable on /account).
-- The three missing loading states (access dialog, dashboard inbox, an unreachable block on
-  Key Events).
-- Export as a printed document: a real paper size (Letter/A4, landscape), tiled across sheets
-  with labels and crop marks, drawn from the SVG rather than the capped raster, showing years
-  rather than an age (ADR 043).
-- Card and connector polish within the existing tokens: a gender rule on the card edge,
-  client and selected told apart, deceased and placeholder treatments that survive dark mode,
-  heavier union connectors, and connectors that dim with the cards on Compare.
-
-Deferred: a tablet drawer for the panel, the `TreeCanvas` hook extraction, an esbuild bundle
-for `pnpm start`, list pagination, an audit-history endpoint, session management, the
-`.env.example` guard test (the file is written by the owner; the test lands once it is).
+- The `.env.example` guard test (`env.test.ts` asserting every parsed key appears in the file),
+  once the owner has written the deployment block into `.env.example` — the tool cannot.
+- Email delivery (SMTP + `MAIL_FROM`) and the switch off `ALLOW_DEV_ADAPTERS`, which wait on
+  the custom domain; then password reset and invitations work for real.
+- A tablet drawer for the person panel at `md` (today a full-screen sheet below `md`).
+- `TreeCanvas` hook extraction (`useViewport`, `useCanvasKeys`): the file is 420 lines with
+  four `exhaustive-deps` suppressions, all viewport-only now that search has left it.
+- An esbuild bundle for `pnpm start` (production boots through tsx over source today).
+- Pagination on `/api/trees` and `/api/me/inbox`; an owner-only audit history endpoint (the
+  rows exist, nothing reads them); session management on the account page.
 
 ## Up next
 
@@ -47,6 +38,23 @@ Two things a future session should know about that path:
 
 ## Done
 
+- **M14 — A cleaner tree** (2026-10-01). One `Menu`/`MenuItem`/`MenuNote` over Radix replaces
+  four copies of the dropdown skin, named by its label rather than its trigger; the account
+  menu gains a light/dark toggle backed by a theme store. `TreePageHeader`, `Pill` and a
+  `ViewSwitch` with `hrefFor` replace the hand-rolled headers on the tree, review and shared
+  pages; the tree header's ten controls become Add person (primary), Share, Send for review,
+  Export and a Tools menu (Needs detail, Compare, Import, Keyboard shortcuts). The three
+  missing loading states are filled. The PDF is a printed document (ADR 043): `planPages`
+  tiles the picture across Letter or A4 sheets at a legible scale with overlap, `buildPdf`
+  writes the overview page and labelled sheets, drawn from the SVG image rather than the capped
+  raster, and exports show years rather than an age. Cards carry a gender rule on their edge,
+  client and selected are told apart, deceased and placeholder treatments survive dark mode,
+  partnerships are the heavier connector, and connectors fade with the cards on Compare.
+  The tree route crept to 200.3 KB and came back to 197.2 KB by lazy-loading the shortcut
+  dialog, the breadcrumb and the review banner. Eyeballed: canvas in both themes via a
+  Playwright screenshot, the sheets via sharp. Known: at 1440 px the tree header still wraps to
+  a second row, by choice (Share, Send for review and Export stay visible). Gate: lint clean,
+  646 tests, 17/17 e2e.
 - **M13 — Faster entry** (2026-10-01). Search is one page-level control (`TreeSearch`) shared
   by the canvas, the list, the reviewer's screen and the shared view: the list keeps only the
   people who match and lands on the chosen row; `/` and `?` work from anywhere on the page
