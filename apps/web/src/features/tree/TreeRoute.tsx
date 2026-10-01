@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { planSetFocus } from '@kinfolk/shared/relatives/planRelationshipEdits';
+import { needsDetailCount } from '@kinfolk/shared/graph/needsDetail';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Outlet, useLoaderData, useMatch, useNavigate, useSearchParams, type LoaderFunctionArgs } from 'react-router-dom';
 import { buttonClasses } from '../../components/Button';
@@ -14,7 +14,7 @@ import { useCanvasStore, useCollapsed } from '../../canvas/useCanvasStore';
 import { LinkedTreeBreadcrumb } from '../collaboration/LinkedTreeBreadcrumb';
 import { ExportMenu } from '../export/ExportMenu';
 import { ReviewBanner } from '../review/ReviewBanner';
-import { commitWithUndo } from './editing/changeQueue';
+import { setFocusPerson } from './editing/focusPerson';
 import { SaveIndicator } from './editing/SaveIndicator';
 import { UndoRedoButtons } from './editing/UndoRedoButtons';
 import { DeleteTreeDialog } from './header/DeleteTreeDialog';
@@ -113,7 +113,7 @@ export function Component() {
           items.push({
             label: 'Set as focus',
             icon: 'target',
-            onSelect: () => void commitWithUndo(treeId, planSetFocus(personId), `Made ${name} the focus person`, `Relationships are now shown relative to ${name}.`).catch(() => undefined),
+            onSelect: () => setFocusPerson(treeId, personId, name),
           });
         }
       }
@@ -137,7 +137,7 @@ export function Component() {
   );
 
   const roleLabel = ROLE_LABEL[tree.role];
-  const needsDetail = data.graph.people.filter((person) => person.isPlaceholder || !person.birthDate).length;
+  const needsDetail = needsDetailCount(data.graph.people);
   const count = data.graph.people.length;
 
   return (

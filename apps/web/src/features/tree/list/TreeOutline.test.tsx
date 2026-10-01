@@ -74,6 +74,20 @@ describe('list view (SPEC §5.3 accessible parallel view)', () => {
     await expectNoAxeViolations();
   }, 60_000);
 
+  it('sets the focus person from a row, relabelling the list, with undo', async () => {
+    const user = userEvent.setup();
+    const server = mockTreeServer();
+    await renderApp(`/trees/${TREE_ID}?view=list`);
+    const list = await screen.findByRole('region', { name: 'Family tree list' });
+    expect(within(list).queryByRole('button', { name: 'Set Ravi Sharma as focus' })).not.toBeInTheDocument();
+    await user.click(within(list).getByRole('button', { name: 'Set Emma Becker as focus' }));
+    await waitFor(() => expect(server.graph().focusPersonId).toBe(server.seed.people.emma.id));
+    expect(within(list).getByRole('link', { name: 'Edit Emma Becker' }).closest('li')).toHaveTextContent(/Focus person/);
+    expect(within(list).getByRole('link', { name: 'Edit Ravi Sharma' }).closest('li')).toHaveTextContent(/First cousin/);
+    await user.click(await screen.findByRole('button', { name: 'Undo: Made Emma Becker the focus person' }));
+    await waitFor(() => expect(server.graph().focusPersonId).toBe(server.seed.people.ravi.id));
+  }, 60_000);
+
   it('offers viewers the list without edit actions', async () => {
     mockTreeServer({ tree: { role: 'viewer' } });
     await renderApp(`/trees/${TREE_ID}?view=list`);

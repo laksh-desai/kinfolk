@@ -1,11 +1,10 @@
-import { planSetFocus } from '@kinfolk/shared/relatives/planRelationshipEdits';
 import type { Person } from '@kinfolk/shared/schemas/person';
 import type { TreeDto } from '@kinfolk/shared/schemas/tree';
 import { Link } from 'react-router-dom';
 import { Button, buttonClasses } from '../../../components/Button';
 import { Icon } from '../../../components/Icon';
 import { useCanvasStore, useCollapsed } from '../../../canvas/useCanvasStore';
-import { commitWithUndo } from '../editing/changeQueue';
+import { setFocusPerson } from '../editing/focusPerson';
 import { canEditTree } from '../treePermissions';
 import { usePersonDialogs } from './personDialogStore';
 
@@ -72,7 +71,7 @@ export function PersonActions({ tree, person, name, isFocus, focusId, hasDescend
             {!isFocus ? (
               <Button
                 icon="target"
-                onClick={() => void commitWithUndo(tree.id, planSetFocus(person.id), `Made ${name} the focus person`, `Relationships are now shown relative to ${name}.`).catch(() => undefined)}
+                onClick={() => setFocusPerson(tree.id, person.id, name)}
               >
                 Set as focus
               </Button>

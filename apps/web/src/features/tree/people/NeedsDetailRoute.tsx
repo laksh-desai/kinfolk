@@ -1,3 +1,4 @@
+import { needsDetail } from '@kinfolk/shared/graph/needsDetail';
 import { Link } from 'react-router-dom';
 import { EmptyState } from '../../../components/EmptyState';
 import { useTreeOutlet } from '../treeOutlet';
@@ -11,9 +12,7 @@ import { PanelShell } from './PanelShell';
 export function Component() {
   const { view, tree } = useTreeOutlet();
   const editable = canEditTree(tree);
-  const byName = (a: { id: string }, b: { id: string }) => (view.names.get(a.id) ?? '').localeCompare(view.names.get(b.id) ?? '');
-  const placeholders = view.graph.people.filter((person) => person.isPlaceholder).sort(byName);
-  const noBirthDate = view.graph.people.filter((person) => !person.isPlaceholder && !person.birthDate).sort(byName);
+  const { placeholders, noBirthDate } = needsDetail(view.graph.people, (id) => view.names.get(id) ?? '');
   const target = (id: string) => `/trees/${tree.id}/people/${id}${editable ? '/edit' : ''}`;
 
   const list = (people: typeof placeholders, action: string) => (

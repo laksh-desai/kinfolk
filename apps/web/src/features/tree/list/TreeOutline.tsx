@@ -5,6 +5,7 @@ import { matchesQuery } from '../../../canvas/SearchBox';
 import { useCanvasStore } from '../../../canvas/useCanvasStore';
 import { Button, buttonClasses } from '../../../components/Button';
 import { cx } from '../../../lib/cx';
+import { setFocusPerson } from '../editing/focusPerson';
 import { usePersonDialogs } from '../people/personDialogStore';
 import type { TreeView } from '../useTreeView';
 import { outlineTree } from './outlineTree';
@@ -79,6 +80,11 @@ export function TreeOutline({ view, selectedId, personHref, editTreeId }: TreeOu
             <Link to={`/trees/${editTreeId}/people/${personId}/edit`} aria-label={`Edit ${name}`} className={buttonClasses('ghost', 'min-h-9 px-3 py-1 text-sm')}>
               Edit
             </Link>
+            {personId !== view.graph.focusPersonId ? (
+              <Button variant="ghost" aria-label={`Set ${name} as focus`} className="min-h-9 px-3 py-1 text-sm" onClick={() => setFocusPerson(editTreeId, personId, name)}>
+                Set as focus
+              </Button>
+            ) : null}
             <Button variant="danger-quiet" aria-label={`Delete ${name}`} className="min-h-9 px-3 py-1 text-sm" onClick={() => openDelete(personId)}>
               Delete
             </Button>
