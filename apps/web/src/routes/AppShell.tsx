@@ -39,8 +39,9 @@ export function AppShell() {
       <a href="#main" className="sr-only-focusable fixed left-3 top-3 z-[70] rounded-control bg-accent px-4 py-2 font-semibold text-on-accent">
         Skip to main content
       </a>
-      <header className="sticky top-0 z-30 border-b border-line bg-surface/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-screen-2xl items-center gap-4 px-4 sm:px-6">
+      {/* Exactly 4rem tall, border included: the tree page sizes itself to the window below it. */}
+      <header className="sticky top-0 z-30 box-border h-16 border-b border-line bg-surface/95 backdrop-blur">
+        <div className="mx-auto flex h-full max-w-screen-2xl items-center gap-4 px-4 sm:px-6">
           <Wordmark />
           <nav aria-label="Main" className="ml-2 hidden items-center gap-1 md:flex">
             {NAV_ITEMS.map((item) => (

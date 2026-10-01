@@ -140,7 +140,9 @@ export function Component() {
   const count = data.graph.people.length;
 
   return (
-    <main id="main" tabIndex={-1} className="flex min-h-0 flex-1 flex-col outline-none">
+    // Exactly the viewport below the shell's 4rem header, so the canvas gets whatever the tree
+    // header, the breadcrumb, and the review banner leave — however many rows they wrap to.
+    <main id="main" tabIndex={-1} className="flex h-[calc(100dvh-4rem)] min-h-0 flex-col outline-none">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-surface px-4 py-2 sm:px-6">
         <TreeTitle tree={tree} editing={renaming} onEditingChange={setRenaming} />
         {tree.role === 'owner' && !renaming ? (
@@ -205,7 +207,7 @@ export function Component() {
       {fromTreeId ? <LinkedTreeBreadcrumb fromTreeId={fromTreeId} personId={searchParams.get('person')} /> : null}
       <ReviewBanner tree={tree} />
       <div className="flex min-h-0 flex-1">
-        <div className="relative min-h-[28rem] min-w-0 flex-1" style={{ height: 'calc(100vh - 8.5rem)' }}>
+        <div className="relative min-h-0 min-w-0 flex-1">
           {count === 0 ? (
             <EmptyState
               icon="tree"

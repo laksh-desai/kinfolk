@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { expectAccessible, expectNoHorizontalScroll } from './support/a11y';
-import { createSeededTree, signUp } from './support/seedTree';
+import { createEmptyTree, createSeededTree, signUp } from './support/seedTree';
 
 async function cardBoundsInsideCanvas(page: Page) {
   return page.evaluate(() => {
@@ -26,6 +26,23 @@ test.describe('tree canvas in a real browser', () => {
       expect(result.outside, `cards clipped at ${width}px`).toBe(0);
       await expectNoHorizontalScroll(page);
     }
+  });
+
+  test('the canvas fills the window below whatever sits above it, never past the bottom', async ({ page }) => {
+    await signUp(page);
+    const { treeId } = await createSeededTree(page);
+    const other = await createEmptyTree(page, 'Rao family');
+    // A breadcrumb above the canvas, on a laptop screen: the canvas must still end at the window.
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(`/trees/${treeId}?from=${other.treeId}`);
+    await expect(page.getByRole('heading', { level: 1, name: 'Sharma family' })).toBeVisible();
+    await expect(page.locator('button[data-person-id]').first()).toBeVisible();
+    const canvas = await page.locator('[aria-label="Family tree canvas"]').boundingBox();
+    expect(canvas, 'canvas is laid out').not.toBeNull();
+    expect(canvas!.y + canvas!.height, 'canvas bottom edge').toBeLessThanOrEqual(800);
+    expect(canvas!.height, 'canvas is most of the window').toBeGreaterThan(500);
+    const pageScroll = await page.evaluate(() => document.documentElement.scrollHeight - document.documentElement.clientHeight);
+    expect(pageScroll, 'page scrolls vertically').toBeLessThanOrEqual(0);
   });
 
   test('selection survives a hard refresh and a pasted URL; the panel and canvas are accessible', async ({ page }) => {
