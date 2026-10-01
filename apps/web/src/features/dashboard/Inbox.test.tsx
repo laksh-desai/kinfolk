@@ -29,6 +29,24 @@ describe('what’s waiting for you on the dashboard (SPEC §5.2)', () => {
     expect(screen.queryByRole('region', { name: 'Waiting for you' })).not.toBeInTheDocument();
   });
 
+  it('says it is checking while the inbox loads, rather than popping in later', async () => {
+    const api = dashboard({}, [summary()]);
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    api.set('GET /api/me/inbox', async () => {
+      await gate;
+      return { body: emptyInbox };
+    });
+    await renderApp('/');
+    const checking = await screen.findByText('Checking for invitations and requests');
+    expect(checking.closest('[role="status"]')).toHaveAttribute('aria-busy', 'true');
+    release();
+    await waitFor(() => expect(screen.queryByText('Checking for invitations and requests')).not.toBeInTheDocument());
+    expect(screen.queryByRole('region', { name: 'Waiting for you' })).not.toBeInTheDocument();
+  });
+
   it('accepts an access invitation, which adds the tree to the list', async () => {
     const user = userEvent.setup();
     let accepted = false;

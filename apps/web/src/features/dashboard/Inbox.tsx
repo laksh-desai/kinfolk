@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, buttonClasses } from '../../components/Button';
 import { ErrorState } from '../../components/ErrorState';
+import { LoadingRegion } from '../../components/LoadingRegion';
+import { Skeleton } from '../../components/Skeleton';
 import { announce } from '../../lib/announcer';
 import { describeError } from '../../lib/api';
 import { queryClient } from '../../lib/queryClient';
@@ -20,7 +22,14 @@ export function Inbox({ onCreateTree }: { onCreateTree: () => void }) {
   const trees = useQuery(treesQuery);
   const [answering, setAnswering] = useState<string | null>(null);
 
-  if (inbox.isPending) return null;
+  // A blank that later pops into a list of things to do is a missing state, not an empty one.
+  if (inbox.isPending) {
+    return (
+      <LoadingRegion label="Checking for invitations and requests">
+        <Skeleton className="h-12 w-full" />
+      </LoadingRegion>
+    );
+  }
   if (inbox.isError) {
     return <ErrorState error={inbox.error} title="Invitations and requests didn’t load" onRetry={() => void inbox.refetch()} retrying={inbox.isRefetching} className="py-4" />;
   }

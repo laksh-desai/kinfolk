@@ -67,7 +67,13 @@ export function Component() {
                 </li>
               ))}
             </ul>
-          ) : null}
+          ) : (
+            <p className="mt-4">
+              <Link to="/" className={buttonClasses('secondary')}>
+                Back to your family trees
+              </Link>
+            </p>
+          )}
         </EmptyState>
       ) : (
         <>
@@ -168,14 +174,6 @@ export function Component() {
           ) : null}
         </>
       )}
-
-      {events.data && events.data.events.length === 0 && needDates.length === 0 ? (
-        <p className="mt-4 text-center">
-          <Link to="/" className={buttonClasses('secondary')}>
-            Back to your family trees
-          </Link>
-        </p>
-      ) : null}
     </main>
   );
 }

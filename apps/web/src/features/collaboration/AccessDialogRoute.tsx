@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Dialog } from '../../components/Dialog';
 import { ErrorState } from '../../components/ErrorState';
+import { LoadingRegion } from '../../components/LoadingRegion';
 import { Skeleton } from '../../components/Skeleton';
 import { useTreeOutlet } from '../tree/treeOutlet';
 import { AccessMemberList } from './AccessMemberList';
@@ -35,11 +36,12 @@ export function Component() {
             People with access
           </h3>
           {access.isPending ? (
-            <div role="status" aria-busy="true" className="flex flex-col gap-2">
-              <span className="sr-only">Loading people with access</span>
-              <Skeleton className="h-14 w-full" />
-              <Skeleton className="h-14 w-full" />
-            </div>
+            <LoadingRegion label="Loading people with access">
+              <div className="flex flex-col gap-2">
+                <Skeleton className="h-14 w-full" />
+                <Skeleton className="h-14 w-full" />
+              </div>
+            </LoadingRegion>
           ) : access.isError ? (
             <ErrorState error={access.error} title="The access list didn’t load" onRetry={() => void access.refetch()} retrying={access.isRefetching} className="py-4" />
           ) : (
