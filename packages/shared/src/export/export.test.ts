@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { buildSeedTree } from '../fixtures/seedTree';
 import { computeLayout } from '../layout/computeLayout';
 import { createKinshipResolver } from '../kinship/resolveKinship';
-import { buildImagePdf } from './pdf';
+import { planPages } from './paginate';
+import { buildImagePdf, buildPdf } from './pdf';
 import { treeSvg } from './treeSvg';
 
 const { graph, people } = buildSeedTree();
@@ -114,7 +115,7 @@ describe('PDF export (SPEC §5.3)', () => {
     expect(text).toContain('/MediaBox [0 0 841.89 595.28]');
     const xref = /startxref\n(\d+)/.exec(text);
     expect(Number(xref?.[1])).toBeLessThan(pdf.length);
-    expect(text.slice(Number(xref?.[1]))).toMatch(/^xref\n0 7/);
+    expect(text.slice(Number(xref?.[1]))).toMatch(/^xref\n0 8/);
     // The image bytes survive untouched.
     expect(pdf.indexOf(0xd8)).toBeGreaterThan(0);
   });
@@ -122,5 +123,62 @@ describe('PDF export (SPEC §5.3)', () => {
   it('puts a tall picture on a portrait page', () => {
     const pdf = buildImagePdf({ jpeg, pixelWidth: 900, pixelHeight: 1600, title: 'Tall' });
     expect(new TextDecoder('latin1').decode(pdf)).toContain('/MediaBox [0 0 595.28 841.89]');
+  });
+
+  it('writes a document of several sheets, each labelled in Helvetica, with boxes on the overview', () => {
+    const page = { width: 792, height: 612 };
+    const pdf = buildPdf({
+      title: 'Sharma family',
+      pages: [
+        { ...page, images: [{ jpeg, pixelWidth: 100, pixelHeight: 50, x: 28, y: 28, width: 400, height: 200 }], rects: [{ x: 28, y: 28, width: 200, height: 100, lineWidth: 0.75, gray: 0.5 }], texts: [{ x: 34, y: 42, size: 10, text: '1' }] },
+        { ...page, images: [{ jpeg, pixelWidth: 100, pixelHeight: 50, x: 28, y: 28, width: 736, height: 368 }], texts: [{ x: 764, y: 600, size: 9, text: 'Sheet 1 of 2 · row 1, column 1', align: 'right' }] },
+        { ...page, images: [{ jpeg, pixelWidth: 100, pixelHeight: 50, x: 28, y: 28, width: 736, height: 368 }], texts: [{ x: 764, y: 600, size: 9, text: 'Sheet 2 of 2 · row 1, column 2', align: 'right' }] },
+      ],
+    });
+    const text = new TextDecoder('latin1').decode(pdf);
+    expect(text).toContain('/Count 3');
+    expect((text.match(/\/MediaBox \[0 0 792\.00 612\.00\]/g) ?? []).length).toBe(3);
+    expect(text).toContain('/BaseFont /Helvetica');
+    expect(text).toContain('(Sheet 2 of 2 \\267 row 1, column 2) Tj');
+    expect(text).toContain(' re\nS');
+    // The cross-reference table lists every object, and the file ends properly.
+    const size = Number(/\/Size (\d+)/.exec(text)?.[1]);
+    expect(text.slice(Number(/startxref\n(\d+)/.exec(text)?.[1]))).toMatch(new RegExp(`^xref\\n0 ${size}\\n`));
+    expect(text.trimEnd().endsWith('%%EOF')).toBe(true);
+  });
+});
+
+describe('paginating a picture onto sheets (SPEC §5.3)', () => {
+  it('puts a small tree on one Letter sheet, landscape, with nothing to tape', () => {
+    const plan = planPages(800, 500);
+    expect([plan.pageWidth, plan.pageHeight]).toEqual([792, 612]);
+    expect(plan.tiles).toHaveLength(1);
+    expect(plan.overview).toBeNull();
+    expect(plan.tiles[0]).toMatchObject({ sx: 0, sy: 0, sw: 800, sh: 500, label: '' });
+    // Fitted and centred inside the margins.
+    expect(plan.tiles[0]!.x).toBeGreaterThanOrEqual(28);
+    expect(plan.tiles[0]!.width + plan.tiles[0]!.x).toBeLessThanOrEqual(792 - 28);
+  });
+
+  it('tiles the seed tree so a card is never narrower than a thumb, with overlap and an overview', () => {
+    const svg = treeSvg(graph, layout, { title: 'Sharma family' });
+    const size = /width="(\d+)" height="(\d+)"/.exec(svg);
+    const [width, height] = [Number(size?.[1]), Number(size?.[2])];
+    const plan = planPages(width, height, { paper: 'a4' });
+    expect([plan.pageWidth, plan.pageHeight]).toEqual([841.89, 595.28]);
+    expect(plan.tiles.length).toBeGreaterThan(1);
+    expect(plan.tiles.length).toBe(plan.rows * plan.columns);
+    expect(plan.scale * 176).toBeGreaterThanOrEqual(110);
+    expect(plan.overview).not.toBeNull();
+    // Neighbours repeat an edge, the last sheets reach the picture's edges, and every sheet says where it goes.
+    const [first, second] = plan.tiles;
+    if (plan.columns > 1) expect(second!.sx).toBeLessThan(first!.sx + first!.sw);
+    const last = plan.tiles[plan.tiles.length - 1]!;
+    expect(last.sx + last.sw).toBeCloseTo(width, 5);
+    expect(last.sy + last.sh).toBeCloseTo(height, 5);
+    expect(first!.label).toBe(`Sheet 1 of ${plan.tiles.length} · row 1, column 1`);
+    expect(last.label).toBe(`Sheet ${plan.tiles.length} of ${plan.tiles.length} · row ${plan.rows}, column ${plan.columns}`);
+    // Nothing printed wider than the page.
+    for (const tile of plan.tiles) expect(tile.x + tile.width).toBeLessThanOrEqual(plan.pageWidth - plan.marginPt + 0.01);
   });
 });
