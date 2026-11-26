@@ -15,9 +15,8 @@ State on 2026-11-25:
   `@fastify/compress` was locked but missing from `apps/api/package.json`; `1751777` fixed it.
 - Render environment has `WEB_URL`, `API_URL` (both the onrender URL), `RECORDS_PASSPHRASE`
   (equal to the demo password — must change), `SEED_EMAIL`, `SEED_PASSWORD`, `ALLOW_DEV_ADAPTERS=true`,
-  no `S3_*`, no `SMTP_URL`/`MAIL_FROM`, no `SIGNUP_ALLOWLIST` (anyone may sign up — intended).
-- Auto-deploy is "on commit"; the CI gate is not switched on yet. Nobody has looked at the first
-  GitHub Actions run — step 1 starts there.
+  `LOCAL_STORAGE_DIR=/var/data/storage` and `LOCAL_STORAGE_PERSISTENT=true` on a 1 GB disk, no `S3_*`, no `SMTP_URL`/`MAIL_FROM`, no `SIGNUP_ALLOWLIST` (anyone may sign up — intended).
+- CI is green on `main` and Render deploys only after checks pass (set 2026-11-25). Step 1 is done.
 - A stale, never-verified custom domain `ats.myloving.family` (added 2026-09-21; that domain is not
   in ATS's Spaceship account) is still listed on the service. Delete it in step 4 before adding the
   real one: Settings → Custom Domains → ⋯ → Delete.
@@ -54,6 +53,9 @@ Done when: Actions shows both jobs green, Render shows the new commit live, a ph
 `apps/api/src/lib/env.test.ts` fails if a variable is added to `env.ts` without being added here.
 
 ## 3. File storage — a Render disk
+
+**Done and verified on 2026-11-25 (ADR 044):** a test photo survived a redeploy. The steps below
+record what was set, in case the service is ever rebuilt.
 
 **Decided on 2026-11-25 (ADR 044):** uploads go on a 1 GB persistent disk attached to the service,
 not on Cloudflare R2. No extra account; about $0.25 a month on the Render bill.
@@ -146,9 +148,9 @@ server and never delivered.
 
 ## Verification checklist (all of it, at the end)
 
-- [ ] GitHub Actions green on `main`; Render set to deploy after checks pass
+- [x] GitHub Actions green on `main`; Render set to deploy after checks pass
 - [ ] `https://<hostname>/api/health` → `{"status":"ok"}`; sign-in works there
-- [ ] Photo upload survives a redeploy (disk)
+- [x] Photo upload survives a redeploy (disk)
 - [ ] Forgot-password email arrives; an invitation email arrives
 - [ ] Boot log shows no PREVIEW block; `ALLOW_DEV_ADAPTERS` absent
 - [ ] `RECORDS_PASSPHRASE` differs from every login password
