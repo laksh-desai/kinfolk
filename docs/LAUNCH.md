@@ -40,7 +40,7 @@ State on 2026-11-25:
      the 500-person test is load, not code — re-run the job.
 3. Render deploys each push on its own (trigger is still "commit"). `e15b50d` is **Live** at
    https://dashboard.render.com/web/srv-dalid265vjqs73fh15ag and `/api/health` answers.
-4. **Verify the bug fix on the live site:** sign in as the demo account, open a person, upload a
+4. Verified on 2026-11-25 (a photo uploaded on the live site, then removed). To repeat: sign in as the demo account, open a person, upload a
    photo *without* having opened any public record first. It must succeed. (Before this deploy it
    failed with "Enter the passphrase for public records first.")
 5. Only once CI is green: Render → the service → **Settings → Build & Deploy → Auto-Deploy** →
