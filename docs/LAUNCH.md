@@ -53,30 +53,18 @@ Done when: Actions shows both jobs green, Render shows the new commit live, a ph
 **Done on 2026-11-25** (`e15b50d`). The file lists every variable the API reads, and
 `apps/api/src/lib/env.test.ts` fails if a variable is added to `env.ts` without being added here.
 
-## 3. File storage — Cloudflare R2
+## 3. File storage — a Render disk
 
-**Who:** whoever holds (or creates) the Cloudflare account. Should be an ATS-owned login.
-Until this is done every deploy wipes uploaded photos and record PDFs.
+**Decided on 2026-11-25 (ADR 044):** uploads go on a 1 GB persistent disk attached to the service,
+not on Cloudflare R2. No extra account; about $0.25 a month on the Render bill.
 
-1. https://dash.cloudflare.com → **R2 Object Storage** → activate (needs a card; the free
-   allowance covers this app) → **Create bucket**: name `kinfolk`, location Automatic.
-2. R2 overview → **Manage R2 API Tokens** → **Create API token**: permissions *Object Read & Write*,
-   scope *Apply to specific buckets only* → `kinfolk`, TTL forever. Copy the **Access Key ID** and
-   **Secret Access Key** (shown once) and the **Account ID** (on the R2 overview page).
-3. Bucket → **Settings** → turn on **object versioning** if offered (a deleted photo is otherwise gone).
-4. Render → service → **Environment** → add, then *Save, rebuild, and deploy*:
+1. Render → service → **Disks** → add a disk: name `kinfolk-uploads`, mount path `/var/data`, 1 GB.
+2. Render → **Environment**: `LOCAL_STORAGE_DIR=/var/data/storage`, `LOCAL_STORAGE_PERSISTENT=true`.
+3. Verify: the boot log no longer lists "object storage" among the stand-ins; upload a photo;
+   deploy again (Manual Deploy → Deploy latest commit); the photo is still there.
 
-   | Key | Value |
-   |---|---|
-   | `S3_ENDPOINT` | `https://<account id>.r2.cloudflarestorage.com` |
-   | `S3_REGION` | `auto` |
-   | `S3_BUCKET` | `kinfolk` |
-   | `S3_ACCESS_KEY_ID` | from step 2 |
-   | `S3_SECRET_ACCESS_KEY` | from step 2 |
-
-5. Verify: the deploy's boot log no longer lists "object storage" among the stand-ins; upload a
-   photo; trigger another deploy (Manual Deploy → Deploy latest commit); the photo is still there.
-6. Record the Cloudflare login and the token in ATS's secure folder.
+Each deploy now stops the old version before starting the new one: about half a minute offline.
+The disk can be enlarged later, never shrunk. Render snapshots it daily.
 
 ## 4. The domain
 
@@ -136,7 +124,7 @@ server and never delivered.
 
 1. Render → Environment → delete `ALLOW_DEV_ADAPTERS`. Deploy.
 2. The boot log must **not** print the "running as a PREVIEW deployment" block. If the service fails
-   to boot, the log names the missing variable (`env.ts` refuses to start without S3 and SMTP in
+   to boot, the log names the missing variable (`env.ts` refuses to start without storage and SMTP in
    production — that is the point).
 3. Set a new `RECORDS_PASSPHRASE` that is **not** the demo password (today they are the same, which
    makes the passphrase useless). Deploy. Tell ATS the new passphrase; existing unlocked sessions
@@ -160,7 +148,7 @@ server and never delivered.
 
 - [ ] GitHub Actions green on `main`; Render set to deploy after checks pass
 - [ ] `https://<hostname>/api/health` → `{"status":"ok"}`; sign-in works there
-- [ ] Photo upload survives a redeploy (R2)
+- [ ] Photo upload survives a redeploy (disk)
 - [ ] Forgot-password email arrives; an invitation email arrives
 - [ ] Boot log shows no PREVIEW block; `ALLOW_DEV_ADAPTERS` absent
 - [ ] `RECORDS_PASSPHRASE` differs from every login password

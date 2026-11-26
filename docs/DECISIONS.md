@@ -1050,3 +1050,21 @@ many more, which is the honest size of it — the overview page is what makes th
 top-row sheets of a wide tree carry empty paper where the oldest generations are sparse. Vector
 output (selectable text, smaller files) remains possible later by giving `buildPdf` text and line
 operators for cards, with the same `planPages`.
+
+## 044 — Uploads on the host's persistent disk
+
+**Context.** Production refused to boot without S3 (ADR 007, ADR 036), and the launch plan was
+Cloudflare R2. ATS's uploads are photos of people in a tree and the odd PDF: well under a
+gigabyte. R2 would add an account, a login to hand over and two secrets, to store that. Render
+offers a persistent disk on the plan the service is already on.
+
+**Decision.** `LOCAL_STORAGE_PERSISTENT=true` declares that `LOCAL_STORAGE_DIR` is a disk that
+outlives deploys. With it, production starts without `S3_*`, and boot no longer lists object
+storage as a stand-in. The folder must then be an absolute path, so the declaration cannot be
+made about the default relative folder, which sits on the disk a deploy replaces. The S3 adapter
+stays, and setting `S3_*` still takes precedence.
+
+**Consequences.** One account fewer. A service with a disk runs one instance and stops the old
+version before starting the new one, so each deploy is a short outage. Uploads are covered by
+Render's daily disk snapshots (about a week) and are lost if the service is deleted; moving to R2
+later is a copy of the folder and five variables.

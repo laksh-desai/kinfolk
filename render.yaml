@@ -10,7 +10,6 @@
 #   SIGNUP_ALLOWLIST   who may create an account, e.g. "@atswealth.com"
 #   SEED_EMAIL         the demo login handed to ATS
 #   SEED_PASSWORD      its password — set it in the dashboard, never in this file
-#   S3_*               Cloudflare R2, so uploads survive a redeploy
 services:
   - type: web
     name: kinfolk
@@ -37,11 +36,21 @@ services:
     healthCheckPath: /api/health
     # A push to main deploys only once GitHub's CI workflow (.github/workflows/ci.yml) is green.
     autoDeployTrigger: checksPass
+    # Photos and record PDFs live here and survive deploys (ADR 044). A disk means one instance
+    # and a short outage on each deploy.
+    disk:
+      name: kinfolk-uploads
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
+      - key: LOCAL_STORAGE_DIR
+        value: /var/data/storage
+      - key: LOCAL_STORAGE_PERSISTENT
+        value: 'true'
       - key: NODE_ENV
         value: production
-      # This is a preview: no Google sign-in, no outbound email, and uploads on local disk
-      # unless S3_* is set. The API prints what it is standing in for at boot.
+      # This is a preview: no Google sign-in and no outbound email. The API prints what it is
+      # standing in for at boot.
       - key: ALLOW_DEV_ADAPTERS
         value: 'true'
       - key: NODE_VERSION

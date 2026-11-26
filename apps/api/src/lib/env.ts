@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { z } from 'zod';
 import { DURATION_PATTERN, parseDuration } from './duration';
 
@@ -66,6 +67,16 @@ const envSchema = z
       .string()
       .optional()
       .transform((value) => (value === undefined || value === '' ? './var/storage' : value)),
+    /**
+     * Says LOCAL_STORAGE_DIR is a disk that outlives deploys (a host's persistent volume), so
+     * uploads kept there are real storage and S3 is not needed in production (ADR 044).
+     */
+    LOCAL_STORAGE_PERSISTENT: z
+      .string()
+      .optional()
+      .transform((value) => (value === undefined || value === '' ? 'false' : value))
+      .pipe(z.enum(['true', 'false']))
+      .transform((value) => value === 'true'),
     SMTP_URL: optionalString,
     MAIL_FROM: z
       .string()
@@ -110,12 +121,13 @@ const envSchema = z
   })
   .superRefine((env, ctx) => {
     // Google is optional even in production: without it, Google sign-in is off and people sign
-    // in with a password (ADR 038). Storage and email have no safe "off", so they stay required.
+    // in with a password (ADR 038). Storage and email have no safe "off", so they stay required; storage is either S3
+    // or a disk declared persistent (ADR 044).
     const groups: Array<[boolean, boolean, string[]]> = [
       [env.GOOGLE_CLIENT_ID !== undefined, false, ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET']],
       [
         env.S3_ENDPOINT !== undefined,
-        true,
+        !env.LOCAL_STORAGE_PERSISTENT,
         ['S3_ENDPOINT', 'S3_REGION', 'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY'],
       ],
     ];
@@ -134,6 +146,13 @@ const envSchema = z
           });
         }
       }
+    }
+    if (env.LOCAL_STORAGE_PERSISTENT && !path.isAbsolute(env.LOCAL_STORAGE_DIR)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['LOCAL_STORAGE_DIR'],
+        message: 'must be the absolute path of the persistent disk when LOCAL_STORAGE_PERSISTENT=true',
+      });
     }
     if (strict) {
       if (env.SMTP_URL === undefined) {
@@ -181,7 +200,7 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
  */
 export function devAdaptersInUse(env: Env): string[] {
   const using: string[] = [];
-  if (!env.S3_ENDPOINT) using.push('object storage (uploads are on this host’s disk and go when it restarts)');
+  if (!env.S3_ENDPOINT && !env.LOCAL_STORAGE_PERSISTENT) using.push('object storage (uploads are on this host’s disk and go when it restarts)');
   if (!env.SMTP_URL) using.push('email (messages are written to a folder, never delivered)');
   return using;
 }

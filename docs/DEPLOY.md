@@ -20,6 +20,10 @@ git push -u origin main
 
 ## 2. Storage for uploads (10 minutes, free)
 
+> The live service uses a Render persistent disk instead (ADR 044; `docs/LAUNCH.md` step 3):
+> `LOCAL_STORAGE_DIR=/var/data/storage` and `LOCAL_STORAGE_PERSISTENT=true`. What follows is the
+> R2 alternative, which still works and takes precedence when `S3_*` is set.
+
 Photos and public-record PDFs are written to the host's disk by default, and most hosts wipe
 that on every deploy. Cloudflare R2 is S3-compatible and the S3 adapter already exists, so
 this is configuration, not code.

@@ -119,6 +119,36 @@ describe('deploying (ADR 036)', () => {
   });
 });
 
+describe('disk storage declared persistent (ADR 044)', () => {
+  const production = {
+    ...valid,
+    NODE_ENV: 'production',
+    SMTP_URL: 'smtp://user:pass@smtp.example.com:587',
+    MAIL_FROM: 'Kinfolk <no-reply@example.com>',
+  };
+
+  it('stands in for S3 in production', () => {
+    expect(problemsFor(production)).toContain(
+      'S3_ENDPOINT is required in production (or set ALLOW_DEV_ADAPTERS=true for a preview deployment)',
+    );
+    const disk = { ...production, LOCAL_STORAGE_PERSISTENT: 'true', LOCAL_STORAGE_DIR: '/var/data/storage' };
+    expect(problemsFor(disk)).toEqual([]);
+  });
+
+  it('refuses a relative folder, which would sit on the disk a deploy replaces', () => {
+    expect(problemsFor({ ...production, LOCAL_STORAGE_PERSISTENT: 'true' })).toEqual([
+      'LOCAL_STORAGE_DIR must be the absolute path of the persistent disk when LOCAL_STORAGE_PERSISTENT=true',
+    ]);
+  });
+
+  it('is not reported as a stand-in', () => {
+    const preview = { ...valid, NODE_ENV: 'production', ALLOW_DEV_ADAPTERS: 'true' };
+    expect(devAdaptersInUse(parseEnv(preview)).join()).toContain('object storage');
+    const disk = { ...preview, LOCAL_STORAGE_PERSISTENT: 'true', LOCAL_STORAGE_DIR: '/var/data/storage' };
+    expect(devAdaptersInUse(parseEnv(disk)).join()).not.toContain('object storage');
+  });
+});
+
 describe('.env.example', () => {
   const example = readFileSync(
     fileURLToPath(new URL('../../../../.env.example', import.meta.url)),
