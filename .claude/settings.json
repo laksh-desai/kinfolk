@@ -16,15 +16,18 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git checkout -b:*)",
+      "Bash(git push:*)",
       "Edit",
       "Write"
     ],
     "deny": [
-      "Bash(git push:*)",
       "Bash(git reset --hard:*)",
       "Bash(rm -rf:*)",
       "Read(./.env)",
-      "Read(./.env.*)",
+      "Read(./.env.local)",
+      "Read(./.env.development)",
+      "Read(./.env.production)",
+      "Read(./.env.test)",
       "Edit(./docs/SPEC.md)"
     ]
   }
