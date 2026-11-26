@@ -10,12 +10,14 @@ branch `main`. `docs/DEPLOY.md` explains how the deployment is put together; thi
 list of what remains.
 
 State on 2026-11-25:
-- 27 commits on local `main` (M12–M14: the photo-upload fix, CI, the bundle budget, search, the
-  printable PDF, …) are **not pushed**; Render is serving commit `ab73e3d` from 2026-09-21.
+- `main` is pushed and Render is serving commit `e15b50d` (M12–M14: the photo-upload fix, CI, the
+  bundle budget, search, the printable PDF, …). The first push failed to build because
+  `@fastify/compress` was locked but missing from `apps/api/package.json`; `1751777` fixed it.
 - Render environment has `WEB_URL`, `API_URL` (both the onrender URL), `RECORDS_PASSPHRASE`
   (equal to the demo password — must change), `SEED_EMAIL`, `SEED_PASSWORD`, `ALLOW_DEV_ADAPTERS=true`,
   no `S3_*`, no `SMTP_URL`/`MAIL_FROM`, no `SIGNUP_ALLOWLIST` (anyone may sign up — intended).
-- Auto-deploy is "on commit"; the CI gate is not switched on yet (the workflow isn't on GitHub).
+- Auto-deploy is "on commit"; the CI gate is not switched on yet. Nobody has looked at the first
+  GitHub Actions run — step 1 starts there.
 - A stale, never-verified custom domain `ats.myloving.family` (added 2026-09-21; that domain is not
   in ATS's Spaceship account) is still listed on the service. Delete it in step 4 before adding the
   real one: Settings → Custom Domains → ⋯ → Delete.
@@ -26,7 +28,8 @@ State on 2026-11-25:
 
 **Who:** anyone with push rights (the laptop's git credentials work; `gh` is not installed).
 
-1. In the repository: `git status` must be clean, then `git push origin main`.
+1. Done on 2026-11-25: `main` is pushed and deployed. For any later push, `git status` must be
+   clean, then `git push origin main`.
 2. Open https://github.com/laksh-desai/kinfolk/actions. The workflow **CI** runs two jobs,
    *check* (lint, unit/API/web tests, web build, bundle budget) and *Playwright*. Both have passed on
    Windows locally; this is their first run on Linux. If one fails, read the log before changing
@@ -35,8 +38,8 @@ State on 2026-11-25:
      A failure to start usually means the runner image; retry once before digging.
    - Playwright: `pnpm exec playwright install --with-deps chromium` is in the job. A timeout on
      the 500-person test is load, not code — re-run the job.
-3. Render deploys the push on its own (trigger is still "commit"). Wait for the deploy to show
-   **Live** at https://dashboard.render.com/web/srv-dalid265vjqs73fh15ag.
+3. Render deploys each push on its own (trigger is still "commit"). `e15b50d` is **Live** at
+   https://dashboard.render.com/web/srv-dalid265vjqs73fh15ag and `/api/health` answers.
 4. **Verify the bug fix on the live site:** sign in as the demo account, open a person, upload a
    photo *without* having opened any public record first. It must succeed. (Before this deploy it
    failed with "Enter the passphrase for public records first.")
@@ -47,31 +50,8 @@ Done when: Actions shows both jobs green, Render shows the new commit live, a ph
 
 ## 2. `.env.example`
 
-**Who:** anyone with a text editor (an automated agent in this repo was denied writes to this file by
-its permission settings; a person or a differently-configured agent can edit it).
-
-Remove the last two lines:
-```
-# --- Feature flags ---
-ENABLE_EMAIL_REMINDERS=false
-```
-Append:
-```
-# --- Deployment ---
-ALLOW_DEV_ADAPTERS=false         # true only for a preview: disk uploads and a file mail outbox, loudly (ADR 036)
-SIGNUP_ALLOWLIST=                # addresses and @domains that may sign up; empty means anyone
-RECORDS_PASSPHRASE=              # when set, public-record PDFs ask for it (ADR 037); never the demo password
-SEED_EMAIL=                      # the account `pnpm db:seed` creates
-SEED_PASSWORD=
-```
-Then add the guard test so it can't drift again, in `apps/api/src/lib/env.test.ts`:
-- export `const ENV_KEYS = Object.keys(envSchema.shape)` from `apps/api/src/lib/env.ts` (the Zod
-  object is named `envSchema` there; if it isn't, export whatever `parseEnv` validates with).
-- a test that reads `../../../../.env.example` with `fs.readFileSync` and asserts every key in
-  `ENV_KEYS` plus `SEED_EMAIL`, `SEED_PASSWORD` appears at the start of a line as `KEY=`. `PORT`
-  is read by `parseEnv` directly but documented as a comment on `API_PORT`; assert the word only.
-- `pnpm lint && pnpm exec vitest run --project api src/lib/env.test.ts`, then commit:
-  `test(api): keep .env.example in step with what the API reads`.
+**Done on 2026-11-25** (`e15b50d`). The file lists every variable the API reads, and
+`apps/api/src/lib/env.test.ts` fails if a variable is added to `env.ts` without being added here.
 
 ## 3. File storage — Cloudflare R2
 
@@ -185,4 +165,4 @@ server and never delivered.
 - [ ] Boot log shows no PREVIEW block; `ALLOW_DEV_ADAPTERS` absent
 - [ ] `RECORDS_PASSPHRASE` differs from every login password
 - [ ] Share link and review link open on the new hostname
-- [ ] `.env.example` guard test committed
+- [x] `.env.example` guard test committed
