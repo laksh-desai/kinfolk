@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { devAdaptersInUse, EnvValidationError, parseEnv } from './env';
+import { devAdaptersInUse, ENV_KEYS, EnvValidationError, parseEnv } from './env';
 
 const valid = {
   DATABASE_URL: 'postgres://kinfolk:kinfolk@localhost:5432/kinfolk',
@@ -114,5 +116,28 @@ describe('deploying (ADR 036)', () => {
       '@atswealth.com',
     ]);
     expect(parseEnv(valid).SIGNUP_ALLOWLIST).toEqual([]);
+  });
+});
+
+describe('.env.example', () => {
+  const example = readFileSync(
+    fileURLToPath(new URL('../../../../.env.example', import.meta.url)),
+    'utf8',
+  );
+  const documented = new Set(
+    example
+      .split(/\r?\n/)
+      .map((line) => /^([A-Z][A-Z0-9_]*)=/.exec(line)?.[1])
+      .filter((key): key is string => key !== undefined),
+  );
+
+  it('lists every variable the API reads', () => {
+    // The seed script reads its two outside the schema.
+    const expected = [...ENV_KEYS, 'SEED_EMAIL', 'SEED_PASSWORD'];
+    expect(expected.filter((key) => !documented.has(key))).toEqual([]);
+  });
+
+  it('mentions PORT, which hosts set in place of API_PORT', () => {
+    expect(example).toMatch(/PORT is honoured/);
   });
 });

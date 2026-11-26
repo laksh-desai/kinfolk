@@ -151,6 +151,9 @@ const envSchema = z
 
 export type Env = z.infer<typeof envSchema>;
 
+/** Every variable the schema reads; `.env.example` is tested against this list. */
+export const ENV_KEYS: readonly string[] = Object.keys(envSchema.innerType().shape);
+
 export class EnvValidationError extends Error {
   constructor(public readonly problems: string[]) {
     super(`Kinfolk API cannot start. Fix these environment variables:\n  - ${problems.join('\n  - ')}`);
